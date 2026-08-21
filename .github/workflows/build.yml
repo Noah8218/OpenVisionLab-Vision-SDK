@@ -13,7 +13,6 @@ jobs:
     runs-on: windows-latest
     env:
       PACKAGE_VERSION: 3.0.1-ci.${{ github.run_number }}.${{ github.run_attempt }}
-      PACKAGE_CONSUMER_CACHE: ${{ runner.temp }}\openvisionlab-package-consumer-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -61,7 +60,7 @@ jobs:
           }
 
       - name: Restore package-only consumer
-        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:PACKAGE_CONSUMER_CACHE" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"
+        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"
 
       - name: Run package-only 2D and 3D consumer
-        run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:PACKAGE_CONSUMER_CACHE"
+        run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
