@@ -492,3 +492,12 @@ Auto MPoint 후보 분석을 명시적인 내부 소유자로 이전했다. 기�
 takt 기준이 승인된 뒤에만 고정 validation/challenge 데이터로 판정한다. 상세 소유자 지도,
 manifest 예시, 데이터 분할, 지표와 중단 게이트는
 [Matching 책임 경계와 생산 기준선 계획](MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md)에 기록했다.
+
+```text
+Status: Complete
+Scope: Matching/EdgeBased/AutoMPoint 내부 책임 분리, 기존 154개 보존과 characterization 7개 추가, 생산 기준선 선행 조건 문서화
+Acceptance criteria: 내부 소유자와 실제 호출 경로 -> pass; Release build 0/0 -> pass; Smoke 161/161 5회 -> pass; commit 고정 nupkg 5개와 격리 package-only 소비 -> pass
+Verification: implementation a535c51206a4a762afbec9291b7645da0d5014f3; package 3.0.1-dev.20260821.matching.2; 상세 명령과 hash는 연결 문서와 evidence 참조
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260821-matching-responsibility-refactor
+Boundary / next dependency: 실제 센서/교정/ground truth/불확도/생산 공차/오류율/takt 승인 전까지 생산 정확도·성능 기준선 Track B는 Blocked다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다.
+```

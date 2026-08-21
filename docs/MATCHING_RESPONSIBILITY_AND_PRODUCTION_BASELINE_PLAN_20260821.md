@@ -184,5 +184,12 @@ SDK 오차와 ground-truth 장비 불확도를 혼합해 숨기지 않는다.
 
 ## 10. 완료 기록
 
-최종 검증 결과와 evidence 위치는 이 절에 갱신한다. 이 기록이 `Complete`여도 Track B의 실제
-센서 데이터 선행 조건과 생산 승인을 대신하지 않는다.
+```text
+Status: Complete
+Scope: 기존 Matching/EdgeBased/AutoMPoint 공개 동작을 유지한 내부 책임 분리, 기존 154개 보존과 Matching characterization 7개 추가, Track B 데이터 계약 문서화
+Acceptance criteria: 내부 소유자 7개와 façade 호출 경로 -> pass; 기존 154개 이름/순서 보존 및 전체 161/161 -> pass; 공개 API 삭제/서명 변경 0 -> pass; Release build 경고/오류 0 -> pass; 고유 commit package 5개 version/commit/README/XML/내부 의존성 -> pass; 격리 package-only 소비 -> pass
+Verification: dotnet build OpenVisionLab.VisionSdk.sln -c Release -> 0 warnings/0 errors; Release smoke 161/161을 5회 실행 -> 모두 pass; dotnet pack 3.0.1-dev.20260821.matching.2 -> 5 packages; packed-only isolated restore/build/run -> pass; rg 구조/호출 경로와 git 공개 surface diff 점검 -> pass
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260821-matching-responsibility-refactor
+Input / source: baseline 4fd838667270308547241c2ae4f03c1f208526de; implementation a535c51206a4a762afbec9291b7645da0d5014f3; committed-packages.json에 5개 SHA-256 기록
+Boundary / next dependency: 전체 Smoke 중앙값 2,440.591ms는 154개 기준선과 161개 현재 suite 구성이 달라 성능 합격 비교값이 아니다. Track B는 실제 센서/설정, calibration ID와 hash, part/recipe, 독립 ground truth와 불확도, LSL/USL, false accept/reject 및 takt 기준 승인 전까지 Blocked다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다.
+```
