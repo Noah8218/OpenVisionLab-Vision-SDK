@@ -479,3 +479,16 @@ Verification: .NET SDK 8.0.423 Release build 0 warnings/0 errors; Smoke 154/154;
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260821-immutable-packages
 Boundary / next dependency: NuGet 게시는 수행하지 않았고 기존 전역 캐시를 삭제하지 않았다. 정식 3.0.1 배포, 소비 저장소 package pin·hash 갱신과 생산 계측 검증은 별도 승인 범위다.
 ```
+
+## 23. Matching 책임 경계와 생산 기준선 선행 조건
+
+`MatchingTool`, `EdgeBasedTemplateMatchingTool`, `AutoMPointTool`의 공개 API와 결과 계약은
+유지하면서 검색, 회전 템플릿 캐시, Edge 모델 저장소, 후보 검색, hybrid 검증, 고유성 판정,
+Auto MPoint 후보 분석을 명시적인 내부 소유자로 이전했다. 기존 154개 Smoke는 이름과 순서를
+바꾸지 않고 선행 집합으로 유지하며 Matching 전용 characterization 7개를 맨 뒤에 추가했다.
+
+실제 생산 정확도와 성능 승인은 이 합성 회귀와 분리한다. 센서 모델/설정, 교정 ID와 hash,
+부품군/recipe, 독립 ground truth, ground-truth 불확도, 생산 LSL/USL 및 false accept/reject와
+takt 기준이 승인된 뒤에만 고정 validation/challenge 데이터로 판정한다. 상세 소유자 지도,
+manifest 예시, 데이터 분할, 지표와 중단 게이트는
+[Matching 책임 경계와 생산 기준선 계획](MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md)에 기록했다.

@@ -172,6 +172,7 @@ The basic examples assume execution from the repository root and use `docs/sampl
 
 - Auto MPoint teaching core: `docs/AUTO_MPOINT_V1.md`
 - Edge-based fail-closed unique result: `docs/EDGE_BASED_UNIQUE_MATCH_V1.md`
+- Matching responsibility boundaries and production-baseline plan: `docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md`
 
 ## Build / Smoke Check
 

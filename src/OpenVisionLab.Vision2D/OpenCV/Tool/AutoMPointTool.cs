@@ -21,6 +21,12 @@ namespace OpenVisionLab.Vision2D.Tool
         private int exactEvaluatedCount;
         private double analysisElapsedMilliseconds;
         private IReadOnlyList<Mat> representativeImages = Array.Empty<Mat>();
+        private readonly AutoMPointCandidateAnalyzer candidateAnalyzer;
+
+        public AutoMPointTool()
+        {
+            candidateAnalyzer = new AutoMPointCandidateAnalyzer(this);
+        }
 
         public void SetProperty(IAutoMPointToolProperty property) => this.property = property;
 
@@ -177,6 +183,96 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            candidateAnalyzer.Run();
+        }
+
+        protected override IDictionary<string, double> CollectMetrics()
+        {
+            IDictionary<string, double> metrics = base.CollectMetrics();
+            metrics["AutoMPoint.GeneratedCandidateCount"] = generatedCandidateCount;
+            metrics["AutoMPoint.PrefilterPassedCount"] = prefilterPassedCount;
+            metrics["AutoMPoint.ExactEvaluatedCount"] = exactEvaluatedCount;
+            metrics["AutoMPoint.AcceptedCandidateCount"] = results.Count;
+            metrics["AutoMPoint.AnalysisElapsedMs"] = analysisElapsedMilliseconds;
+            metrics["AutoMPoint.RepresentativeImageCount"] = representativeImages.Count;
+
+            AutoMPointCandidateResult best = results.FirstOrDefault();
+            if (best != null)
+            {
+                metrics["AutoMPoint.BestScore"] = best.Score;
+                metrics["AutoMPoint.BestUniquenessMargin"] = best.UniquenessMargin;
+                metrics["AutoMPoint.BestPositionErrorMaxPx"] = best.PositionErrorMaxPixels;
+                metrics["AutoMPoint.BestRuntimeP95Ms"] = best.RuntimeP95Milliseconds;
+                metrics["AutoMPoint.BestRepresentativeSuccessRate"] = best.RepresentativeSuccessRate;
+                metrics["AutoMPoint.BestRepresentativeMeanScore"] = best.RepresentativeMeanScore;
+                metrics["AutoMPoint.BestRepresentativeMinimumUniquenessMargin"] =
+                    best.RepresentativeMinimumUniquenessMargin;
+            }
+
+            return metrics;
+        }
+
+        protected override IEnumerable<VisionToolOverlay> CollectOverlays()
+        {
+            List<VisionToolOverlay> overlays = new List<VisionToolOverlay>();
+            foreach (AutoMPointCandidateResult candidate in results)
+            {
+                overlays.Add(new VisionToolOverlay
+                {
+                    Kind = VisionToolOverlayKind.Rectangle,
+                    Bounds = candidate.Bounding,
+                    Label = candidate.RepresentativeImageCount > 0
+                        ? $"Auto MPoint #{candidate.Rank} R:{candidate.RepresentativeSuccessCount}/{candidate.RepresentativeImageCount} S:{candidate.RepresentativeMeanScore:0.0}"
+                        : $"Auto MPoint #{candidate.Rank} S:{candidate.Score:0.0} U:{candidate.UniquenessMargin:0.000}"
+                });
+                overlays.Add(new VisionToolOverlay
+                {
+                    Kind = VisionToolOverlayKind.Point,
+                    Center = new PointF(candidate.PatternCenter.X, candidate.PatternCenter.Y),
+                    Label = $"MPoint #{candidate.Rank}"
+                });
+            }
+
+            return overlays;
+        }
+
+        private sealed class AutoMPointCandidateAnalyzer
+    {
+        private readonly AutoMPointTool owner;
+
+        public AutoMPointCandidateAnalyzer(AutoMPointTool owner)
+        {
+            this.owner = owner;
+        }
+
+        private IAutoMPointToolProperty property => owner.property;
+
+        private List<AutoMPointCandidateResult> results => owner.results;
+
+        private List<AutoMPointCandidateResult> candidates => owner.candidates;
+
+        private Rect analysisRoi => owner.analysisRoi;
+
+        private int generatedCandidateCount { get => owner.generatedCandidateCount; set => owner.generatedCandidateCount = value; }
+
+        private int prefilterPassedCount { get => owner.prefilterPassedCount; set => owner.prefilterPassedCount = value; }
+
+        private int exactEvaluatedCount { get => owner.exactEvaluatedCount; set => owner.exactEvaluatedCount = value; }
+
+        private double analysisElapsedMilliseconds { get => owner.analysisElapsedMilliseconds; set => owner.analysisElapsedMilliseconds = value; }
+
+        private IReadOnlyList<Mat> representativeImages => owner.representativeImages;
+
+        private Mat imageSource => owner.imageSource;
+
+        private Mat imageResult => owner.imageResult;
+
+        private Stopwatch swTaktTimems => owner.swTaktTimems;
+
+        private void ReplaceResultImage(Mat result) => owner.ReplaceResultImage(result);
+
+        public void Run()
+        {
             Stopwatch analysisStopwatch = Stopwatch.StartNew();
             results.Clear();
             candidates.Clear();
@@ -267,56 +363,6 @@ namespace OpenVisionLab.Vision2D.Tool
             analysisElapsedMilliseconds = analysisStopwatch.Elapsed.TotalMilliseconds;
             swTaktTimems.Restart();
             swTaktTimems.Stop();
-        }
-
-        protected override IDictionary<string, double> CollectMetrics()
-        {
-            IDictionary<string, double> metrics = base.CollectMetrics();
-            metrics["AutoMPoint.GeneratedCandidateCount"] = generatedCandidateCount;
-            metrics["AutoMPoint.PrefilterPassedCount"] = prefilterPassedCount;
-            metrics["AutoMPoint.ExactEvaluatedCount"] = exactEvaluatedCount;
-            metrics["AutoMPoint.AcceptedCandidateCount"] = results.Count;
-            metrics["AutoMPoint.AnalysisElapsedMs"] = analysisElapsedMilliseconds;
-            metrics["AutoMPoint.RepresentativeImageCount"] = representativeImages.Count;
-
-            AutoMPointCandidateResult best = results.FirstOrDefault();
-            if (best != null)
-            {
-                metrics["AutoMPoint.BestScore"] = best.Score;
-                metrics["AutoMPoint.BestUniquenessMargin"] = best.UniquenessMargin;
-                metrics["AutoMPoint.BestPositionErrorMaxPx"] = best.PositionErrorMaxPixels;
-                metrics["AutoMPoint.BestRuntimeP95Ms"] = best.RuntimeP95Milliseconds;
-                metrics["AutoMPoint.BestRepresentativeSuccessRate"] = best.RepresentativeSuccessRate;
-                metrics["AutoMPoint.BestRepresentativeMeanScore"] = best.RepresentativeMeanScore;
-                metrics["AutoMPoint.BestRepresentativeMinimumUniquenessMargin"] =
-                    best.RepresentativeMinimumUniquenessMargin;
-            }
-
-            return metrics;
-        }
-
-        protected override IEnumerable<VisionToolOverlay> CollectOverlays()
-        {
-            List<VisionToolOverlay> overlays = new List<VisionToolOverlay>();
-            foreach (AutoMPointCandidateResult candidate in results)
-            {
-                overlays.Add(new VisionToolOverlay
-                {
-                    Kind = VisionToolOverlayKind.Rectangle,
-                    Bounds = candidate.Bounding,
-                    Label = candidate.RepresentativeImageCount > 0
-                        ? $"Auto MPoint #{candidate.Rank} R:{candidate.RepresentativeSuccessCount}/{candidate.RepresentativeImageCount} S:{candidate.RepresentativeMeanScore:0.0}"
-                        : $"Auto MPoint #{candidate.Rank} S:{candidate.Score:0.0} U:{candidate.UniquenessMargin:0.000}"
-                });
-                overlays.Add(new VisionToolOverlay
-                {
-                    Kind = VisionToolOverlayKind.Point,
-                    Center = new PointF(candidate.PatternCenter.X, candidate.PatternCenter.Y),
-                    Label = $"MPoint #{candidate.Rank}"
-                });
-            }
-
-            return overlays;
         }
 
         private List<CandidateRect> GenerateCandidateRects()
@@ -825,11 +871,11 @@ namespace OpenVisionLab.Vision2D.Tool
             double angle = SelectSyntheticAngle();
             double scale = SelectSyntheticScale();
             return new List<SyntheticCase>
-            {
-                new SyntheticCase(translation, -translation, 0d, 1d, 1d, 0d),
-                new SyntheticCase(-translation, translation, angle, 1d, 1d, 0d),
-                new SyntheticCase(translation, translation, 0d, scale, 1.08d, 4d)
-            };
+        {
+            new SyntheticCase(translation, -translation, 0d, 1d, 1d, 0d),
+            new SyntheticCase(-translation, translation, angle, 1d, 1d, 0d),
+            new SyntheticCase(translation, translation, 0d, scale, 1.08d, 4d)
+        };
         }
 
         private double SelectSyntheticAngle()
@@ -967,11 +1013,11 @@ namespace OpenVisionLab.Vision2D.Tool
 
             int[] counts =
             {
-                CountNonZero(edgeRoi, new Rect(0, 0, leftWidth, topHeight)),
-                CountNonZero(edgeRoi, new Rect(leftWidth, 0, rightWidth, topHeight)),
-                CountNonZero(edgeRoi, new Rect(0, topHeight, leftWidth, bottomHeight)),
-                CountNonZero(edgeRoi, new Rect(leftWidth, topHeight, rightWidth, bottomHeight))
-            };
+            CountNonZero(edgeRoi, new Rect(0, 0, leftWidth, topHeight)),
+            CountNonZero(edgeRoi, new Rect(leftWidth, 0, rightWidth, topHeight)),
+            CountNonZero(edgeRoi, new Rect(0, topHeight, leftWidth, bottomHeight)),
+            CountNonZero(edgeRoi, new Rect(leftWidth, topHeight, rightWidth, bottomHeight))
+        };
             int maximum = counts.Max();
             return maximum > 0 ? counts.Min() / (double)maximum : 0d;
         }
@@ -1006,6 +1052,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
             return values;
         }
+
+    }
 
         private static double CalculateIntersectionOverUnion(Rect left, Rect right)
         {

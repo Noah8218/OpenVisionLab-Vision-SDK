@@ -11,24 +11,18 @@ using OpenCvSharp;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
-    public partial class MatchingTool : OpenCvAlgorithmBase
+    public class MatchingTool : OpenCvAlgorithmBase
     {
         public IOpenCVPropertyMatching property;
         public List<MatchingResult> results = new List<MatchingResult>();
         private Mat originalTemplate = new Mat();
-        private const long RotatedTemplateCacheByteBudget = 128L * 1024L * 1024L;
-        private const long RotatedTemplateCacheMinimumBytes = 32L * 1024L;
-        private const int RotatedTemplateCacheEntryLimit = 4096;
-        private const double PyramidProposalScale = 0.5D;
-        private static readonly object rotatedTemplateCacheLock = new object();
-        private static readonly Dictionary<RotatedTemplateCacheKey, RotatedTemplateCacheEntry> rotatedTemplateCache =
-            new Dictionary<RotatedTemplateCacheKey, RotatedTemplateCacheEntry>();
-        private static readonly LinkedList<RotatedTemplateCacheKey> rotatedTemplateLru =
-            new LinkedList<RotatedTemplateCacheKey>();
-        private static long rotatedTemplateCacheBytes;
+        private readonly MatchingSearchEngine searchEngine;
 
-        public MatchingTool() { }
-        
+        public MatchingTool()
+        {
+            searchEngine = new MatchingSearchEngine(this);
+        }
+
         public void SetTemplateImage(Mat Image)
         {
             originalTemplate?.Dispose();
@@ -37,7 +31,7 @@ namespace OpenVisionLab.Vision2D.Tool
             originalTemplate = OpenCvHelper.IsImageEmpty(Image) ? new Mat() : Image.Clone();
             imageTemplate = originalTemplate.Clone();
         }
-       
+
         public void SetProperty(IOpenCVPropertyMatching property) => this.property = property;
 
         protected override void Dispose(bool disposing)
@@ -58,7 +52,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            Mat template = GetTemplateForRun();
+            Mat template = searchEngine.GetTemplateForRun();
             if (OpenCvHelper.IsImageEmpty(template))
             {
                 errorCode = VisionToolErrorCode.MatchingTemplateMissing;
@@ -151,7 +145,7 @@ namespace OpenVisionLab.Vision2D.Tool
             if (results == null || results.Count == 0)
             {
                 errorCode = VisionToolErrorCode.MatchingNoResult;
-                message = $"Matching found no result. {FormatMatchingOptions()}";
+                message = $"Matching found no result. {searchEngine.FormatMatchingOptions()}";
                 return false;
             }
 
@@ -175,7 +169,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 }
 
                 bool hasValidScale = false;
-                foreach (double scale in CreateSearchScales())
+                foreach (double scale in searchEngine.CreateSearchScales())
                 {
                     int templateWidth = (int)(Math.Round(template.Width * scale) / property.MAGNIFIATION);
                     int templateHeight = (int)(Math.Round(template.Height * scale) / property.MAGNIFIATION);
@@ -192,7 +186,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 if (!hasValidScale)
                 {
                     errorCode = VisionToolErrorCode.MatchingTemplateInvalid;
-                    message = $"Matching template scale range is larger than the working image. Template={template.Width}x{template.Height}, Source={sourceWidth}x{sourceHeight}, Scale={FormatScaleOptions()}.";
+                    message = $"Matching template scale range is larger than the working image. Template={template.Width}x{template.Height}, Source={sourceWidth}x{sourceHeight}, Scale={searchEngine.FormatScaleOptions()}.";
                     return false;
                 }
             }
@@ -233,7 +227,49 @@ namespace OpenVisionLab.Vision2D.Tool
             return baseCode;
         }
 
-        private Mat GetTemplateForRun()
+        public Mat Rotate(Mat src, double angle, bool PaddingWhite = false)
+        {
+            return searchEngine.Rotate(src, angle, PaddingWhite);
+        }
+
+        public override void Run()
+        {
+            searchEngine.Run();
+        }
+
+        public bool ImagePyramidsMultiRun()
+        {
+            return searchEngine.ImagePyramidsMultiRun();
+        }
+
+        public bool ImagePyramidsSingleRun()
+        {
+            return searchEngine.ImagePyramidsSingleRun();
+        }
+
+        private sealed class MatchingSearchEngine
+    {
+        private const double PyramidProposalScale = 0.5D;
+        private readonly MatchingTool owner;
+
+        public MatchingSearchEngine(MatchingTool owner)
+        {
+            this.owner = owner;
+        }
+
+        private IOpenCVPropertyMatching property => owner.property;
+
+        private List<MatchingResult> results => owner.results;
+
+        private Mat originalTemplate => owner.originalTemplate;
+
+        private Mat imageTemplate => owner.imageTemplate;
+
+        private Mat imageSource => owner.imageSource;
+
+        private System.Diagnostics.Stopwatch swTaktTimems => owner.swTaktTimems;
+
+        public Mat GetTemplateForRun()
         {
             return OpenCvHelper.IsImageEmpty(originalTemplate) ? imageTemplate : originalTemplate;
         }
@@ -299,7 +335,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 normalizedScale < 1D ? InterpolationFlags.Area : InterpolationFlags.Linear);
             return resized;
         }
-     
+
         private void FindTemplate(Mat ImageSorce, Mat Template, ConcurrentBag<MatchingResult> Results_T, double angle, OpenCvSharp.Rect CvROI, bool applyRoiOffset)
         {
             FindTemplate(ImageSorce, Template, Results_T, angle, 1D, CvROI, applyRoiOffset, property.SCORE_MIN);
@@ -476,231 +512,264 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public Mat Rotate(Mat src, double angle, bool PaddingWhite = false)
         {
-            Mat rotate = new Mat(src.Size(), src.Type());
-            Mat matrix = Cv2.GetRotationMatrix2D(new Point2f(src.Width / 2, src.Height / 2), angle, 1);
-            if (PaddingWhite)
-            {
-                Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Constant, new Scalar(255, 255, 255));
-            }
-            else
-            {
-                Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Reflect);
-            }
-
-            return rotate;
+            return RotatedTemplateCache.Rotate(src, angle, PaddingWhite);
         }
 
         private RotatedTemplateLease GetOrCreateRotatedTemplate(Mat template, double angle, ulong templateHash, bool useCache)
         {
-            if (OpenCvHelper.IsImageEmpty(template))
-            {
-                return RotatedTemplateLease.CreateUncached(new Mat());
-            }
-
-            double normalizedAngle = NormalizeCacheAngle(angle);
-            if (!useCache)
-            {
-                return RotatedTemplateLease.CreateUncached(Rotate(template, normalizedAngle, property.USE_PADDING_COLOR_WHITE));
-            }
-
-            RotatedTemplateCacheKey key = new RotatedTemplateCacheKey(
+            return RotatedTemplateCache.GetOrCreate(
+                template,
+                angle,
                 templateHash,
-                template.Width,
-                template.Height,
-                template.Type(),
-                property.USE_PADDING_COLOR_WHITE,
-                normalizedAngle);
-
-            RotatedTemplateLease cached = TryUseCachedRotatedTemplate(key);
-            if (cached != null)
-            {
-                return cached;
-            }
-
-            Mat rotated = Rotate(template, normalizedAngle, property.USE_PADDING_COLOR_WHITE);
-            return StoreOrUseRotatedTemplate(key, rotated);
+                useCache,
+                property.USE_PADDING_COLOR_WHITE);
         }
 
-        private static RotatedTemplateLease TryUseCachedRotatedTemplate(RotatedTemplateCacheKey key)
+        private sealed class RotatedTemplateCache
         {
-            lock (rotatedTemplateCacheLock)
+            private const long ByteBudget = 128L * 1024L * 1024L;
+            private const long MinimumBytes = 32L * 1024L;
+            private const int EntryLimit = 4096;
+            private static readonly object sync = new object();
+            private static readonly Dictionary<RotatedTemplateCacheKey, RotatedTemplateCacheEntry> entries =
+                new Dictionary<RotatedTemplateCacheKey, RotatedTemplateCacheEntry>();
+            private static readonly LinkedList<RotatedTemplateCacheKey> lru =
+                new LinkedList<RotatedTemplateCacheKey>();
+            private static long cachedBytes;
+
+            public static Mat Rotate(Mat src, double angle, bool paddingWhite)
             {
-                if (!rotatedTemplateCache.TryGetValue(key, out RotatedTemplateCacheEntry entry)
-                    || OpenCvHelper.IsImageEmpty(entry.Image))
+                Mat rotate = new Mat(src.Size(), src.Type());
+                Mat matrix = Cv2.GetRotationMatrix2D(new Point2f(src.Width / 2, src.Height / 2), angle, 1);
+                if (paddingWhite)
                 {
-                    return null;
+                    Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Constant, new Scalar(255, 255, 255));
+                }
+                else
+                {
+                    Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Reflect);
                 }
 
-                rotatedTemplateLru.Remove(entry.Node);
-                rotatedTemplateLru.AddFirst(entry.Node);
-                entry.UseCount++;
-
-                // MatchTemplate reads the template only. Lease the cached Mat directly and
-                // keep it protected from eviction until the caller disposes the lease.
-                return RotatedTemplateLease.CreateCached(entry);
-            }
-        }
-
-        private static RotatedTemplateLease StoreOrUseRotatedTemplate(RotatedTemplateCacheKey key, Mat image)
-        {
-            if (OpenCvHelper.IsImageEmpty(image))
-            {
-                return RotatedTemplateLease.CreateUncached(image);
+                return rotate;
             }
 
-            long imageBytes = EstimateMatBytes(image);
-            if (imageBytes <= 0 || imageBytes > RotatedTemplateCacheByteBudget / 2)
+            public static RotatedTemplateLease GetOrCreate(
+                Mat template,
+                double angle,
+                ulong templateHash,
+                bool useCache,
+                bool paddingWhite)
             {
-                return RotatedTemplateLease.CreateUncached(image);
-            }
-
-            lock (rotatedTemplateCacheLock)
-            {
-                if (rotatedTemplateCache.TryGetValue(key, out RotatedTemplateCacheEntry existing)
-                    && !OpenCvHelper.IsImageEmpty(existing.Image))
+                if (OpenCvHelper.IsImageEmpty(template))
                 {
-                    image.Dispose();
-                    rotatedTemplateLru.Remove(existing.Node);
-                    rotatedTemplateLru.AddFirst(existing.Node);
-                    existing.UseCount++;
-                    return RotatedTemplateLease.CreateCached(existing);
+                    return RotatedTemplateLease.CreateUncached(new Mat());
                 }
 
-                LinkedListNode<RotatedTemplateCacheKey> node = rotatedTemplateLru.AddFirst(key);
-                RotatedTemplateCacheEntry entry = new RotatedTemplateCacheEntry(image, imageBytes, node);
-                entry.UseCount++;
-                rotatedTemplateCache[key] = entry;
-                rotatedTemplateCacheBytes += imageBytes;
-                TrimRotatedTemplateCache();
-                return RotatedTemplateLease.CreateCached(entry);
-            }
-        }
-
-        private static void TrimRotatedTemplateCache()
-        {
-            int inspected = 0;
-            while ((rotatedTemplateCacheBytes > RotatedTemplateCacheByteBudget
-                    || rotatedTemplateCache.Count > RotatedTemplateCacheEntryLimit)
-                && rotatedTemplateLru.Last != null
-                && inspected <= rotatedTemplateCache.Count)
-            {
-                RotatedTemplateCacheKey oldestKey = rotatedTemplateLru.Last.Value;
-                rotatedTemplateLru.RemoveLast();
-
-                if (!rotatedTemplateCache.TryGetValue(oldestKey, out RotatedTemplateCacheEntry entry))
+                double normalizedAngle = NormalizeCacheAngle(angle);
+                if (!useCache)
                 {
-                    continue;
+                    return RotatedTemplateLease.CreateUncached(Rotate(template, normalizedAngle, paddingWhite));
                 }
 
-                if (entry.UseCount > 0)
+                RotatedTemplateCacheKey key = new RotatedTemplateCacheKey(
+                    templateHash,
+                    template.Width,
+                    template.Height,
+                    template.Type(),
+                    paddingWhite,
+                    normalizedAngle);
+
+                RotatedTemplateLease cached = TryUseCachedRotatedTemplate(key);
+                if (cached != null)
                 {
-                    rotatedTemplateLru.AddFirst(entry.Node);
-                    inspected++;
-                    continue;
+                    return cached;
                 }
 
-                rotatedTemplateCache.Remove(oldestKey);
-                rotatedTemplateCacheBytes -= entry.Bytes;
-                entry.Image.Dispose();
-            }
-        }
-
-        private static void ReleaseRotatedTemplate(RotatedTemplateCacheEntry entry)
-        {
-            if (entry == null)
-            {
-                return;
+                Mat rotated = Rotate(template, normalizedAngle, paddingWhite);
+                return StoreOrUseRotatedTemplate(key, rotated);
             }
 
-            lock (rotatedTemplateCacheLock)
+            private static RotatedTemplateLease TryUseCachedRotatedTemplate(RotatedTemplateCacheKey key)
             {
-                if (entry.UseCount > 0)
+                lock (sync)
                 {
-                    entry.UseCount--;
+                    if (!entries.TryGetValue(key, out RotatedTemplateCacheEntry entry)
+                        || OpenCvHelper.IsImageEmpty(entry.Image))
+                    {
+                        return null;
+                    }
+
+                    lru.Remove(entry.Node);
+                    lru.AddFirst(entry.Node);
+                    entry.UseCount++;
+
+                    // MatchTemplate reads the template only. Lease the cached Mat directly and
+                    // keep it protected from eviction until the caller disposes the lease.
+                    return RotatedTemplateLease.CreateCached(entry);
+                }
+            }
+
+            private static RotatedTemplateLease StoreOrUseRotatedTemplate(RotatedTemplateCacheKey key, Mat image)
+            {
+                if (OpenCvHelper.IsImageEmpty(image))
+                {
+                    return RotatedTemplateLease.CreateUncached(image);
                 }
 
-                TrimRotatedTemplateCache();
-            }
-        }
+                long imageBytes = EstimateMatBytes(image);
+                if (imageBytes <= 0 || imageBytes > ByteBudget / 2)
+                {
+                    return RotatedTemplateLease.CreateUncached(image);
+                }
 
-        private static long EstimateMatBytes(Mat image)
-        {
-            if (OpenCvHelper.IsImageEmpty(image))
-            {
-                return 0;
-            }
+                lock (sync)
+                {
+                    if (entries.TryGetValue(key, out RotatedTemplateCacheEntry existing)
+                        && !OpenCvHelper.IsImageEmpty(existing.Image))
+                    {
+                        image.Dispose();
+                        lru.Remove(existing.Node);
+                        lru.AddFirst(existing.Node);
+                        existing.UseCount++;
+                        return RotatedTemplateLease.CreateCached(existing);
+                    }
 
-            return (long)image.Rows * image.Cols * image.ElemSize();
-        }
-
-        private static bool ShouldUseRotatedTemplateCache(Mat image)
-        {
-            long imageBytes = EstimateMatBytes(image);
-            return imageBytes >= RotatedTemplateCacheMinimumBytes
-                && imageBytes <= RotatedTemplateCacheByteBudget / 2;
-        }
-
-        private static double NormalizeCacheAngle(double angle)
-        {
-            double normalized = Math.Round(angle, 6);
-            return Math.Abs(normalized) < 0.000001D ? 0D : normalized;
-        }
-
-        private static unsafe ulong ComputeMatContentHash(Mat image)
-        {
-            if (OpenCvHelper.IsImageEmpty(image))
-            {
-                return 0;
+                    LinkedListNode<RotatedTemplateCacheKey> node = lru.AddFirst(key);
+                    RotatedTemplateCacheEntry entry = new RotatedTemplateCacheEntry(image, imageBytes, node);
+                    entry.UseCount++;
+                    entries[key] = entry;
+                    cachedBytes += imageBytes;
+                    TrimRotatedTemplateCache();
+                    return RotatedTemplateLease.CreateCached(entry);
+                }
             }
 
-            const ulong offset = 14695981039346656037UL;
-            const ulong prime = 1099511628211UL;
-            ulong hash = offset;
-            void AddByte(byte value)
+            private static void TrimRotatedTemplateCache()
             {
-                hash ^= value;
-                hash *= prime;
+                int inspected = 0;
+                while ((cachedBytes > ByteBudget
+                        || entries.Count > EntryLimit)
+                    && lru.Last != null
+                    && inspected <= entries.Count)
+                {
+                    RotatedTemplateCacheKey oldestKey = lru.Last.Value;
+                    lru.RemoveLast();
+
+                    if (!entries.TryGetValue(oldestKey, out RotatedTemplateCacheEntry entry))
+                    {
+                        continue;
+                    }
+
+                    if (entry.UseCount > 0)
+                    {
+                        lru.AddFirst(entry.Node);
+                        inspected++;
+                        continue;
+                    }
+
+                    entries.Remove(oldestKey);
+                    cachedBytes -= entry.Bytes;
+                    entry.Image.Dispose();
+                }
             }
 
-            long rowBytes = (long)image.Cols * image.ElemSize();
-            if (rowBytes <= 0)
+            public static void Release(RotatedTemplateCacheEntry entry)
             {
+                if (entry == null)
+                {
+                    return;
+                }
+
+                lock (sync)
+                {
+                    if (entry.UseCount > 0)
+                    {
+                        entry.UseCount--;
+                    }
+
+                    TrimRotatedTemplateCache();
+                }
+            }
+
+            private static long EstimateMatBytes(Mat image)
+            {
+                if (OpenCvHelper.IsImageEmpty(image))
+                {
+                    return 0;
+                }
+
+                return (long)image.Rows * image.Cols * image.ElemSize();
+            }
+
+            public static bool ShouldUse(Mat image)
+            {
+                long imageBytes = EstimateMatBytes(image);
+                return imageBytes >= MinimumBytes
+                    && imageBytes <= ByteBudget / 2;
+            }
+
+            private static double NormalizeCacheAngle(double angle)
+            {
+                double normalized = Math.Round(angle, 6);
+                return Math.Abs(normalized) < 0.000001D ? 0D : normalized;
+            }
+
+            public static unsafe ulong ComputeContentHash(Mat image)
+            {
+                if (OpenCvHelper.IsImageEmpty(image))
+                {
+                    return 0;
+                }
+
+                const ulong offset = 14695981039346656037UL;
+                const ulong prime = 1099511628211UL;
+                ulong hash = offset;
+                void AddByte(byte value)
+                {
+                    hash ^= value;
+                    hash *= prime;
+                }
+
+                long rowBytes = (long)image.Cols * image.ElemSize();
+                if (rowBytes <= 0)
+                {
+                    return hash;
+                }
+
+                if (image.IsContinuous() && !image.IsSubmatrix())
+                {
+                    long length = image.DataEnd.ToInt64() - image.Data.ToInt64();
+                    byte* data = (byte*)image.Data.ToPointer();
+                    for (long i = 0; i < length; i++)
+                    {
+                        AddByte(data[i]);
+                    }
+
+                    return hash;
+                }
+
+                byte* row = (byte*)image.Data.ToPointer();
+                long step = image.Step();
+                for (int y = 0; y < image.Rows; y++)
+                {
+                    byte* current = row + step * y;
+                    for (long x = 0; x < rowBytes; x++)
+                    {
+                        AddByte(current[x]);
+                    }
+                }
+
                 return hash;
             }
-
-            if (image.IsContinuous() && !image.IsSubmatrix())
-            {
-                long length = image.DataEnd.ToInt64() - image.Data.ToInt64();
-                byte* data = (byte*)image.Data.ToPointer();
-                for (long i = 0; i < length; i++)
-                {
-                    AddByte(data[i]);
-                }
-
-                return hash;
-            }
-
-            byte* row = (byte*)image.Data.ToPointer();
-            long step = image.Step();
-            for (int y = 0; y < image.Rows; y++)
-            {
-                byte* current = row + step * y;
-                for (long x = 0; x < rowBytes; x++)
-                {
-                    AddByte(current[x]);
-                }
-            }
-
-            return hash;
         }
 
-        public override void Run()
+        public void Run()
         {
-            if(property.USE_MULTI_ROI)
+            if (property.USE_MULTI_ROI)
             {
                 ImagePyramidsMultiRun();
             }
-            else 
+            else
             {
                 ImagePyramidsSingleRun();
             }
@@ -736,7 +805,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 }
             }
             swTaktTimems.Stop();
-        
+
 
             return true;
         }
@@ -1051,8 +1120,8 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             ConcurrentBag<MatchingResult> candidates = new ConcurrentBag<MatchingResult>();
             double angleStep = property.FIND_ANGLE;
-            bool useRotatedTemplateCache = ShouldUseRotatedTemplateCache(imageTpl);
-            ulong templateHash = useRotatedTemplateCache ? ComputeMatContentHash(imageTpl) : 0UL;
+            bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(imageTpl);
+            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(imageTpl) : 0UL;
 
             Task firstTask = Task.Run(() =>
             {
@@ -1148,8 +1217,8 @@ namespace OpenVisionLab.Vision2D.Tool
             bool applyRoiOffset,
             double minimumScore)
         {
-            bool useRotatedTemplateCache = ShouldUseRotatedTemplateCache(imageTpl);
-            ulong templateHash = useRotatedTemplateCache ? ComputeMatContentHash(imageTpl) : 0UL;
+            bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(imageTpl);
+            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(imageTpl) : 0UL;
             Parallel.ForEach(angles, angle =>
             {
                 if (Math.Abs(angle) < 0.000001D)
@@ -1226,7 +1295,7 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private IEnumerable<double> CreateSearchScales()
+        public IEnumerable<double> CreateSearchScales()
         {
             if (!property.USE_FIND_SCALE)
             {
@@ -1298,12 +1367,12 @@ namespace OpenVisionLab.Vision2D.Tool
             return $"{roi.X},{roi.Y},{roi.Width},{roi.Height}";
         }
 
-        private string FormatMatchingOptions()
+        public string FormatMatchingOptions()
         {
             return $"Mode={property.MATCH_MODE}, ScoreMin={property.SCORE_MIN}, NumMatch={property.NUM_MATCH}, Magnification={property.MAGNIFIATION}, AngleSearch={property.USE_FIND_ANGLE}, Scale={FormatScaleOptions()}, Pyramid={FormatPyramidOptions()}, Threshold={property.USE_THRESHOLD}, Adaptive={property.USE_ADAPTIVE_THRESHOLD}, Canny={property.USE_CANNY}, ROI={FormatMatchingRoi()}";
         }
 
-        private string FormatScaleOptions()
+        public string FormatScaleOptions()
         {
             if (!property.USE_FIND_SCALE)
             {
@@ -1408,8 +1477,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 return RotatedTemplateLease.CreateUncached(template.Clone());
             }
 
-            bool useRotatedTemplateCache = ShouldUseRotatedTemplateCache(template);
-            ulong templateHash = useRotatedTemplateCache ? ComputeMatContentHash(template) : 0UL;
+            bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(template);
+            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(template) : 0UL;
             return GetOrCreateRotatedTemplate(template, angle, templateHash, useRotatedTemplateCache);
         }
 
@@ -1675,7 +1744,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     return;
                 }
 
-                ReleaseRotatedTemplate(entry);
+                RotatedTemplateCache.Release(entry);
             }
         }
 
@@ -1739,6 +1808,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     return hash;
                 }
             }
+        }
         }
     }
 
