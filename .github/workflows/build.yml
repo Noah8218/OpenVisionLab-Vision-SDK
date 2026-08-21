@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      PACKAGE_VERSION: 3.0.1-ci.${{ github.run_number }}.${{ github.run_attempt }}
+      PACKAGE_CONSUMER_CACHE: ${{ runner.temp }}\openvisionlab-package-consumer-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -31,7 +34,7 @@ jobs:
         run: dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build
 
       - name: Pack
-        run: dotnet pack OpenVisionLab.VisionSdk.sln -c Release --no-build -o artifacts/packages
+        run: dotnet pack OpenVisionLab.VisionSdk.sln -c Release --no-build -o artifacts/packages "-p:PackageVersion=$env:PACKAGE_VERSION"
 
       - name: Verify package documentation
         shell: pwsh
@@ -40,6 +43,9 @@ jobs:
           $packages = @(Get-ChildItem artifacts/packages/*.nupkg)
           if ($packages.Count -ne 5) { throw "Expected 5 packages, found $($packages.Count)." }
           foreach ($package in $packages) {
+            if ($package.Name -notlike "*.$env:PACKAGE_VERSION.nupkg") {
+              throw "$($package.Name) does not use the immutable CI version $env:PACKAGE_VERSION."
+            }
             $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
             try {
               $nuspec = $archive.Entries | Where-Object FullName -Like '*.nuspec' | Select-Object -First 1
@@ -55,7 +61,7 @@ jobs:
           }
 
       - name: Restore package-only consumer
-        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:RestoreAdditionalProjectSources=$env:GITHUB_WORKSPACE\artifacts\packages"
+        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:PACKAGE_CONSUMER_CACHE" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"
 
       - name: Run package-only 2D and 3D consumer
-        run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore
+        run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:PACKAGE_CONSUMER_CACHE"

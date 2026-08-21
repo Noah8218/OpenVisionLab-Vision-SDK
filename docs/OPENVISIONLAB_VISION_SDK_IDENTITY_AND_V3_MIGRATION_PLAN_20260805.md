@@ -454,3 +454,28 @@ Release build는 warning/error 0건, 전체 Smoke는 142개에서 154개로 늘�
 통과했다. 이 결과는 대표 회귀 증거이며 4.0 제거, 소비 저장소 전환, 외부 recipe 호환,
 NuGet 게시 승인을 대신하지 않는다. 상세 범위와 남은 게이트는 20절의 연결 문서 10절을
 따른다.
+
+## 22. NuGet 패키지 버전 불변성과 격리 소비자 검증
+
+동일한 `OpenVisionLab.* 3.0.0` ID·버전으로 내용이 다른 로컬 패키지가 생성되어,
+NuGet 전역 캐시의 이전 DLL이 현재 package-only 소비자 검사를 가리는 문제를
+재현했다. 현재 nupkg에는 존재하는 2D Property 타입 10개가 캐시 DLL에는 없어 일반
+복원이 컴파일에 실패했고, 두 패키지의 SHA-512도 달랐다. 빈 전용 캐시에서는 같은
+현재 nupkg로 빌드와 실행이 통과했으므로 알고리즘 또는 현재 패키지 누락이 아니라
+패키지 ID·버전 재사용과 캐시 오염이 원인이었다.
+
+저장소의 로컬 개발 기본 `PackageVersion`을 `3.0.1-dev.1`로 이동하고, CI는 매 실행마다
+`3.0.1-ci.<run>.<attempt>`를 사용한다. package-only 소비자는 같은 전역
+`PackageVersion`을 참조하며, 방금 생성한 패키지 디렉터리만 source로 사용하는 실행별
+전용 `RestorePackagesPath`에서 복원한다. 정식 버전은 승인된 배포 뒤 내용을 바꾸지 않고,
+다음 변경은 새 patch 또는 prerelease 버전을 사용한다. 운영 명령, 버전 예시와 릴리스
+증거 템플릿은 저장소 `README.md`의 Packaging Notes에 기록했다.
+
+```text
+Status: Complete
+Scope: 5개 SDK 패키지의 고유 개발·CI 버전, package-only 참조 버전 정렬, 격리 NuGet 캐시 복원과 운영 문서
+Acceptance criteria: 이전 mutable 3.0.0 기본값 제거 -> pass; CI 실행별 고유 버전 -> pass; 5개 nupkg 동일 버전 및 README/XML -> pass; 전역 캐시 비의존 package-only restore/build/run -> pass; 릴리스 버전·commit·SHA-256 기록 규칙 -> pass
+Verification: .NET SDK 8.0.423 Release build 0 warnings/0 errors; Smoke 154/154; 3.0.1-ci.999999.1 nupkg 5개 생성 및 내부 version/README/XML 5/5; 전용 RestorePackagesPath와 packed-only RestoreSources에서 package consumer build 0 warnings/0 errors 및 실행 pass
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260821-immutable-packages
+Boundary / next dependency: NuGet 게시는 수행하지 않았고 기존 전역 캐시를 삭제하지 않았다. 정식 3.0.1 배포, 소비 저장소 package pin·hash 갱신과 생산 계측 검증은 별도 승인 범위다.
+```

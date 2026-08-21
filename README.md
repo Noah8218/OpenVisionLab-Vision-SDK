@@ -2,7 +2,7 @@
 
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
-> `OpenVisionLab.* 3.0.0` packages, DLLs, and namespaces. Before migrating an
+> `OpenVisionLab.* 3.0` packages, DLLs, and namespaces. Before migrating an
 > existing project, read the
 > [2.9.1 to 3.0.0 migration guide](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md).
 
@@ -33,14 +33,15 @@ To reference the source projects directly, add only the projects required by you
 </ItemGroup>
 ```
 
-To use local NuGet packages, build the packages first and then add `artifacts/packages` as a package source.
+To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. Never reuse the example version after changing package content.
 
 ```powershell
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release
-dotnet add package OpenVisionLab.Vision2D --source .\artifacts\packages
-dotnet add package OpenVisionLab.Vision2D.Blob --source .\artifacts\packages
-dotnet add package OpenVisionLab.Vision3D --source .\artifacts\packages
-dotnet add package OpenVisionLab.Inspection --source .\artifacts\packages
+$packageVersion = "3.0.1-dev.20260821.1"
+dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
+dotnet add package OpenVisionLab.Vision2D --version $packageVersion --source .\artifacts\packages
+dotnet add package OpenVisionLab.Vision2D.Blob --version $packageVersion --source .\artifacts\packages
+dotnet add package OpenVisionLab.Vision3D --version $packageVersion --source .\artifacts\packages
+dotnet add package OpenVisionLab.Inspection --version $packageVersion --source .\artifacts\packages
 ```
 
 ## 2D Quick Start
@@ -188,7 +189,8 @@ Smoke check including packaging:
 dotnet restore OpenVisionLab.VisionSdk.sln
 dotnet build OpenVisionLab.VisionSdk.sln -c Debug
 dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build
-dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build
+$packageVersion = "3.0.1-dev.20260821.1"
+dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$packageVersion"
 ```
 
 `OpenVisionLab.Inspection.Smoke` checks deterministic contracts and regressions with synthetic 2D and 3D inputs. It does not replace real sensor data, calibration, Gauge R&amp;R, or production-approval testing.
@@ -199,9 +201,10 @@ The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It perf
 
 1. Install the .NET SDK
 2. `dotnet restore OpenVisionLab.VisionSdk.sln`
-3. `dotnet build OpenVisionLab.VisionSdk.sln -c Debug --no-restore`
-4. `dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build`
-5. `dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build`
+3. `dotnet build OpenVisionLab.VisionSdk.sln -c Release --no-restore`
+4. `dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build`
+5. Pack all five packages with a unique `3.0.1-ci.<run>.<attempt>` version
+6. Restore and run the package-only consumer from the packed output and an isolated NuGet cache
 
 ## License
 
@@ -959,9 +962,54 @@ The actual local consumers, replacement types, API differences, and required pre
 
 Shared package metadata is defined in `Directory.Build.props`.
 
-- `Version`: `3.0.0`
+- `Version`: `3.0.0` API and assembly baseline
+- `PackageVersion`: `3.0.1-dev.1` local-development default; CI overrides it with a unique prerelease version
 - `PackageOutputPath`: `artifacts/packages`
 - `GeneratePackageOnBuild`: `false`
+
+### Immutable package versions
+
+A package ID and version identify exactly one package content. After a package has been shared, consumed, or published, do not rebuild different content under that version. Use one new version for every changed development or CI package, keep all five OpenVisionLab packages on that version, and remove the prerelease suffix only for an approved release.
+
+```text
+Development: 3.0.1-dev.20260821.1 -> 3.0.1-dev.20260821.2
+CI:          3.0.1-ci.<run>.<attempt>
+Release:     3.0.1
+Next fix:    3.0.2; never replace the existing 3.0.1 package
+```
+
+`3.0.1-dev.1` is only a safe repository default after the former mutable `3.0.0` local packages. Pass a unique `PackageVersion` whenever package content can leave the current build directory. Build metadata such as `+commit` is not used as the uniqueness boundary; use a prerelease suffix.
+
+### Isolated package-only verification
+
+NuGet's global package cache is keyed by package ID and version. An older package with the same version can therefore hide a newly packed file. `RestoreAdditionalProjectSources` alone does not prove that the consumer used the new package. Verify the packed output with a dedicated empty cache and the packed directory as the only package source.
+
+```powershell
+$packageVersion = "3.0.1-dev.20260821.1"
+$packageRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\packages\$packageVersion"
+$consumerCache = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\package-cache\$packageVersion"
+
+dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion" -o $packageRoot
+dotnet restore tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.PackageConsumer.Smoke.csproj `
+  "-p:PackageVersion=$packageVersion" `
+  "-p:RestorePackagesPath=$consumerCache" `
+  "-p:RestoreSources=$packageRoot"
+dotnet run --project tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.PackageConsumer.Smoke.csproj `
+  -c Release --no-restore `
+  "-p:PackageVersion=$packageVersion" `
+  "-p:RestorePackagesPath=$consumerCache"
+```
+
+Use another physical test-data root on a machine without `D:`. Do not clear the machine-wide NuGet cache as the normal verification path.
+
+For a controlled release, record this minimal evidence:
+
+```text
+Package version: <immutable version>
+Source commit: <full Git commit>
+Package SHA-256: <one hash for each of the five nupkg files>
+Verification: Release build, Smoke result, isolated package-only consumer result
+```
 
 Each NuGet package includes a dedicated README for its specific role and first-use workflow.
 
@@ -973,14 +1021,11 @@ Each NuGet package includes a dedicated README for its specific role and first-u
 | `OpenVisionLab.Vision3D` | [Surface Match and Mesh Quick Start](src/OpenVisionLab.Vision3D/README.md) |
 | `OpenVisionLab.Inspection` | [Combined 2D/3D execution Quick Start](src/OpenVisionLab.Inspection/README.md) |
 
-To create packages, run `pack` for the required projects explicitly.
+To create all five packages with one immutable version, pack the solution once.
 
 ```powershell
-dotnet pack src\OpenVisionLab.Core\OpenVisionLab.Core.csproj -c Release
-dotnet pack src\OpenVisionLab.Vision2D\OpenVisionLab.Vision2D.csproj -c Release
-dotnet pack src\OpenVisionLab.Vision2D.Blob\OpenVisionLab.Vision2D.Blob.csproj -c Release
-dotnet pack src\OpenVisionLab.Vision3D\OpenVisionLab.Vision3D.csproj -c Release
-dotnet pack src\OpenVisionLab.Inspection\OpenVisionLab.Inspection.csproj -c Release
+$packageVersion = "3.0.1-dev.20260821.1"
+dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
 ```
 
 `OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under `runtimes/win-x64/native` and copies it to the output directory through `buildTransitive/OpenVisionLab.Core.targets`.
