@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
 using static OpenVisionLab.Inspection.Smoke.SmokeFixtures;
 
@@ -23,6 +24,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height map keeps legacy unit compatibility", TestHeightMapLegacyUnitCompatibility);
             yield return new SmokeCase("Height map array factory preserves row-major values and declared metadata", TestHeightMapArrayFactory);
             yield return new SmokeCase("Height map rejects infinity and non-finite coordinate extents", TestHeightMapRejectsInvalidValues);
+            yield return new SmokeCase("Height-map crop preserves values, missing cells, and source-frame origin", TestHeightMapCrop);
+            yield return new SmokeCase("Height-map crop rejects invalid regions and honors cancellation", TestHeightMapCropGuards);
             yield return new SmokeCase("Thickness pass preserves declared metadata", TestThicknessPass);
             yield return new SmokeCase("Thickness rejects a unit contract mismatch", TestThicknessUnitContractMismatch);
             yield return new SmokeCase("Thickness rejects a frame contract mismatch", TestThicknessFrameContractMismatch);
@@ -69,6 +72,85 @@ namespace OpenVisionLab.Inspection.Smoke
             Require(map.Unit == "mm" && map.PlanarUnit == "mm" && map.HeightUnit == "mm", "The legacy unit must populate both explicit units.");
             Require(map.FrameId == "legacy-frame" && map.SourceId == "legacy-source", "Legacy metadata was not preserved.");
             Require(map.CoordinateConvention == "GridXGridYScalarHeight", "The fixed height-map coordinate convention was not exposed.");
+        }
+
+        private static void TestHeightMapCrop()
+        {
+            HeightMap3D source = new HeightMap3D(
+                3,
+                4,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[]
+                {
+                    1.0, 2.0, 3.0, 4.0,
+                    5.0, 6.0, double.NaN, 8.0,
+                    9.0, 10.0, 11.0, 12.0
+                },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "source.crop");
+
+            HeightMapCropResult result = new HeightMapCropTool().Execute(
+                source,
+                new HeightMapRoi(1, 1, 2, 3));
+
+            Require(result.Success && result.Output != null, "A valid crop must produce a typed output.");
+            Require(result.ValidSampleCount == 5 && result.MissingSampleCount == 1,
+                "The crop did not preserve finite and missing sample counts.");
+            Require(result.Output.Rows == 2 && result.Output.Columns == 3,
+                "The crop did not use the selected dimensions.");
+            RequireApproximately(result.Output.OriginX, 10.5, 0.0,
+                "The crop did not advance the source-frame X origin.");
+            RequireApproximately(result.Output.OriginY, 20.25, 0.0,
+                "The crop did not advance the source-frame Y origin.");
+            Require(result.Output.PlanarUnit == "mm"
+                && result.Output.HeightUnit == "raw-height"
+                && result.Output.FrameId == "fixture-top"
+                && result.Output.SourceId == "source.crop",
+                "The crop did not preserve declared metadata.");
+            double[] expected = { 6.0, double.NaN, 8.0, 10.0, 11.0, 12.0 };
+            double[] actual = result.Output.CopyValues();
+            Require(actual.Length == expected.Length, "The crop value count is incorrect.");
+            for (int index = 0; index < expected.Length; index++)
+            {
+                Require(double.IsNaN(expected[index])
+                        ? double.IsNaN(actual[index])
+                        : actual[index] == expected[index],
+                    "The crop did not preserve exact row-major values.");
+            }
+        }
+
+        private static void TestHeightMapCropGuards()
+        {
+            HeightMap3D source = new HeightMap3D(
+                2, 2, 0.0, 0.0, 1.0, 1.0,
+                new[] { 1.0, 2.0, 3.0, 4.0 },
+                "grid-index", "raw-height", "fixture", "source");
+            HeightMapCropTool tool = new HeightMapCropTool();
+            HeightMapCropResult invalid = tool.Execute(source, new HeightMapRoi(1, 1, 2, 2));
+            Require(!invalid.Success && invalid.Output == null,
+                "An out-of-grid crop must return a controlled failure without output.");
+
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                tool.Execute(source, HeightMapRoi.Full(source), cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+            Require(canceled, "A canceled crop must propagate OperationCanceledException.");
         }
 
         private static void TestHeightMapArrayFactory()

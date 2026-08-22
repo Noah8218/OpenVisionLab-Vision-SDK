@@ -8,6 +8,28 @@ dotnet add package OpenVisionLab.Vision3D --version 3.0.0
 
 The caller owns unit, coordinate-frame, source identity, calibration, recipe tolerance, and product lifecycle. `NaN` is the missing height-map sample; infinity is rejected.
 
+## Height-map crop quick start
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+using OpenVisionLab.Vision3D.Geometry;
+
+HeightMapCropResult crop = new HeightMapCropTool().Execute(
+    source,
+    new HeightMapRoi(row: 10, column: 20, rowCount: 50, columnCount: 80));
+
+if (!crop.Success)
+{
+    throw new InvalidOperationException(crop.Message);
+}
+
+HeightMap3D output = crop.Output;
+```
+
+The output keeps the source frame, units, pitches, source ID, finite values, and
+missing cells. Its origin advances to the selected source row and column. The
+tool does not own file I/O, recipe identity, Preview/Publish, or acceptance policy.
+
 ## Surface-match pose quick start
 
 ```csharp
