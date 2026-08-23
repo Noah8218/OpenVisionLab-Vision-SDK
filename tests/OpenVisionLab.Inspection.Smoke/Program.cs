@@ -17,6 +17,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 runner.Run(LegacyApiCompatibilitySmokeSuite.Cases());
                 runner.Run(CombinedInspectionSmokeSuite.Cases());
                 runner.Run(MatchingCharacterizationSmokeSuite.Cases());
+                runner.Run(TriangleMeshDistanceCharacterizationSmokeSuite.Cases());
 
                 Console.WriteLine("OpenVisionLab.Inspection.Smoke | " + runner.Passed + "/" + runner.Total + " passed");
                 return 0;
