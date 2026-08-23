@@ -521,3 +521,44 @@ Verification: local .NET SDK 10.0.303; implementation 7da6631e714a9257af36c3da57
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-height-map-crop-b75a8d89581a; committed-packages.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32636496085
 Boundary / next dependency: 합성·패키지 검증은 실제 센서 정확도, 교정, Gauge R&R 또는 생산 승인이 아니다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다. 다음 실행 가능한 알고리즘 우선순위는 TriangleMeshDistanceTool의 분석적 characterization을 먼저 보강한 뒤 BVH, closest-point 및 robust-sign 책임을 분리하는 것이다(Recommended model: gpt-5.6-sol; Reasoning effort: high).
 ```
+
+## 25. Triangle-mesh distance 분석 계약과 책임 경계 완료 기록
+
+`TriangleMeshDistanceTool`의 공개 API와 관찰 가능한 수치 동작을 유지하면서 기존 단일
+구현의 세 책임을 실제 내부 소유자로 이전했다. `TriangleMeshBvhIndex`는 source 검증,
+BVH 생성, centroid 정렬, nearest 및 bounds 후보 순회를 소유한다.
+`TriangleClosestPointKernel`은 vertex/edge/face 영역별 삼각형 최근접점 수식만 소유하고,
+`TriangleMeshSignResolver`는 direct sign, robust 후보 필터, face 우선순위, boundary
+직교도 및 source-index tie break를 소유한다. 공개 façade는 query 계약, 호출 조율과
+`PointMeshDistance` 조립만 남겼다.
+
+실제 호출 경로는 다음과 같다.
+
+```text
+NominalActualMeshComparisonTool
+  -> TriangleMeshDistanceTool
+      -> TriangleMeshBvhIndex
+          -> TriangleClosestPointKernel
+      -> TriangleMeshSignResolver
+          -> TriangleMeshBvhIndex.VisitBoundsCandidates
+          -> TriangleClosestPointKernel
+```
+
+구조 변경 전에 분석적 characterization 4개를 기존 163개 뒤에 추가했다. 이 검사는
+face/edge/vertex의 closest point·normal·sign evidence, 서로 다른 BVH child의 exact-distance
+tie와 입력 역순, robust epsilon의 포함/제외 경계, face 우선순위, boundary 직교도와
+source-index 순위, invalid 입력의 예외 타입과 `ParamName`을 고정한다. 새 검사는 이전
+구현에서 먼저 167/167을 통과했으며, 구조 변경 뒤에도 동일하게 통과했다.
+
+기존 robust sign에서 nonzero distance와 `side == 0`이 만나면 양의 signed distance로
+resolved되는 동작은 이번 behavior-preserving 범위에서 유지했다. 설명 문서와 정책 의미가
+모호하므로 이를 원하는 미래 정책으로 새로 승인하는 characterization은 추가하지 않았다.
+
+```text
+Status: Complete
+Scope: TriangleMeshDistance 분석적 characterization 4개, BVH/closest-point/direct·robust-sign 실제 책임 분리, 공개 API 및 package 소비 경로 보존
+Acceptance criteria: 기존 163개 이름·순서 exact prefix -> pass; 이전 구현에서 신규 포함 167/167 -> pass; 내부 소유자 3개와 실제 호출 경로 및 이전 owner 잔존 0 -> pass; NominalActualMeshComparisonTool 변경 0 -> pass; Release build warning/error 0 -> pass; 전체 Smoke 167/167 5회 동일 순서와 committed-source 1회 -> pass; Vision3D 공개 API 1,562줄 exact diff 0 -> pass; 고유 버전 5개 package ID/version/commit/README/XML/내부 의존성/DLL/hash -> pass; 격리 package-only restore/build/run -> pass; 구현 SHA 원격 main CI -> pass
+Verification: local .NET SDK 10.0.303; characterization c74b3bb5bf2f237eef800e50ef6951109bf07cc5; implementation 4d8ef77e1498cf56427d4cca4534693a5dadc991; package 3.0.1-dev.20260823.mesh.4d8ef77e1498; GitHub Actions Build 32638002502 success
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-triangle-mesh-distance-refactor; REFACTOR_PROOF_PLAN.md; REFACTOR_PROOF_REPORT.md; final\STRUCTURE_PROOF.txt; committed-packages.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32638002502
+Boundary / next dependency: 합성·package 검증은 실제 센서 정확도, 교정 유효성, Gauge R&R, 생산 오류율 또는 takt 성능을 증명하지 않는다. robust bounds 순회의 delegate callback 생산 비용도 측정하지 않았다. 실제 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 LSL/USL·false accept/reject 한도 및 takt 한도가 제공·승인되기 전까지 생산 정확도·성능 기준선은 Blocked다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다.
+```
