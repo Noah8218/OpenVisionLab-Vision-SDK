@@ -124,7 +124,7 @@ source identity, units, calibration, recipes, overlays, or UI lifecycle.
 | --- | --- |
 | Height-map inspection | `ThicknessInspectionTool`, `WarpageInspectionTool`, `DatumPlaneRawHeightDeviationInspectionTool` |
 | Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool` |
-| Grid, reconstruction and preprocessing | `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `LeastSquaresHeightFieldPlaneFitTool` |
+| Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `LeastSquaresHeightFieldPlaneFitTool` |
 | Edge and feature selection | `DeterministicHeightDifferenceEdgeTool`, `DeterministicLineFitTool`, `DeterministicModelSurfaceSelectionTool`, `DeterministicModelKeyPointExtractionTool`, `DeterministicModelSurfaceEdgeExtractionTool`, `DeterministicOrganizedSceneSurfaceEdgeExtractionTool` |
 | Surface matching and mesh comparison | `DeterministicSurfaceModelPreparationTool`, `DeterministicPreparedScenePreparationTool`, `DeterministicRigidSurfacePoseSearchTool`, `DeterministicSurfaceCoverageTool`, `DeterministicSurfaceEdgeCoverageTool`, `DeterministicMultipleSurfaceMatchTool`, `TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, `DeclaredMeshNormalQualityTool`, `AcquisitionDirectionOrientationTool` |
 | Statistics and inspection decisions | `CompletenessGridInspectionTool`, `DualSurfaceThicknessInspectionTool`, `HeightDeviationInspectionTool`, `RepeatabilityStatisticsTool`, `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool` |
@@ -162,6 +162,11 @@ coverage produce controlled non-measurement result statuses.
 
 Units and frame are declarations from the caller. They are not calibration,
 traceability, Gauge R and R, repeatability, or physical-accuracy evidence.
+
+`GridDiagnosticsTool` produces fixed-order topology, locator-order,
+duplicate-locator, and coordinate-finiteness evidence. Call `Execute(width,
+height)` for an implicit row-major grid or pass explicit `GridCoordinateSample`
+values to retain the first affected ordinal, locator, and XYZ component.
 
 `HeightMapCropTool` copies one valid `HeightMapRoi` into a smaller immutable
 `HeightMap3D`. It preserves row-major finite and `NaN` values, pitches, units,

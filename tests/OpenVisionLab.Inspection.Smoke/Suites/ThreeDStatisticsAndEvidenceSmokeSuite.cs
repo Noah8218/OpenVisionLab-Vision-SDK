@@ -22,6 +22,8 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             yield return new SmokeCase("Height-grid summary preserves missing policy and distribution", TestHeightGridSummary);
             yield return new SmokeCase("Height distribution preserves finite statistics and tie order", TestHeightDistributionStatistics);
+            yield return new SmokeCase("Grid diagnostics preserve implicit row-major evidence", TestImplicitGridDiagnostics);
+            yield return new SmokeCase("Grid diagnostics preserve exact malformed explicit evidence", TestMalformedExplicitGridDiagnostics);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
@@ -97,6 +99,80 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.Minimum, 1.0, 0.0, "Unexpected distribution minimum.");
             RequireApproximately(result.Maximum, 4.0, 0.0, "Unexpected distribution maximum.");
             RequireApproximately(result.Mean, 2.5, 0.0, "Unexpected distribution mean.");
+        }
+
+        private static void TestImplicitGridDiagnostics()
+        {
+            GridDiagnosticsResult result = new GridDiagnosticsTool().Execute(2, 2);
+
+            Require(result.State == GridDiagnosticState.Pass
+                    && result.DeclaredCellCount == 4
+                    && result.ObservedSampleCount == 4
+                    && result.UniqueLocatorCount == 4,
+                "Implicit grid diagnostic counts changed.");
+            Require(result.Checks.Count == 4
+                    && result.Checks[0].Code == GridDiagnosticCode.Topology
+                    && result.Checks[1].Code == GridDiagnosticCode.LocatorMonotonicity
+                    && result.Checks[2].Code == GridDiagnosticCode.DuplicateLocator
+                    && result.Checks[3].Code == GridDiagnosticCode.CoordinateFiniteness,
+                "Implicit grid diagnostic order changed.");
+            Require(result.Checks.All(check =>
+                    check.State == GridDiagnosticState.Pass
+                    && check.AffectedCount == 0
+                    && !check.FirstSampleOrdinal.HasValue),
+                "Implicit grid diagnostics must remain exact pass evidence.");
+        }
+
+        private static void TestMalformedExplicitGridDiagnostics()
+        {
+            GridDiagnosticsResult result = new GridDiagnosticsTool().Execute(
+                2,
+                2,
+                new[]
+                {
+                    new GridCoordinateSample(0, 0, 0.0, 0.0, 1.0),
+                    new GridCoordinateSample(1, 0, 0.0, 1.0, 2.0),
+                    new GridCoordinateSample(0, 1, 1.0, double.NaN, double.PositiveInfinity),
+                    new GridCoordinateSample(0, 1, 1.0, 0.0, 4.0)
+                });
+
+            Require(result.State == GridDiagnosticState.Error
+                    && result.DeclaredCellCount == 4
+                    && result.ObservedSampleCount == 4
+                    && result.UniqueLocatorCount == 3,
+                "Malformed explicit grid diagnostic counts changed.");
+            Require(result.Checks[0].State == GridDiagnosticState.Error
+                    && result.Checks[0].AffectedCount == 1
+                    && result.Checks[0].FirstSampleOrdinal == 3
+                    && result.Checks[0].FirstRow == 0
+                    && result.Checks[0].FirstColumn == 1
+                    && result.Checks[0].FirstComponent == "Locator"
+                    && result.Checks[0].Message == "Grid topology has 1 mismatch(es).",
+                "Explicit topology evidence changed.");
+            Require(result.Checks[1].State == GridDiagnosticState.Error
+                    && result.Checks[1].AffectedCount == 1
+                    && result.Checks[1].FirstSampleOrdinal == 2
+                    && result.Checks[1].FirstRow == 0
+                    && result.Checks[1].FirstColumn == 1
+                    && result.Checks[1].FirstComponent == "Locator"
+                    && result.Checks[1].Message == "Grid has 1 descending locator transition(s).",
+                "Explicit locator-order evidence changed.");
+            Require(result.Checks[2].State == GridDiagnosticState.Error
+                    && result.Checks[2].AffectedCount == 1
+                    && result.Checks[2].FirstSampleOrdinal == 3
+                    && result.Checks[2].FirstRow == 0
+                    && result.Checks[2].FirstColumn == 1
+                    && result.Checks[2].FirstComponent == "Locator"
+                    && result.Checks[2].Message == "Grid has 1 duplicate locator occurrence(s).",
+                "Explicit duplicate-locator evidence changed.");
+            Require(result.Checks[3].State == GridDiagnosticState.Error
+                    && result.Checks[3].AffectedCount == 2
+                    && result.Checks[3].FirstSampleOrdinal == 2
+                    && result.Checks[3].FirstRow == 0
+                    && result.Checks[3].FirstColumn == 1
+                    && result.Checks[3].FirstComponent == "Y"
+                    && result.Checks[3].Message == "Grid has 2 non-finite coordinate component(s).",
+                "Explicit coordinate-finiteness evidence changed.");
         }
 
         private static void TestHeightMapRegionStatistics()

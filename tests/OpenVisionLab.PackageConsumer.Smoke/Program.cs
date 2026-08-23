@@ -69,6 +69,17 @@ if (!crop.Success
         $"Height-map crop package example failed: {crop.Message}");
 }
 
+GridDiagnosticsResult gridDiagnostics = new GridDiagnosticsTool().Execute(2, 2);
+if (gridDiagnostics.State != GridDiagnosticState.Pass
+    || gridDiagnostics.DeclaredCellCount != 4
+    || gridDiagnostics.ObservedSampleCount != 4
+    || gridDiagnostics.UniqueLocatorCount != 4
+    || gridDiagnostics.Checks.Count != 4
+    || gridDiagnostics.Checks[3].Code != GridDiagnosticCode.CoordinateFiniteness)
+{
+    throw new InvalidOperationException("Grid diagnostics package example failed.");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {

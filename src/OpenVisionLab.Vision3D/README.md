@@ -8,6 +8,20 @@ dotnet add package OpenVisionLab.Vision3D --version 3.0.0
 
 The caller owns unit, coordinate-frame, source identity, calibration, recipe tolerance, and product lifecycle. `NaN` is the missing height-map sample; infinity is rejected.
 
+## Organized-grid diagnostics quick start
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+GridDiagnosticsResult diagnostics = new GridDiagnosticsTool().Execute(
+    width,
+    height);
+```
+
+Use the two-argument overload for an implicit row-major grid. Explicit samples
+produce fixed-order topology, locator-order, duplicate-locator, and finite-XYZ
+evidence without owning file format, source identity, or acceptance policy.
+
 ## Height-map crop quick start
 
 ```csharp
