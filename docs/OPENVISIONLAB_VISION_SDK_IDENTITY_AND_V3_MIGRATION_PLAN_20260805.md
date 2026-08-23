@@ -501,3 +501,23 @@ Verification: implementation a535c51206a4a762afbec9291b7645da0d5014f3; package 3
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260821-matching-responsibility-refactor
 Boundary / next dependency: 실제 센서/교정/ground truth/불확도/생산 공차/오류율/takt 승인 전까지 생산 정확도·성능 기준선 Track B는 Blocked다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다.
 ```
+
+## 24. Height-map crop 공개 패키지 계약 완료 기록
+
+`HeightMapCropTool`은 유효한 `HeightMapRoi`를 더 작은 불변 `HeightMap3D`로 복사한다.
+행 우선 값과 `NaN`, pitch, 단위, frame 및 source ID를 보존하며, 출력 원점은 선택한
+source row/column 위치로 이동한다. 잘못된 ROI는 출력 없는 controlled result로 반환하고
+취소는 `OperationCanceledException`으로 전파한다.
+
+생성된 NuGet만 참조하는 독립 소비자는 Crop 공개 API를 직접 실행해 `SourceRoi`, 출력
+크기, 원점, pitch, 단위, frame, source ID, 유효/결측 개수와 `NaN` 위치를 검증한다.
+이 검사는 소스 프로젝트 참조나 전역 NuGet 캐시에 의존하지 않는다.
+
+```text
+Status: Complete
+Scope: HeightMapCropTool/HeightMapCropResult 공개 계약, 합성 Smoke 2개, Vision3D Quick Start와 상세 문서, 격리 package-only Crop 실행
+Acceptance criteria: 유효 ROI의 값/NaN/원점/메타데이터 보존 -> pass; invalid ROI controlled failure와 cancellation 전파 -> pass; Release build 경고/오류 0 -> pass; 전체 Smoke 163/163 -> pass; 고유 버전 5개 package의 ID/version/commit/README/XML/내부 의존성/hash -> pass; 격리 package-only restore/build/run -> pass; 원격 main CI -> pass
+Verification: local .NET SDK 10.0.303; implementation 7da6631e714a9257af36c3da575474df9331ff36; package consumer b75a8d89581a9cc0f1cbf3556a2481f23a1e3a1e; package 3.0.1-dev.20260823.crop.b75a8d89581a; GitHub Actions Build 32636496085 success
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-height-map-crop-b75a8d89581a; committed-packages.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32636496085
+Boundary / next dependency: 합성·패키지 검증은 실제 센서 정확도, 교정, Gauge R&R 또는 생산 승인이 아니다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다. 다음 실행 가능한 알고리즘 우선순위는 TriangleMeshDistanceTool의 분석적 characterization을 먼저 보강한 뒤 BVH, closest-point 및 robust-sign 책임을 분리하는 것이다(Recommended model: gpt-5.6-sol; Reasoning effort: high).
+```
