@@ -562,3 +562,38 @@ Verification: local .NET SDK 10.0.303; characterization c74b3bb5bf2f237eef800e50
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-triangle-mesh-distance-refactor; REFACTOR_PROOF_PLAN.md; REFACTOR_PROOF_REPORT.md; final\STRUCTURE_PROOF.txt; committed-packages.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32638002502
 Boundary / next dependency: 합성·package 검증은 실제 센서 정확도, 교정 유효성, Gauge R&R, 생산 오류율 또는 takt 성능을 증명하지 않는다. robust bounds 순회의 delegate callback 생산 비용도 측정하지 않았다. 실제 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 LSL/USL·false accept/reject 한도 및 takt 한도가 제공·승인되기 전까지 생산 정확도·성능 기준선은 Blocked다. NuGet 게시와 소비 저장소 변경은 수행하지 않았다.
 ```
+
+## 26. Nominal/actual mesh comparison 분석적 characterization 완료 기록
+
+`NominalActualMeshComparisonTool`의 제품 코드와 공개 API를 바꾸지 않고, 기존 167개
+Smoke 뒤에 책임별 분석적 characterization 4개를 추가했다. 수평 삼각형과 부호가
+명확한 합성 점을 사용해 direct signed deviation `[-2, -1, +1, +2]`, edge에서의
+robust sign recovery 1건, lower/upper inclusive tolerance 분류 `1/2/1`, unsigned와
+signed 모집단 통계의 minimum/maximum/mean/population SD/RMS를 수식으로 검증했다.
+nonzero distance와 `side == 0`인 모호한 정책 입력은 승인 범위 밖이므로 사용하지 않았다.
+
+표시 증거는 7개 입력과 최대 3개에서 현재 구현의 ceil stride `3`, query index
+`0/3/6`, cap, source identity와 순서를 확인했고, 최대 표시 개수 0이 표본만 비활성화하는
+동작도 확인했다. stream의 too-few/too-many, non-finite point, null 입력, invalid expected
+count/tolerance/display cap은 예외를 외부로 누출하지 않는 canonical failed result를
+검증했다. 취소만 `OperationCanceledException`으로 전파되며, 동기 progress recorder로
+65,537개 입력의 현재 중간 cadence `65,536`과 final `65,537`을 확인했다. 정확한 stride
+산식과 65,536 cadence는 공개 문서의 새 장기 정책이 아니라 현재 구현을 의도적으로
+고정한 characterization이며, 향후 정책 변경은 명시적인 테스트·문서 갱신이 필요하다.
+
+baseline `c3061b534095d17da201e89c024205288e0da7a4`의 167개 PASS 이름과 순서를
+위치별로 비교해 불일치 0건을 확인했다. test commit
+`435160e540a38b10dcfcc9530c6983aa0790cda1`은 runner와 신규 suite만 변경했고
+`src` 변경은 0건이다. 로컬 Release build는 warning/error 0건, 전체 Smoke는
+171/171을 통과했다. 동일 test commit의 원격 CI도 Release build, 171 Smoke,
+고유 버전 pack, package 문서 검사, 격리 package-only restore와 2D/3D consumer 실행을
+모두 통과했다.
+
+```text
+Status: Complete
+Scope: NominalActualMeshComparisonTool 분석적 characterization 4개; 기존 167개와 제품 코드·공개 API 보존
+Acceptance criteria: baseline 167/167 -> pass; 기존 167개 이름·순서 exact prefix -> pass; 신규 포함 171/171 -> pass; robust/inclusive tolerance/전체 통계 -> pass; display stride/cap/order/0 -> pass; stream·invalid controlled failure -> pass; 65,536/final progress와 cancellation 전파 -> pass; production src diff 0 -> pass; 원격 CI pack/package consumer -> pass
+Verification: local .NET SDK 10.0.303 Release build warning/error 0; Smoke 171/171; exact-prefix mismatch 0; test 435160e540a38b10dcfcc9530c6983aa0790cda1; GitHub Actions Build 32639216016 success
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-nominal-actual-characterization; baseline/pass-list.txt; characterized/pass-list.txt; characterized/prefix-comparison.txt; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32639216016
+Boundary / next dependency: 이 합성 characterization은 실제 센서 정확도, 교정 유효성, Gauge R&R, 생산 오류율 또는 takt 성능을 증명하지 않는다. side == 0 정책, 제품 코드/API, NuGet 게시, 소비 저장소와 UI·카메라·PLC는 변경하지 않았다. 다음 실행 가능한 우선순위는 고정 합성 워크로드의 정확도 parity와 성능 기준선 수립이다(Recommended model: gpt-5.6-sol; Reasoning effort: high). 실제 생산 기준선 Track B는 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 LSL/USL·false accept/reject 및 takt 한도 승인 전까지 Blocked다.
+```
