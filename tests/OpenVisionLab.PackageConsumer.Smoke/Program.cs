@@ -26,6 +26,49 @@ HeightMap3D heightMap = HeightMap3D.FromArray(
     "mm",
     "fixture",
     "package-smoke");
+
+HeightMapCropResult crop = new HeightMapCropTool().Execute(
+    HeightMap3D.FromArray(
+        new[,] { { 1.0, 2.0, 3.0 }, { 4.0, double.NaN, 6.0 } },
+        10.0,
+        20.0,
+        0.5,
+        0.25,
+        "mm",
+        "raw-height",
+        "fixture-top",
+        "package-crop"),
+    new HeightMapRoi(0, 1, 2, 2));
+double[] croppedValues = crop.Output?.CopyValues();
+if (!crop.Success
+    || crop.Output == null
+    || crop.ValidSampleCount != 3
+    || crop.MissingSampleCount != 1
+    || crop.SourceRoi.Row != 0
+    || crop.SourceRoi.Column != 1
+    || crop.SourceRoi.RowCount != 2
+    || crop.SourceRoi.ColumnCount != 2
+    || crop.Output.Rows != 2
+    || crop.Output.Columns != 2
+    || crop.Output.OriginX != 10.5
+    || crop.Output.OriginY != 20.0
+    || crop.Output.ColumnPitch != 0.5
+    || crop.Output.RowPitch != 0.25
+    || crop.Output.PlanarUnit != "mm"
+    || crop.Output.HeightUnit != "raw-height"
+    || crop.Output.FrameId != "fixture-top"
+    || crop.Output.SourceId != "package-crop"
+    || croppedValues == null
+    || croppedValues.Length != 4
+    || croppedValues[0] != 2.0
+    || croppedValues[1] != 3.0
+    || !double.IsNaN(croppedValues[2])
+    || croppedValues[3] != 6.0)
+{
+    throw new InvalidOperationException(
+        $"Height-map crop package example failed: {crop.Message}");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {
@@ -194,4 +237,4 @@ if (!comparison.Success
 }
 
 Console.WriteLine(
-    "OpenVisionLab package-only 2D properties, tools, Blob, 3D, surface-match, and mesh consumer passed.");
+    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, surface-match, and mesh consumer passed.");
