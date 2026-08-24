@@ -40,6 +40,27 @@ cells belong to the same region. The tool returns only source-neutral cells and
 grid bounds; source identity, units, artifacts, and acceptance policy remain
 with the caller.
 
+Use `ConnectedRegionMetricsTool` for deterministic per-region geometry after
+labeling:
+
+```csharp
+ConnectedRegionMetricsResult metrics = new ConnectedRegionMetricsTool().Execute(
+    regions,
+    new ConnectedRegionMetricsOptions
+    {
+        OriginX = 0.0,
+        OriginY = 0.0,
+        ColumnPitch = 1.0,
+        RowPitch = 1.0
+    });
+```
+
+The result reports region count, cell-area totals, cell-center centroids,
+principal orientation in degrees on `[0, 180)`, and cell-footprint bounds.
+Point and isotropic regions report `HasOrientation == false` and `NaN` rather
+than a fabricated direction. The bounds are geometry-only outputs, not
+persisted recipe or editable downstream artifacts.
+
 ## Height-map crop quick start
 
 ```csharp

@@ -27,6 +27,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Grid diagnostics preserve exact malformed explicit evidence", TestMalformedExplicitGridDiagnostics);
             yield return new SmokeCase("Connected regions preserve deterministic four- and eight-neighbor labeling", TestConnectedRegions);
             yield return new SmokeCase("Connected regions fail closed on invalid masks", TestConnectedRegionsInvalidInput);
+            yield return new SmokeCase("Connected region metrics preserve area, center, orientation, and bounds", TestConnectedRegionMetrics);
+            yield return new SmokeCase("Connected region metrics fail closed on invalid geometry", TestConnectedRegionMetricsInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
@@ -267,6 +269,113 @@ namespace OpenVisionLab.Inspection.Smoke
                 "Unsupported connected-region connectivity must fail closed.");
             Require(cancellationPropagated,
                 "Connected-region cancellation must propagate without a partial result.");
+        }
+
+        private static void TestConnectedRegionMetrics()
+        {
+            ConnectedRegionResult labeled = new ConnectedRegionTool().Execute(
+                new HeightGridMask(
+                    4,
+                    6,
+                    new[]
+                    {
+                        true, true, true, false, false, false,
+                        false, false, false, false, false, false,
+                        false, false, false, false, true, false,
+                        false, false, false, false, false, true
+                    }),
+                new ConnectedRegionOptions
+                {
+                    Connectivity = ConnectedRegionConnectivity.Eight
+                });
+            ConnectedRegionMetricsResult result = new ConnectedRegionMetricsTool().Execute(
+                labeled,
+                new ConnectedRegionMetricsOptions
+                {
+                    OriginX = 10.0,
+                    OriginY = 20.0,
+                    ColumnPitch = 2.0,
+                    RowPitch = 3.0
+                });
+
+            ConnectedRegionMetric horizontal = result.Regions[0];
+            ConnectedRegionMetric diagonal = result.Regions[1];
+            Require(result.Success
+                    && result.RegionCount == 2
+                    && result.TotalArea == 30.0,
+                "Connected-region metric aggregate counts or area changed.");
+            Require(horizontal.CellCount == 3
+                    && horizontal.Area == 18.0
+                    && horizontal.CenterX == 12.0
+                    && horizontal.CenterY == 20.0
+                    && horizontal.HasOrientation
+                    && horizontal.OrientationDegrees == 0.0
+                    && horizontal.Bounding.MinimumX == 9.0
+                    && horizontal.Bounding.MinimumY == 18.5
+                    && horizontal.Bounding.MaximumX == 15.0
+                    && horizontal.Bounding.MaximumY == 21.5
+                    && horizontal.Bounding.Width == 6.0
+                    && horizontal.Bounding.Height == 3.0,
+                "Horizontal connected-region metrics or bounds changed.");
+            Require(diagonal.CellCount == 2
+                    && diagonal.Area == 12.0
+                    && diagonal.CenterX == 19.0
+                    && diagonal.CenterY == 27.5
+                    && diagonal.HasOrientation
+                    && Math.Abs(diagonal.OrientationDegrees
+                        - (Math.Atan2(3.0, 2.0) * 180.0 / Math.PI)) < 1e-12
+                    && diagonal.Bounding.MinimumX == 17.0
+                    && diagonal.Bounding.MinimumY == 24.5
+                    && diagonal.Bounding.MaximumX == 21.0
+                    && diagonal.Bounding.MaximumY == 30.5,
+                "Diagonal connected-region metrics, orientation, or bounds changed.");
+
+            ConnectedRegionResult isotropic = new ConnectedRegionTool().Execute(
+                new HeightGridMask(2, 2, new[] { true, true, true, true }));
+            ConnectedRegionMetricsResult isotropicMetrics = new ConnectedRegionMetricsTool().Execute(isotropic);
+            Require(isotropicMetrics.Success
+                    && isotropicMetrics.Regions.Count == 1
+                    && !isotropicMetrics.Regions[0].HasOrientation
+                    && double.IsNaN(isotropicMetrics.Regions[0].OrientationDegrees),
+                "An isotropic region must not fabricate an orientation.");
+        }
+
+        private static void TestConnectedRegionMetricsInvalidInput()
+        {
+            ConnectedRegionMetricsTool tool = new ConnectedRegionMetricsTool();
+            ConnectedRegionResult failedLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(2, 2, new[] { true, false, true }));
+            ConnectedRegionMetricsResult failedInput = tool.Execute(failedLabeling);
+            ConnectedRegionResult validLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(1, 1, new[] { true }));
+            ConnectedRegionMetricsResult invalidGeometry = tool.Execute(
+                validLabeling,
+                new ConnectedRegionMetricsOptions
+                {
+                    ColumnPitch = 0.0
+                });
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool cancellationPropagated = false;
+            try
+            {
+                tool.Execute(validLabeling, cancellationToken: cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationPropagated = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(!failedInput.Success && failedInput.Regions.Count == 0,
+                "Metrics must fail closed when labeling failed.");
+            Require(!invalidGeometry.Success && invalidGeometry.Regions.Count == 0,
+                "Non-positive metric pitches must fail closed.");
+            Require(cancellationPropagated,
+                "Connected-region metric cancellation must propagate without a partial result.");
         }
 
         private static void TestHeightMapRegionStatistics()

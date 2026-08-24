@@ -92,6 +92,23 @@ if (!connectedRegions.Success
     throw new InvalidOperationException("Connected-region package example failed.");
 }
 
+ConnectedRegionMetricsResult connectedRegionMetrics = new ConnectedRegionMetricsTool().Execute(
+    connectedRegions,
+    new ConnectedRegionMetricsOptions
+    {
+        OriginX = 10.0,
+        OriginY = 20.0,
+        ColumnPitch = 0.5,
+        RowPitch = 0.25
+    });
+if (!connectedRegionMetrics.Success
+    || connectedRegionMetrics.RegionCount != 2
+    || connectedRegionMetrics.TotalArea != 0.5
+    || connectedRegionMetrics.Regions.Any(region => region.Bounding == null))
+{
+    throw new InvalidOperationException("Connected-region metrics package example failed.");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {
