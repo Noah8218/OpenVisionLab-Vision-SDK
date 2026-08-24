@@ -80,6 +80,18 @@ if (gridDiagnostics.State != GridDiagnosticState.Pass
     throw new InvalidOperationException("Grid diagnostics package example failed.");
 }
 
+ConnectedRegionResult connectedRegions = new ConnectedRegionTool().Execute(
+    new HeightGridMask(
+        2,
+        3,
+        new[] { true, true, false, false, true, true }));
+if (!connectedRegions.Success
+    || connectedRegions.RegionCount != 2
+    || !connectedRegions.Regions.Select(region => region.CellCount).SequenceEqual(new[] { 2, 2 }))
+{
+    throw new InvalidOperationException("Connected-region package example failed.");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {
