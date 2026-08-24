@@ -15,7 +15,7 @@ It provides application-ready 2D image-processing tools, 3D feature extraction a
 - `OpenVisionLab.Core` provides UI-independent coordinate and line calculations and packages the native OpenCV DLL.
 - `OpenVisionLab.Vision2D` provides primary inspection tools including Threshold, Filter, Edge, Contour, Matching, and LineGauge.
 - `OpenVisionLab.Vision2D.Blob` provides Blob labeling and area filtering.
-- `OpenVisionLab.Vision3D` provides UI-independent 3D contracts and algorithms for height maps, full-XYZ geometry, affine/regrid operations, thickness, warpage, flatness, gap/flush, volume, and more.
+- `OpenVisionLab.Vision3D` provides UI-independent 3D contracts and algorithms for height maps, connected-region labeling/metrics/presence, full-XYZ geometry, affine/regrid operations, thickness, warpage, flatness, gap/flush, volume, and more.
 - `OpenVisionLab.Inspection` preserves existing 2D tools and `IThreeDInspectionTool` results in one combined run result.
 - Run 2D tools with `Execute(Mat source)` and height-map inspection tools with `Execute(HeightMap3D source)`.
 - The SDK has no direct UI-framework dependency. The host application owns rendering, ROI editing, and recipe management around the measurements.

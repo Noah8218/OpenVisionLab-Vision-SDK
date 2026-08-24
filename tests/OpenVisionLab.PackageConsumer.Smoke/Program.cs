@@ -109,6 +109,29 @@ if (!connectedRegionMetrics.Success
     throw new InvalidOperationException("Connected-region metrics package example failed.");
 }
 
+ConnectedRegionPresenceResult connectedRegionPresence =
+    new ConnectedRegionPresenceTool().Execute(
+        connectedRegions,
+        2,
+        4,
+        new[] { 2.0, 2.0, double.NaN, double.NaN, double.NaN, double.NaN, 3.0, 3.0 },
+        new ConnectedRegionPresenceOptions
+        {
+            MinimumFiniteCoverageRatio = 1.0,
+            MinimumMeanHeight = 1.0,
+            MaximumMeanHeight = 2.5
+        });
+if (!connectedRegionPresence.Success
+    || connectedRegionPresence.RegionCount != 2
+    || connectedRegionPresence.PresentRegionCount != 1
+    || connectedRegionPresence.MissingRegionCount != 1
+    || connectedRegionPresence.AggregateDecision != ConnectedRegionPresenceDecision.Present
+    || connectedRegionPresence.Regions[0].Decision != ConnectedRegionPresenceDecision.Present
+    || connectedRegionPresence.Regions[1].Decision != ConnectedRegionPresenceDecision.Missing)
+{
+    throw new InvalidOperationException("Connected-region presence package example failed.");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {
@@ -277,4 +300,4 @@ if (!comparison.Success
 }
 
 Console.WriteLine(
-    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, surface-match, and mesh consumer passed.");
+    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, connected-region presence, surface-match, and mesh consumer passed.");

@@ -29,6 +29,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Connected regions fail closed on invalid masks", TestConnectedRegionsInvalidInput);
             yield return new SmokeCase("Connected region metrics preserve area, center, orientation, and bounds", TestConnectedRegionMetrics);
             yield return new SmokeCase("Connected region metrics fail closed on invalid geometry", TestConnectedRegionMetricsInvalidInput);
+            yield return new SmokeCase("Connected region presence preserves explicit coverage and height decisions", TestConnectedRegionPresence);
+            yield return new SmokeCase("Connected region presence fails closed on invalid inputs", TestConnectedRegionPresenceInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
@@ -376,6 +378,142 @@ namespace OpenVisionLab.Inspection.Smoke
                 "Non-positive metric pitches must fail closed.");
             Require(cancellationPropagated,
                 "Connected-region metric cancellation must propagate without a partial result.");
+        }
+
+        private static void TestConnectedRegionPresence()
+        {
+            ConnectedRegionResult labeled = new ConnectedRegionTool().Execute(
+                new HeightGridMask(
+                    3,
+                    4,
+                    new[]
+                    {
+                        true, true, false, false,
+                        false, false, false, true,
+                        false, false, false, false
+                    }));
+            ConnectedRegionPresenceResult result =
+                new ConnectedRegionPresenceTool().Execute(
+                    labeled,
+                    3,
+                    4,
+                    new[]
+                    {
+                        5.0, 5.0, double.NaN, double.NaN,
+                        double.NaN, double.NaN, double.NaN, 1.0,
+                        double.NaN, double.NaN, double.NaN, double.NaN
+                    },
+                    new ConnectedRegionPresenceOptions
+                    {
+                        MinimumFiniteCoverageRatio = 1.0,
+                        MinimumMeanHeight = 4.0,
+                        MaximumMeanHeight = 6.0
+                    });
+            ConnectedRegionPresenceFeature present = result.Regions[0];
+            ConnectedRegionPresenceFeature missing = result.Regions[1];
+
+            Require(result.Success
+                    && result.RegionCount == 2
+                    && result.PresentRegionCount == 1
+                    && result.MissingRegionCount == 1
+                    && result.AggregateDecision
+                        == ConnectedRegionPresenceDecision.Present,
+                "Connected-region presence aggregate decisions changed.");
+            Require(present.TotalCellCount == 2
+                    && present.FiniteCellCount == 2
+                    && present.MissingCellCount == 0
+                    && present.FiniteCoverageRatio == 1.0
+                    && present.MeanHeight == 5.0
+                    && present.CoverageDisposition
+                        == ConnectedRegionPresenceCoverageDisposition.Accepted
+                    && present.HeightDisposition
+                        == ConnectedRegionPresenceHeightDisposition.Accepted
+                    && present.Decision == ConnectedRegionPresenceDecision.Present,
+                "Present connected-region coverage or height evidence changed.");
+            Require(missing.TotalCellCount == 1
+                    && missing.FiniteCellCount == 1
+                    && missing.FiniteCoverageRatio == 1.0
+                    && missing.MeanHeight == 1.0
+                    && missing.HeightDisposition
+                        == ConnectedRegionPresenceHeightDisposition.BelowMinimum
+                    && missing.Decision == ConnectedRegionPresenceDecision.Missing,
+                "Missing connected-region height evidence changed.");
+
+            ConnectedRegionResult noRegions = new ConnectedRegionTool().Execute(
+                new HeightGridMask(1, 2, new[] { false, false }));
+            ConnectedRegionPresenceResult noRegionResult =
+                new ConnectedRegionPresenceTool().Execute(
+                    noRegions,
+                    1,
+                    2,
+                    new[] { double.NaN, double.NaN });
+            Require(noRegionResult.Success
+                    && noRegionResult.RegionCount == 0
+                    && noRegionResult.AggregateDecision
+                        == ConnectedRegionPresenceDecision.Missing,
+                "An empty connected-region set must remain explicit missing evidence.");
+        }
+
+        private static void TestConnectedRegionPresenceInvalidInput()
+        {
+            ConnectedRegionPresenceTool tool = new ConnectedRegionPresenceTool();
+            ConnectedRegionResult failedLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(2, 2, new[] { true, false, true }));
+            ConnectedRegionPresenceResult failedInput = tool.Execute(
+                failedLabeling,
+                2,
+                2,
+                new[] { 1.0, 1.0, 1.0, 1.0 });
+            ConnectedRegionResult validLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(1, 1, new[] { true }));
+            ConnectedRegionPresenceResult invalidCoverage = tool.Execute(
+                validLabeling,
+                1,
+                1,
+                new[] { 1.0 },
+                new ConnectedRegionPresenceOptions
+                {
+                    MinimumFiniteCoverageRatio = 1.1
+                });
+            ConnectedRegionPresenceResult invalidRange = tool.Execute(
+                validLabeling,
+                1,
+                1,
+                new[] { 1.0 },
+                new ConnectedRegionPresenceOptions
+                {
+                    MinimumMeanHeight = 2.0,
+                    MaximumMeanHeight = 1.0
+                });
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool cancellationPropagated = false;
+            try
+            {
+                tool.Execute(
+                    validLabeling,
+                    1,
+                    1,
+                    new[] { 1.0 },
+                    cancellationToken: cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationPropagated = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(!failedInput.Success && failedInput.Regions.Count == 0,
+                "Presence must fail closed when labeling failed.");
+            Require(!invalidCoverage.Success && invalidCoverage.Regions.Count == 0,
+                "Coverage thresholds outside [0, 1] must fail closed.");
+            Require(!invalidRange.Success && invalidRange.Regions.Count == 0,
+                "Reversed height thresholds must fail closed.");
+            Require(cancellationPropagated,
+                "Connected-region presence cancellation must propagate without a partial result.");
         }
 
         private static void TestHeightMapRegionStatistics()

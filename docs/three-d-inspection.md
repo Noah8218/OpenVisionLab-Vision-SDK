@@ -83,6 +83,12 @@ the consuming application.
   optional expected-valid-count guard.
 - `HeightMapRegionStatisticsTool` owns deterministic finite count, coverage,
   sum, mean, and extrema for an explicit row-major rectangular region.
+- `ConnectedRegionTool` labels an explicit binary height-grid mask in
+  deterministic row-major seed order. `ConnectedRegionMetricsTool` computes
+  geometry-only cell-footprint metrics, while `ConnectedRegionPresenceTool`
+  evaluates each existing region against explicit finite-coverage and optional
+  mean-height thresholds. The presence aggregate is Present when at least one
+  region is Present; all-region acceptance remains consuming-application policy.
 - `CompletenessGridInspectionTool` owns reference-region mean, rectangular
   cell placement, finite coverage, reference-relative mean, and typed
   per-cell/aggregate decisions under an optional inclusive policy.
@@ -124,7 +130,7 @@ source identity, units, calibration, recipes, overlays, or UI lifecycle.
 | --- | --- |
 | Height-map inspection | `ThicknessInspectionTool`, `WarpageInspectionTool`, `DatumPlaneRawHeightDeviationInspectionTool` |
 | Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool` |
-| Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `LeastSquaresHeightFieldPlaneFitTool` |
+| Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `ConnectedRegionTool`, `ConnectedRegionMetricsTool`, `ConnectedRegionPresenceTool`, `LeastSquaresHeightFieldPlaneFitTool` |
 | Edge and feature selection | `DeterministicHeightDifferenceEdgeTool`, `DeterministicLineFitTool`, `DeterministicModelSurfaceSelectionTool`, `DeterministicModelKeyPointExtractionTool`, `DeterministicModelSurfaceEdgeExtractionTool`, `DeterministicOrganizedSceneSurfaceEdgeExtractionTool` |
 | Surface matching and mesh comparison | `DeterministicSurfaceModelPreparationTool`, `DeterministicPreparedScenePreparationTool`, `DeterministicRigidSurfacePoseSearchTool`, `DeterministicSurfaceCoverageTool`, `DeterministicSurfaceEdgeCoverageTool`, `DeterministicMultipleSurfaceMatchTool`, `TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, `DeclaredMeshNormalQualityTool`, `AcquisitionDirectionOrientationTool` |
 | Statistics and inspection decisions | `CompletenessGridInspectionTool`, `DualSurfaceThicknessInspectionTool`, `HeightDeviationInspectionTool`, `RepeatabilityStatisticsTool`, `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool` |
