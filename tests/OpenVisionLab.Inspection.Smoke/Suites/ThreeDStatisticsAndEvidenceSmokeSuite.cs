@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
 using static OpenVisionLab.Inspection.Smoke.SmokeFixtures;
 
@@ -24,6 +25,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height distribution preserves finite statistics and tie order", TestHeightDistributionStatistics);
             yield return new SmokeCase("Grid diagnostics preserve implicit row-major evidence", TestImplicitGridDiagnostics);
             yield return new SmokeCase("Grid diagnostics preserve exact malformed explicit evidence", TestMalformedExplicitGridDiagnostics);
+            yield return new SmokeCase("Connected regions preserve deterministic four- and eight-neighbor labeling", TestConnectedRegions);
+            yield return new SmokeCase("Connected regions fail closed on invalid masks", TestConnectedRegionsInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
@@ -173,6 +176,97 @@ namespace OpenVisionLab.Inspection.Smoke
                     && result.Checks[3].FirstComponent == "Y"
                     && result.Checks[3].Message == "Grid has 2 non-finite coordinate component(s).",
                 "Explicit coordinate-finiteness evidence changed.");
+        }
+
+        private static void TestConnectedRegions()
+        {
+            bool[] mask =
+            {
+                true, true, false, false, false,
+                false, true, false, false, true,
+                false, false, false, true, false,
+                false, false, false, true, true,
+                false, false, false, false, false
+            };
+
+            ConnectedRegionTool tool = new ConnectedRegionTool();
+            ConnectedRegionResult four = tool.Execute(
+                new HeightGridMask(5, 5, mask),
+                new ConnectedRegionOptions
+                {
+                    Connectivity = ConnectedRegionConnectivity.Four
+                });
+            ConnectedRegionResult eight = tool.Execute(
+                new HeightGridMask(5, 5, mask),
+                new ConnectedRegionOptions
+                {
+                    Connectivity = ConnectedRegionConnectivity.Eight
+                });
+
+            Require(four.Success
+                    && four.ForegroundCellCount == 7
+                    && four.RegionCount == 3
+                    && four.Regions.Select(region => region.CellCount)
+                        .SequenceEqual(new[] { 3, 1, 3 }),
+                "Four-neighbor connected-region counts changed.");
+            Require(four.Regions[0].SeedRow == 0
+                    && four.Regions[0].SeedColumn == 0
+                    && four.Regions[0].MinimumRow == 0
+                    && four.Regions[0].MinimumColumn == 0
+                    && four.Regions[0].MaximumRow == 1
+                    && four.Regions[0].MaximumColumn == 1
+                    && four.Regions[0].Cells.Select(cell => cell.Row + "," + cell.Column)
+                        .SequenceEqual(new[] { "0,0", "0,1", "1,1" }),
+                "Four-neighbor region identity or row-major cell order changed.");
+            Require(eight.Success
+                    && eight.ForegroundCellCount == 7
+                    && eight.RegionCount == 2
+                    && eight.Regions.Select(region => region.CellCount)
+                        .SequenceEqual(new[] { 3, 4 }),
+                "Eight-neighbor connected-region counts changed.");
+            Require(eight.Regions[1].Cells.Select(cell => cell.Row + "," + cell.Column)
+                .SequenceEqual(new[] { "1,4", "2,3", "3,3", "3,4" }),
+                "Eight-neighbor diagonal connectivity changed.");
+        }
+
+        private static void TestConnectedRegionsInvalidInput()
+        {
+            ConnectedRegionTool tool = new ConnectedRegionTool();
+            ConnectedRegionResult mismatchedMask = tool.Execute(
+                new HeightGridMask(2, 2, new[] { true, false, true }));
+            ConnectedRegionResult invalidConnectivity = tool.Execute(
+                new HeightGridMask(1, 1, new[] { true }),
+                new ConnectedRegionOptions
+                {
+                    Connectivity = (ConnectedRegionConnectivity)99
+                });
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool cancellationPropagated = false;
+            try
+            {
+                tool.Execute(
+                    new HeightGridMask(1, 1, new[] { true }),
+                    cancellationToken: cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationPropagated = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(!mismatchedMask.Success
+                    && mismatchedMask.Regions.Count == 0
+                    && mismatchedMask.ForegroundCellCount == 0,
+                "A mask/value dimension mismatch must fail closed.");
+            Require(!invalidConnectivity.Success
+                    && invalidConnectivity.Regions.Count == 0,
+                "Unsupported connected-region connectivity must fail closed.");
+            Require(cancellationPropagated,
+                "Connected-region cancellation must propagate without a partial result.");
         }
 
         private static void TestHeightMapRegionStatistics()

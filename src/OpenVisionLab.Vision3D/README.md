@@ -22,6 +22,24 @@ Use the two-argument overload for an implicit row-major grid. Explicit samples
 produce fixed-order topology, locator-order, duplicate-locator, and finite-XYZ
 evidence without owning file format, source identity, or acceptance policy.
 
+## Connected-region quick start
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+HeightGridMask mask = new HeightGridMask(
+    rowCount: 2,
+    columnCount: 3,
+    foreground: new[] { true, true, false, false, true, true });
+ConnectedRegionResult regions = new ConnectedRegionTool().Execute(mask);
+```
+
+Regions are discovered by row-major seed order. Four-neighbor connectivity is
+the default; set `ConnectedRegionOptions.Connectivity` to `Eight` when diagonal
+cells belong to the same region. The tool returns only source-neutral cells and
+grid bounds; source identity, units, artifacts, and acceptance policy remain
+with the caller.
+
 ## Height-map crop quick start
 
 ```csharp
