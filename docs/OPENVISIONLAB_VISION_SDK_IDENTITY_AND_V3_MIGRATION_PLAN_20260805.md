@@ -597,3 +597,74 @@ Verification: local .NET SDK 10.0.303 Release build warning/error 0; Smoke 171/1
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-nominal-actual-characterization; baseline/pass-list.txt; characterized/pass-list.txt; characterized/prefix-comparison.txt; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32639216016
 Boundary / next dependency: 이 합성 characterization은 실제 센서 정확도, 교정 유효성, Gauge R&R, 생산 오류율 또는 takt 성능을 증명하지 않는다. side == 0 정책, 제품 코드/API, NuGet 게시, 소비 저장소와 UI·카메라·PLC는 변경하지 않았다. 다음 실행 가능한 우선순위는 고정 합성 워크로드의 정확도 parity와 성능 기준선 수립이다(Recommended model: gpt-5.6-sol; Reasoning effort: high). 실제 생산 기준선 Track B는 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 LSL/USL·false accept/reject 및 takt 한도 승인 전까지 Blocked다.
 ```
+
+## 27. 고정 합성 mesh 정확도 parity와 성능 기준선 시도 기록
+
+제품 `src`를 바꾸지 않고 commit `3f6e35beb951b8412e6fcd116c959f0a5c4d9a99`에
+표준 라이브러리만 사용하는 opt-in benchmark harness를 추가했다. 비교 기준은 구조 변경 전
+characterization commit `c74b3bb5bf2f237eef800e50ef6951109bf07cc5`이며, 같은 commit의
+harness로 두 target DLL을 실행했다. 기존 171개 Smoke는 그대로 유지되고 harness commit의
+원격 Build run `32641954389`에서 Restore, Release Build, 171 Smoke, Pack, 패키지 문서와
+격리 package-only 소비자가 모두 통과했다.
+
+고정 입력은 다음 두 종류다.
+
+- `planar-direct-v1`: 64×64 cell, 8,192 triangle, 40,960 query,
+  input SHA-256 `1f5d56e45ca7b174ece2e573e07f0442e405430859839873b925810bcc1a2730`
+- `planar-boundary-v1`: 같은 mesh의 shared-diagonal 경계 12,288 query,
+  input SHA-256 `e56ce73c3e17565b7cfa5368ffb398d308759187a4c2883f94affb2f0284e58e`
+
+분석적 oracle에 대한 두 target의 point/result exact 및 `1e-12` quantized fingerprint는
+두 workload 모두 일치했다. 결합 최대 절대 oracle 오차는 direct
+`5.329070518200751e-15`, boundary `3.1086244689504383e-15`로 고정 허용치 안이다.
+따라서 이 두 합성 입력에 대한 정확도 parity는 통과다. 이 결론은 historical 구현을
+정답으로 간주한 것이 아니라 평면의 폐형식 정답과 각 target을 독립 비교한 결과다.
+
+성능은 Windows 11 build 26100, AMD Ryzen 5 2600 6-core/12-thread, 약 32GB RAM,
+.NET runtime 8.0.30, x64, 고성능 전원 계획에서 실행했다. 각 process는 debugger 없이
+`High` priority와 inherited affinity `0xfff`를 사용했다. cold 1회, warm-up 3회,
+10-operation batch의 measured 30회를 target별 두 독립 session에서 workload별
+`A1-B1-B2-A2`로 실행했다. 단일 session wall/index/calculation RMAD와 같은 target의
+session median 차이가 각각 모두 5% 미만이어야 하고, outlier 제거는 허용하지 않았다.
+
+attempt 1–5는 각각 사전 CPU gate 또는 개별 session RMAD를 통과하지 못해 전부 제외했다.
+attempt 6은 8개 개별 session을 통과했지만 direct current calculation session 차이
+`7.516%`, boundary baseline calculation 차이 `6.379%`로 최종 비교가 무효였다.
+attempt 7은 성능 session 직전 6개 CPU package-load 표본을 모두 20% 이하로 제한한
+단 한 번의 최종 확인 실행이다. 정확도와 8개 개별 session은 다시 통과했지만 boundary
+baseline A1/A2의 wall `5.875%`, index `8.873%` 차이로 최종 상태가 다시
+`IncompletePerformance`가 됐다. 사전 규칙에 따라 attempt 간 결과를 섞거나 5% 기준을
+완화하거나 통과할 때까지 반복하지 않는다.
+
+다음 표는 attempt 7의 60개 pooled raw sample 관찰값이다. 성능 기준선 승인값이 아니며,
+실패 원인과 다음 프로토콜을 설계하기 위한 진단값으로만 사용한다.
+
+| workload/metric | baseline median / P95 (ms) | current median / P95 (ms) | current delta |
+|---|---:|---:|---:|
+| direct wall | 41.607 / 44.871 | 38.022 / 39.573 | -8.616% / -11.807% |
+| direct index | 10.924 / 12.539 | 10.592 / 11.555 | -3.039% / -7.849% |
+| direct calculation | 30.651 / 33.059 | 27.441 / 28.345 | -10.471% / -14.259% |
+| boundary wall | 28.214 / 29.492 | 26.244 / 27.517 | -6.981% / -6.697% |
+| boundary index | 11.118 / 11.918 | 11.383 / 12.198 | +2.376% / +2.351% |
+| boundary calculation | 17.117 / 17.677 | 14.842 / 15.590 | -13.288% / -11.807% |
+
+allocation은 direct에서 약 8.111MB/operation으로 target 간 동일한 수준이었다. boundary는
+baseline 약 7.980MB/operation, current 약 9.159MB/operation이며, 30개 batch의 Gen0 합계도
+baseline session `428/421`, current `508/512`로 증가했다. 원시 allocation/GC 값은
+보존했지만, 무효인 timing 결과를 성능 개선 또는 회귀 승인 근거로 사용하지 않는다.
+
+재현 절차와 원시 보고서, environment/provenance, rejected readiness window, runner transcript,
+comparison JSON은
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-fixed-synthetic-baseline`에
+보존했다. attempt-7 runner SHA-256은
+`5081B088D409870B725219994F640B0BE7EA010C9698013B0381A43E88AA2B34`, 독립 비교기
+SHA-256은 `3D45A30A0104A7E4F52E42972EFD8094E368E85F8B482DC64D8F859B0B2604AE`다.
+
+```text
+Status: Incomplete
+Scope: 두 고정 합성 mesh workload의 historical/current 분석적 정확도 parity와 상대 성능 기준선 시도
+Acceptance criteria: 제품 src 변경 0 -> pass; 고정 입력·oracle·exact/quantized parity -> pass; Release build/171 Smoke/원격 CI -> pass; 8개 개별 performance session RMAD < 5% -> pass(attempt 7); 모든 target session median 차이 < 5% -> fail(boundary baseline wall 5.875%, index 8.873%); 승인 가능한 상대 성능 기준선 -> fail
+Verification: attempt-7 OFFICIAL_RUN_PROCEDURE.ps1 exit 1 / IncompletePerformance; Compare-OfficialResults.ps1 exit 1; direct·boundary accuracy fingerprints equal; raw 12 report와 8 readiness report의 provenance/hash 검증
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-fixed-synthetic-baseline\attempt-7; summary\official-comparison-3f6e35b.json; summary\official-provenance-3f6e35b.json; summary\official-raw-manifest-3f6e35b.json
+Boundary / next dependency: v1을 다시 실행해 통과 결과를 고르지 않는다. 다음 성능 작업은 전용·격리 performance host를 제공하거나, 별도 승인을 받아 target을 더 근접하게 교차 계측하는 versioned protocol v2를 설계한 뒤 시작한다. 생산 Track B는 실제 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 공차·오류율·takt 한도 승인 전까지 별도로 Blocked다.
+```
