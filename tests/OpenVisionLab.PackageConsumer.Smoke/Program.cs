@@ -132,6 +132,37 @@ if (!connectedRegionPresence.Success
     throw new InvalidOperationException("Connected-region presence package example failed.");
 }
 
+ConnectedRegionFillHeightResult connectedRegionFillHeight =
+    new ConnectedRegionFillHeightTool().Execute(
+        connectedRegions,
+        2,
+        4,
+        new[] { 3.0, 3.0, double.NaN, double.NaN, double.NaN, double.NaN, 2.0, 2.0 },
+        new ConnectedRegionFillHeightOptions
+        {
+            ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface
+            {
+                SlopeX = 0.0,
+                SlopeZ = 0.0,
+                Intercept = 0.0
+            },
+            MinimumFiniteCoverageRatio = 1.0,
+            MinimumMeanFillHeight = 2.5,
+            MaximumMeanFillHeight = 3.5
+        });
+if (!connectedRegionFillHeight.Success
+    || connectedRegionFillHeight.RegionCount != 2
+    || connectedRegionFillHeight.AcceptedRegionCount != 1
+    || connectedRegionFillHeight.RejectedRegionCount != 1
+    || connectedRegionFillHeight.Regions[0].MeanFillHeight != 3.0
+    || connectedRegionFillHeight.Regions[0].Decision != ConnectedRegionFillHeightDecision.Accepted
+    || connectedRegionFillHeight.Regions[1].MeanFillHeight != 2.0
+    || connectedRegionFillHeight.Regions[1].FillHeightDisposition
+        != ConnectedRegionFillHeightDisposition.BelowMinimum)
+{
+    throw new InvalidOperationException("Connected-region fill-height package example failed.");
+}
+
 ThicknessInspectionTool thickness = new ThicknessInspectionTool(
     new ThicknessInspectionOptions
     {
@@ -300,4 +331,4 @@ if (!comparison.Success
 }
 
 Console.WriteLine(
-    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, connected-region presence, surface-match, and mesh consumer passed.");
+    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, connected-region presence and fill-height, surface-match, and mesh consumer passed.");

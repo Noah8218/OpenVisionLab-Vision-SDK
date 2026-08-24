@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenVisionLab.Vision3D" Version="$(PackageVersion)" />
     <PackageReference Include="OpenVisionLab.Inspection" Version="$(PackageVersion)" />
     <PackageReference Include="OpenVisionLab.Vision2D.Blob" Version="$(PackageVersion)" />
   </ItemGroup>
