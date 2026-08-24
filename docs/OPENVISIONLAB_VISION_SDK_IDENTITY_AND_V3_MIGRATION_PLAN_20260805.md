@@ -697,10 +697,9 @@ median regression 10% 이상 또는 P95 regression 15% 이상이면 성능 기�
    readiness 40개, manifest, comparison과 provenance를 보존하고 결과 문서만 커밋·푸시한다.
 
 따라서 로컬 자가검사만으로 공식 결과를 푸시하지 않으며, 공식 timing을 먼저 실행한 뒤 측정
-코드를 커밋하는 것도 허용하지 않는다. 현재 로컬 `main`에는 이 작업의 소유 범위 밖인 선행
-commit `8be38403d0d00698431d7ffa4de60a63289672c6`이 있고 원격 `main`은
-`3f6e35beb951b8412e6fcd116c959f0a5c4d9a99`이므로, 해당 경계가 해소되기 전에는 v2 구현을
-로컬 커밋할 수는 있어도 원격으로 push하지 않는다.
+코드를 커밋하는 것도 허용하지 않는다. 구현 시점에는 로컬 `main`의 선행 commit
+`8be38403d0d00698431d7ffa4de60a63289672c6`이 원격에 없어 push를 중단했다. 사용자가 해당
+선행 commit을 명시적으로 승인한 뒤에만 v2 구현과 함께 push했다.
 
 실행기는 비어 있는 D: attempt root만 허용하며 다음 형태로 사용한다.
 
@@ -716,3 +715,38 @@ pwsh -NoProfile -File tests\OpenVisionLab.Vision3D.Benchmark\Run-PairedBaseline.
 exit code `0`은 모든 정확도·안정성·회귀 gate 통과, `1`은 증거 또는 안정성 미완료,
 `2`는 안정성은 통과했지만 회귀 경보가 발생했음을 뜻한다. 이 합성 기준선은 실제 센서 정확도,
 교정 유효성, Gauge R&R, 생산 false accept/reject 또는 takt를 증명하지 않는다.
+
+## 29. Paired synthetic performance protocol v2 공식 실행 결과
+
+v2 구현과 README 버전 경계를 포함한 exact commit
+`7407869d3f6e65697b52dbc7301352fbd68f93dc`을 `main`에 push했다. GitHub Actions
+Build `32698987355`에서 Restore, Release Build, 전체 Smoke, 고유 CI version의 5개 package,
+package 문서와 격리 package-only consumer가 모두 통과했다. 이 push는 제품 `Version=3.0.0`,
+로컬 기본 `PackageVersion=3.0.1-dev.1`을 바꾸거나 package를 게시하지 않았다.
+
+해당 immutable comparer로 official attempt를 한 번 실행했다. 두 workload의 baseline/current
+accuracy 4개는 analytical oracle과 exact/quantized fingerprint parity를 통과했다. direct의
+20개 performance session과 boundary R01-A1도 각 wall/index/calculation RMAD 5% 미만을
+통과했다. 그러나 22번째 performance session인 `planar-boundary-v1 R01-B1`에서 wall
+`4.02585007522659%`, index `6.48810550988234%`, calculation `3.49275630627548%`가
+관찰되어 index 단일-session gate가 실패했다.
+
+실패 세션 직전 승인된 readiness 창은 경쟁 workload 0개, CPU 6표본
+`11%, 10%, 10%, 11%, 16%, 10%`로 사전 gate를 통과했다. benchmark exit `2`를 받은
+runner는 fail-fast로 exit `1`을 반환했다. 따라서 raw report 26개(accuracy 4,
+performance 22)와 readiness 22개, provenance와 transcript까지만 생성됐고, 40-session
+manifest 및 paired comparison에는 도달하지 않았다. partial direct 결과를 승인된 개선 또는
+회귀 기준선으로 사용하지 않는다.
+
+사전 계약에 따라 이 local v2 attempt를 다시 실행하거나 다른 attempt와 섞지 않는다. 다음
+성능 작업의 선행 조건은 전용 격리 performance host다. 정확도 parity는 두 고정 합성 입력에
+한정되며 실제 센서 정확도, 교정 유효성, Gauge R&R, 생산 오류율 또는 takt를 증명하지 않는다.
+
+```text
+Status: Incomplete
+Scope: 고정 합성 workload 두 개의 paired performance protocol v2 공식 attempt 1회
+Acceptance criteria: exact comparer commit 원격 CI -> pass; accuracy 4개와 cross-target fingerprint -> pass; performance 40개 단일-session RMAD < 5% -> fail(22번째 planar-boundary-v1 R01-B1 index 6.48810550988234%); 5-round paired stability/regression comparison -> not reached
+Verification: GitHub Actions Build 32698987355 success; Run-PairedBaseline.ps1 exit 1 after benchmark exit 2; evidence count 26 raw/22 readiness; failed-session accepted readiness zero blocker and CPU 11/10/10/11/16/10%
+Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260824-paired-synthetic-baseline-v2\official-attempt-1-7407869; INCOMPLETE_RESULT.md; raw\planar-boundary-v1-R01-B1-readiness.json; raw\planar-boundary-v1-R01-B1.json; official-temp-7407869\official-run-transcript.log; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/32698987355
+Boundary / next dependency: 이 local host에서 v2를 재실행하거나 attempt를 혼합하지 않는다. 다른 공식 performance attempt 전에 전용 격리 host가 필요하다. 제품/NuGet 버전 변경, package 게시, consumer 변경은 수행하지 않았다.
+```
