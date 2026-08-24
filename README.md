@@ -173,6 +173,7 @@ The basic examples assume execution from the repository root and use `docs/sampl
 - Auto MPoint teaching core: `docs/AUTO_MPOINT_V1.md`
 - Edge-based fail-closed unique result: `docs/EDGE_BASED_UNIQUE_MATCH_V1.md`
 - Matching responsibility boundaries and production-baseline plan: `docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md`
+- Versioned synthetic accuracy/performance baseline and paired protocol v2: `docs/OPENVISIONLAB_VISION_SDK_IDENTITY_AND_V3_MIGRATION_PLAN_20260805.md` sections 27-28
 
 ## Build / Smoke Check
 
@@ -967,6 +968,8 @@ Shared package metadata is defined in `Directory.Build.props`.
 - `PackageVersion`: `3.0.1-dev.1` local-development default; CI overrides it with a unique prerelease version
 - `PackageOutputPath`: `artifacts/packages`
 - `GeneratePackageOnBuild`: `false`
+
+Ordinary development commits, benchmark-protocol changes, and branch pushes do not change `Version` or the default `PackageVersion`, and do not authorize package publication. Reproducible benchmark runs pin the complete Git commit SHA; package versions change only for a separately approved immutable package candidate or release.
 
 ### Immutable package versions
 
