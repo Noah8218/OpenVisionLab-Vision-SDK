@@ -31,6 +31,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Connected region metrics fail closed on invalid geometry", TestConnectedRegionMetricsInvalidInput);
             yield return new SmokeCase("Connected region presence preserves explicit coverage and height decisions", TestConnectedRegionPresence);
             yield return new SmokeCase("Connected region presence fails closed on invalid inputs", TestConnectedRegionPresenceInvalidInput);
+            yield return new SmokeCase("Connected region fill height preserves reference-surface residuals and per-region gates", TestConnectedRegionFillHeight);
+            yield return new SmokeCase("Connected region fill height fails closed on invalid inputs", TestConnectedRegionFillHeightInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
@@ -514,6 +516,151 @@ namespace OpenVisionLab.Inspection.Smoke
                 "Reversed height thresholds must fail closed.");
             Require(cancellationPropagated,
                 "Connected-region presence cancellation must propagate without a partial result.");
+        }
+
+        private static void TestConnectedRegionFillHeight()
+        {
+            ConnectedRegionResult labeled = new ConnectedRegionTool().Execute(
+                new HeightGridMask(
+                    5,
+                    5,
+                    new[]
+                    {
+                        true, true, false, true, true,
+                        true, false, false, false, false,
+                        false, false, false, false, false,
+                        false, false, false, false, false,
+                        false, false, false, false, false
+                    }));
+            ConnectedRegionFillHeightResult result =
+                new ConnectedRegionFillHeightTool().Execute(
+                    labeled,
+                    5,
+                    5,
+                    new[]
+                    {
+                        12.0, 12.5, double.NaN, 10.5, 11.0,
+                        11.75, double.NaN, double.NaN, double.NaN, double.NaN,
+                        double.NaN, double.NaN, double.NaN, double.NaN, double.NaN,
+                        double.NaN, double.NaN, double.NaN, double.NaN, double.NaN,
+                        double.NaN, double.NaN, double.NaN, double.NaN, double.NaN
+                    },
+                    new ConnectedRegionFillHeightOptions
+                    {
+                        ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface
+                        {
+                            SlopeX = 0.5,
+                            SlopeZ = -0.25,
+                            Intercept = 10.0
+                        },
+                        MinimumFiniteCoverageRatio = 1.0,
+                        MinimumMeanFillHeight = 1.5,
+                        MaximumMeanFillHeight = 2.5
+                    });
+            ConnectedRegionFillHeightFeature accepted = result.Regions[0];
+            ConnectedRegionFillHeightFeature rejected = result.Regions[1];
+
+            Require(result.Success
+                    && result.RegionCount == 2
+                    && result.AcceptedRegionCount == 1
+                    && result.RejectedRegionCount == 1,
+                "Connected-region fill-height region decisions changed.");
+            Require(accepted.TotalCellCount == 3
+                    && accepted.FiniteCellCount == 3
+                    && accepted.FiniteCoverageRatio == 1.0
+                    && accepted.MeanFillHeight == 2.0
+                    && accepted.MinimumFillHeight == 2.0
+                    && accepted.MaximumFillHeight == 2.0
+                    && accepted.CoverageDisposition
+                        == ConnectedRegionFillHeightCoverageDisposition.Accepted
+                    && accepted.FillHeightDisposition
+                        == ConnectedRegionFillHeightDisposition.Accepted
+                    && accepted.Decision == ConnectedRegionFillHeightDecision.Accepted,
+                "Accepted connected-region fill-height evidence changed.");
+            Require(rejected.TotalCellCount == 2
+                    && rejected.FiniteCellCount == 2
+                    && rejected.FiniteCoverageRatio == 1.0
+                    && rejected.MeanFillHeight == -1.0
+                    && rejected.MinimumFillHeight == -1.0
+                    && rejected.MaximumFillHeight == -1.0
+                    && rejected.FillHeightDisposition
+                        == ConnectedRegionFillHeightDisposition.BelowMinimum
+                    && rejected.Decision == ConnectedRegionFillHeightDecision.Rejected,
+                "Rejected connected-region fill-height evidence changed.");
+        }
+
+        private static void TestConnectedRegionFillHeightInvalidInput()
+        {
+            ConnectedRegionFillHeightTool tool = new ConnectedRegionFillHeightTool();
+            ConnectedRegionResult failedLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(2, 2, new[] { true, false, true }));
+            ConnectedRegionFillHeightResult failedInput = tool.Execute(
+                failedLabeling,
+                2,
+                2,
+                new[] { 1.0, 1.0, 1.0, 1.0 },
+                new ConnectedRegionFillHeightOptions
+                {
+                    ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface()
+                });
+            ConnectedRegionResult validLabeling = new ConnectedRegionTool().Execute(
+                new HeightGridMask(1, 1, new[] { true }));
+            ConnectedRegionFillHeightResult invalidSurface = tool.Execute(
+                validLabeling,
+                1,
+                1,
+                new[] { 1.0 },
+                new ConnectedRegionFillHeightOptions
+                {
+                    ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface
+                    {
+                        SlopeX = double.NaN
+                    }
+                });
+            ConnectedRegionFillHeightResult invalidRange = tool.Execute(
+                validLabeling,
+                1,
+                1,
+                new[] { 1.0 },
+                new ConnectedRegionFillHeightOptions
+                {
+                    ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface(),
+                    MinimumMeanFillHeight = 2.0,
+                    MaximumMeanFillHeight = 1.0
+                });
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool cancellationPropagated = false;
+            try
+            {
+                tool.Execute(
+                    validLabeling,
+                    1,
+                    1,
+                    new[] { 1.0 },
+                    new ConnectedRegionFillHeightOptions
+                    {
+                        ReferenceSurface = new ConnectedRegionFillHeightReferenceSurface()
+                    },
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationPropagated = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(!failedInput.Success && failedInput.Regions.Count == 0,
+                "Fill height must fail closed when labeling failed.");
+            Require(!invalidSurface.Success && invalidSurface.Regions.Count == 0,
+                "Non-finite reference-surface coefficients must fail closed.");
+            Require(!invalidRange.Success && invalidRange.Regions.Count == 0,
+                "Reversed fill-height thresholds must fail closed.");
+            Require(cancellationPropagated,
+                "Connected-region fill-height cancellation must propagate without a partial result.");
         }
 
         private static void TestHeightMapRegionStatistics()
