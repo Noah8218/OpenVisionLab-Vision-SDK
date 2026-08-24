@@ -668,3 +668,51 @@ Verification: attempt-7 OFFICIAL_RUN_PROCEDURE.ps1 exit 1 / IncompletePerformanc
 Evidence: D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\20260823-fixed-synthetic-baseline\attempt-7; summary\official-comparison-3f6e35b.json; summary\official-provenance-3f6e35b.json; summary\official-raw-manifest-3f6e35b.json
 Boundary / next dependency: v1을 다시 실행해 통과 결과를 고르지 않는다. 다음 성능 작업은 전용·격리 performance host를 제공하거나, 별도 승인을 받아 target을 더 근접하게 교차 계측하는 versioned protocol v2를 설계한 뒤 시작한다. 생산 Track B는 실제 센서 데이터, 교정 ID/hash, 독립 ground truth와 불확도, 생산 공차·오류율·takt 한도 승인 전까지 별도로 Blocked다.
 ```
+
+## 28. Paired synthetic performance protocol v2와 버전 관리 게이트
+
+v2는 v1의 고정 입력, oracle, 허용치, target commit, warm-up 3회, measured 30회,
+10-operation batch를 바꾸지 않는다. 시간 드리프트의 영향을 줄이기 위해 workload별로
+`A1-B1-B2-A2`를 한 round로 묶고 정확히 5 round를 실행한다. 각 round의 baseline/current
+median과 P95는 각각 `sqrt(A1*A2)`, `sqrt(B1*B2)`이고, 최종 상대값은 다섯 개
+`current/baseline` ratio의 중앙값이다.
+
+공식 performance process 40개 각각의 직전에 다음 readiness gate를 새로 통과해야 한다.
+
+- 경쟁 중인 .NET build/test/run/Smoke/Benchmark process 0개
+- 1초 간격 CPU package load 6개 표본이 모두 20% 이하
+- 각 raw session의 wall/index/calculation RMAD가 모두 5% 미만
+- 다섯 paired median ratio와 P95 ratio의 RMAD가 metric별로 모두 5% 미만
+
+outlier 제거, 결과 의존 재시도, threshold 완화, 서로 다른 attempt 혼합은 금지한다.
+median regression 10% 이상 또는 P95 regression 15% 이상이면 성능 기준선을 승인하지 않고
+`InvestigationRequired`로 종료한다. v2가 안정성 gate를 통과하지 못하면 같은 로컬 장비에서
+결과가 나올 때까지 반복하지 않고 전용 격리 performance host를 다음 선행 조건으로 삼는다.
+
+버전 관리는 두 커밋으로 분리한다.
+
+1. 구현 커밋: comparer/runner self-test, Release build, 전체 Smoke, 제품 `src` 변경 0을 확인한 뒤
+   공식 timing 전에 커밋·푸시한다. 그 exact remote commit의 CI가 모두 통과해야 한다.
+2. 결과 커밋: CI가 통과한 immutable comparer commit으로 공식 v2를 한 번 실행한 뒤 raw 44개,
+   readiness 40개, manifest, comparison과 provenance를 보존하고 결과 문서만 커밋·푸시한다.
+
+따라서 로컬 자가검사만으로 공식 결과를 푸시하지 않으며, 공식 timing을 먼저 실행한 뒤 측정
+코드를 커밋하는 것도 허용하지 않는다. 현재 로컬 `main`에는 이 작업의 소유 범위 밖인 선행
+commit `8be38403d0d00698431d7ffa4de60a63289672c6`이 있고 원격 `main`은
+`3f6e35beb951b8412e6fcd116c959f0a5c4d9a99`이므로, 해당 경계가 해소되기 전에는 v2 구현을
+로컬 커밋할 수는 있어도 원격으로 push하지 않는다.
+
+실행기는 비어 있는 D: attempt root만 허용하며 다음 형태로 사용한다.
+
+```powershell
+pwsh -NoProfile -File tests\OpenVisionLab.Vision3D.Benchmark\Run-PairedBaseline.ps1 `
+  -AttemptRoot D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\<attempt> `
+  -BaselineApplication <harness-with-baseline-target.dll> `
+  -CurrentApplication <harness-with-current-target.dll> `
+  -ComparerApplication <immutable-v2-comparer.dll> `
+  -ComparerCommit <full-40-character-commit>
+```
+
+exit code `0`은 모든 정확도·안정성·회귀 gate 통과, `1`은 증거 또는 안정성 미완료,
+`2`는 안정성은 통과했지만 회귀 경보가 발생했음을 뜻한다. 이 합성 기준선은 실제 센서 정확도,
+교정 유효성, Gauge R&R, 생산 false accept/reject 또는 takt를 증명하지 않는다.

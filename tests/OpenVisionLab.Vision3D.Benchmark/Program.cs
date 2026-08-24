@@ -49,6 +49,20 @@ namespace OpenVisionLab.Vision3D.Benchmark
         {
             try
             {
+                if (args.Length > 0
+                    && args[0] == "--paired-compare")
+                {
+                    return PairedBaselineComparer.Run(
+                        args.Skip(1).ToArray());
+                }
+
+                if (args.Length > 0
+                    && args[0] == "--paired-self-test")
+                {
+                    return PairedBaselineComparer.RunSelfTest(
+                        args.Skip(1).ToArray());
+                }
+
                 CommandOptions command = CommandOptions.Parse(args);
                 if (command.Mode == "performance")
                 {
