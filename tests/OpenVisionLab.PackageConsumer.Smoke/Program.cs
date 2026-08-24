@@ -83,8 +83,8 @@ if (gridDiagnostics.State != GridDiagnosticState.Pass
 ConnectedRegionResult connectedRegions = new ConnectedRegionTool().Execute(
     new HeightGridMask(
         2,
-        3,
-        new[] { true, true, false, false, true, true }));
+        4,
+        new[] { true, true, false, false, false, false, true, true }));
 if (!connectedRegions.Success
     || connectedRegions.RegionCount != 2
     || !connectedRegions.Regions.Select(region => region.CellCount).SequenceEqual(new[] { 2, 2 }))
