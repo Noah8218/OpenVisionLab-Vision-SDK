@@ -35,6 +35,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Connected region fill height fails closed on invalid inputs", TestConnectedRegionFillHeightInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
+            yield return new SmokeCase("Mask-aware Completeness excludes unselected cells", TestMaskAwareCompletenessGridInspection);
+            yield return new SmokeCase("Mask-aware Completeness fails closed on invalid masks", TestMaskAwareCompletenessGridInspectionInvalidInput);
             yield return new SmokeCase("Reference-grid reconstruction preserves declared and reference-axis coordinates", TestReferenceGridPointReconstruction);
             yield return new SmokeCase("Dual-surface thickness preserves analytic separation statistics", TestDualSurfaceThicknessInspection);
             yield return new SmokeCase("Dual-surface thickness preserves independent lower and upper failures", TestDualSurfaceThicknessInspectionFailure);
@@ -731,6 +733,101 @@ namespace OpenVisionLab.Inspection.Smoke
                     && result.Cells[1].Decision == CompletenessCellDecision.Fail
                     && result.Cells[1].HeightDisposition == CompletenessHeightDisposition.Missing,
                 "Completeness-grid cell evidence changed.");
+        }
+
+        private static void TestMaskAwareCompletenessGridInspection()
+        {
+            CompletenessGridInspectionResult result =
+                new CompletenessGridInspectionTool().ExecuteMaskAware(
+                    3,
+                    3,
+                    new[]
+                    {
+                        10.0, 100.0, 10.0,
+                        12.0, 100.0, 12.0,
+                        double.NaN, 12.0, 100.0
+                    },
+                    new HeightGridRegion(0, 0, 1, 1),
+                    new HeightGridRegion(1, 0, 2, 3),
+                    new HeightGridMask(
+                        3,
+                        3,
+                        new[]
+                        {
+                            false, false, false,
+                            true, false, true,
+                            true, true, false
+                        }),
+                    new CompletenessGridProfile
+                    {
+                        Rows = 1,
+                        Columns = 1,
+                        XPitchColumns = 3,
+                        ZPitchRows = 2,
+                        CellWidthColumns = 3,
+                        CellHeightRows = 2
+                    },
+                    new CompletenessPresencePolicy
+                    {
+                        MinimumFiniteCoverageRatio = 0.75,
+                        MinimumReferenceRelativeMeanHeight = 0.0,
+                        MaximumReferenceRelativeMeanHeight = 2.0
+                    });
+
+            Require(result.Success, result.Message);
+            Require(result.Cells.Count == 1
+                    && result.Cells[0].TotalCellCount == 4
+                    && result.Cells[0].FiniteCellCount == 3
+                    && result.Cells[0].MissingCellCount == 1
+                    && result.Cells[0].FiniteCoverageRatio == 0.75
+                    && result.Cells[0].MeanHeight == 12.0
+                    && result.Cells[0].ReferenceRelativeMeanHeight == 2.0
+                    && result.Cells[0].Decision == CompletenessCellDecision.Pass,
+                "Mask-aware Completeness must evaluate only selected cells and preserve selected missing samples.");
+        }
+
+        private static void TestMaskAwareCompletenessGridInspectionInvalidInput()
+        {
+            CompletenessGridInspectionTool tool = new CompletenessGridInspectionTool();
+            CompletenessGridProfile profile = new CompletenessGridProfile
+            {
+                Rows = 1,
+                Columns = 1,
+                XPitchColumns = 2,
+                ZPitchRows = 2,
+                CellWidthColumns = 2,
+                CellHeightRows = 2
+            };
+            CompletenessPresencePolicy policy = new CompletenessPresencePolicy
+            {
+                MinimumFiniteCoverageRatio = 0.0,
+                MinimumReferenceRelativeMeanHeight = -1.0,
+                MaximumReferenceRelativeMeanHeight = 1.0
+            };
+            CompletenessGridInspectionResult empty = tool.ExecuteMaskAware(
+                2,
+                2,
+                new[] { 10.0, 10.0, 11.0, 11.0 },
+                new HeightGridRegion(0, 0, 1, 1),
+                new HeightGridRegion(0, 0, 2, 2),
+                new HeightGridMask(2, 2, new[] { false, false, false, false }),
+                profile,
+                policy);
+            CompletenessGridInspectionResult mismatched = tool.ExecuteMaskAware(
+                2,
+                2,
+                new[] { 10.0, 10.0, 11.0, 11.0 },
+                new HeightGridRegion(0, 0, 1, 1),
+                new HeightGridRegion(0, 0, 2, 2),
+                new HeightGridMask(1, 2, new[] { true, true }),
+                profile,
+                policy);
+
+            Require(!empty.Success
+                    && empty.Cells.Count == 0
+                    && !mismatched.Success
+                    && mismatched.Cells.Count == 0,
+                "Empty and dimension-mismatched Completeness masks must fail closed.");
         }
 
         private static void TestReferenceGridPointReconstruction()

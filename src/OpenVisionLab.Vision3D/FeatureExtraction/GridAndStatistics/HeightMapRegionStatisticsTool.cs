@@ -73,10 +73,63 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             HeightGridRegion region,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            return ExecuteCore(
+                rowCount,
+                columnCount,
+                values,
+                region,
+                null,
+                false,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Computes deterministic finite-value statistics for the foreground
+        /// cells of an exact source-grid mask within one rectangular region.
+        /// The mask must match the source-grid dimensions.
+        /// </summary>
+        public HeightMapRegionStatisticsResult ExecuteMasked(
+            int rowCount,
+            int columnCount,
+            IReadOnlyList<double> values,
+            HeightGridRegion region,
+            HeightGridMask mask,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return ExecuteCore(
+                rowCount,
+                columnCount,
+                values,
+                region,
+                mask,
+                true,
+                cancellationToken);
+        }
+
+        private static HeightMapRegionStatisticsResult ExecuteCore(
+            int rowCount,
+            int columnCount,
+            IReadOnlyList<double> values,
+            HeightGridRegion region,
+            HeightGridMask mask,
+            bool requireMask,
+            CancellationToken cancellationToken)
+        {
             try
             {
                 Validate(rowCount, columnCount, values, region);
+                if (requireMask && mask == null)
+                {
+                    throw new ArgumentNullException(nameof(mask));
+                }
+
+                if (mask != null)
+                {
+                    ValidateMask(rowCount, columnCount, mask);
+                }
+
                 int finiteCount = 0;
+                int totalCellCount = 0;
                 double sum = 0.0;
                 double minimum = double.PositiveInfinity;
                 double maximum = double.NegativeInfinity;
@@ -93,6 +146,13 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                         }
+
+                        if (mask != null && !mask.Foreground[index])
+                        {
+                            continue;
+                        }
+
+                        totalCellCount++;
 
                         double value = values[index];
                         if (!IsFinite(value))
@@ -117,7 +177,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 return new HeightMapRegionStatisticsResult(
                     true,
                     "Completed deterministic height-map region statistics.",
-                    checked(region.RowCount * region.ColumnCount),
+                    totalCellCount,
                     finiteCount,
                     sum,
                     finiteCount == 0 ? double.NaN : minimum,
@@ -136,6 +196,32 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     0.0,
                     double.NaN,
                     double.NaN);
+            }
+        }
+
+        internal static void ValidateMask(
+            int rowCount,
+            int columnCount,
+            HeightGridMask mask)
+        {
+            if (mask == null)
+            {
+                throw new ArgumentNullException(nameof(mask));
+            }
+
+            if (mask.RowCount != rowCount
+                || mask.ColumnCount != columnCount)
+            {
+                throw new InvalidDataException(
+                    "Height-map mask dimensions must match the source grid.");
+            }
+
+            int expectedCount = checked(rowCount * columnCount);
+            if (mask.Foreground == null
+                || mask.Foreground.Count != expectedCount)
+            {
+                throw new InvalidDataException(
+                    "Height-map mask values must match the source-grid dimensions.");
             }
         }
 

@@ -123,9 +123,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     }
 
     /// <summary>
-    /// Computes a deterministic rectangular completeness grid from explicit
-    /// reference and inspection regions. The result contains numerical and
-    /// typed decision evidence but no Studio identity, recipe, or UI state.
+    /// Computes a deterministic completeness grid from explicit reference and
+    /// inspection regions, with an optional exact inspection mask. The result
+    /// contains numerical and typed decision evidence but no Studio identity,
+    /// recipe, or UI state.
     /// </summary>
     public sealed class CompletenessGridInspectionTool
     {
@@ -142,6 +143,60 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             CompletenessPresencePolicy policy = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            return ExecuteCore(
+                rowCount,
+                columnCount,
+                values,
+                referenceRegion,
+                inspectionRegion,
+                null,
+                false,
+                profile,
+                policy,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Computes Completeness using the exact foreground cells of an
+        /// inspection mask. The reference region remains rectangular; only
+        /// inspection-cell statistics are restricted by the mask.
+        /// </summary>
+        public CompletenessGridInspectionResult ExecuteMaskAware(
+            int rowCount,
+            int columnCount,
+            IReadOnlyList<double> values,
+            HeightGridRegion referenceRegion,
+            HeightGridRegion inspectionRegion,
+            HeightGridMask inspectionMask,
+            CompletenessGridProfile profile,
+            CompletenessPresencePolicy policy = null,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return ExecuteCore(
+                rowCount,
+                columnCount,
+                values,
+                referenceRegion,
+                inspectionRegion,
+                inspectionMask,
+                true,
+                profile,
+                policy,
+                cancellationToken);
+        }
+
+        private CompletenessGridInspectionResult ExecuteCore(
+            int rowCount,
+            int columnCount,
+            IReadOnlyList<double> values,
+            HeightGridRegion referenceRegion,
+            HeightGridRegion inspectionRegion,
+            HeightGridMask inspectionMask,
+            bool requireMask,
+            CompletenessGridProfile profile,
+            CompletenessPresencePolicy policy,
+            CancellationToken cancellationToken)
+        {
             try
             {
                 Validate(
@@ -150,6 +205,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     values,
                     referenceRegion,
                     inspectionRegion,
+                    inspectionMask,
+                    requireMask,
                     profile,
                     policy);
                 HeightMapRegionStatisticsResult reference =
@@ -191,12 +248,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                             profile.CellHeightRows,
                             profile.CellWidthColumns);
                         HeightMapRegionStatisticsResult statistics =
-                            regionStatisticsTool.Execute(
-                                rowCount,
-                                columnCount,
-                                values,
-                                region,
-                                cancellationToken);
+                            inspectionMask == null
+                                ? regionStatisticsTool.Execute(
+                                    rowCount,
+                                    columnCount,
+                                    values,
+                                    region,
+                                    cancellationToken)
+                                : regionStatisticsTool.ExecuteMasked(
+                                    rowCount,
+                                    columnCount,
+                                    values,
+                                    region,
+                                    inspectionMask,
+                                    cancellationToken);
                         if (!statistics.Success)
                         {
                             throw new InvalidDataException(statistics.Message);
@@ -293,6 +358,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             IReadOnlyList<double> values,
             HeightGridRegion referenceRegion,
             HeightGridRegion inspectionRegion,
+            HeightGridMask inspectionMask,
+            bool requireMask,
             CompletenessGridProfile profile,
             CompletenessPresencePolicy policy)
         {
@@ -306,6 +373,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 columnCount,
                 values,
                 inspectionRegion);
+            if (requireMask && inspectionMask == null)
+            {
+                throw new ArgumentNullException(nameof(inspectionMask));
+            }
+
+            if (inspectionMask != null)
+            {
+                ValidateInspectionMask(
+                    rowCount,
+                    columnCount,
+                    inspectionRegion,
+                    inspectionMask);
+            }
+
             if (profile == null)
             {
                 throw new ArgumentNullException(nameof(profile));
@@ -354,6 +435,48 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             {
                 throw new InvalidDataException(
                     "Completeness Grid presence policy requires finite ordered bounds and coverage within [0, 1].");
+            }
+        }
+
+        private static void ValidateInspectionMask(
+            int rowCount,
+            int columnCount,
+            HeightGridRegion inspectionRegion,
+            HeightGridMask inspectionMask)
+        {
+            HeightMapRegionStatisticsTool.ValidateMask(
+                rowCount,
+                columnCount,
+                inspectionMask);
+
+            int selectedCellCount = 0;
+            for (int row = 0; row < rowCount; row++)
+            {
+                for (int column = 0; column < columnCount; column++)
+                {
+                    int index = checked(row * columnCount + column);
+                    if (!inspectionMask.Foreground[index])
+                    {
+                        continue;
+                    }
+
+                    if (row < inspectionRegion.Row
+                        || row >= inspectionRegion.Row + inspectionRegion.RowCount
+                        || column < inspectionRegion.Column
+                        || column >= inspectionRegion.Column + inspectionRegion.ColumnCount)
+                    {
+                        throw new InvalidDataException(
+                            "Completeness Grid inspection mask contains a selected cell outside the authored Inspection Grid ROI.");
+                    }
+
+                    selectedCellCount++;
+                }
+            }
+
+            if (selectedCellCount == 0)
+            {
+                throw new InvalidDataException(
+                    "Completeness Grid inspection mask requires at least one selected cell inside the authored Inspection Grid ROI.");
             }
         }
 

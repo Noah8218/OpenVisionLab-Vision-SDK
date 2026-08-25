@@ -91,7 +91,12 @@ the consuming application.
   region is Present; all-region acceptance remains consuming-application policy.
 - `CompletenessGridInspectionTool` owns reference-region mean, rectangular
   cell placement, finite coverage, reference-relative mean, and typed
-  per-cell/aggregate decisions under an optional inclusive policy.
+  per-cell/aggregate decisions under an optional inclusive policy. Its
+  `ExecuteMaskAware` route accepts an exact source-grid `HeightGridMask` for
+  inspection cells only; the mask must be non-empty, dimension-matched, and
+  contained by the authored Inspection Grid ROI. Empty or incompatible masks
+  fail closed, while the original rectangle-only `Execute` route remains
+  compatible.
 - `ReferenceGridPointReconstructionTool` maps finite grid cells to both
   declared-frame XYZ and reference-axis U/H/V coordinates under an explicit
   supported-coordinate range.
