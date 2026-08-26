@@ -65,6 +65,9 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Local-median outlier filter excludes the center and preserves the strict threshold", TestDeterministicLocalMedianOutlierFilter);
             yield return new SmokeCase("Level Surface detrends unique reference cells and preserves region evidence", TestLevelSurfaceDetrend);
             yield return new SmokeCase("Level Surface fails closed on insufficient unique reference support", TestLevelSurfaceInsufficientSupport);
+            yield return new SmokeCase("Level Frame constructs a deterministic right-handed orthonormal basis", TestLevelFrameBasis);
+            yield return new SmokeCase("Level Frame maps fitted-plane samples to zero signed height", TestLevelFramePlaneMapping);
+            yield return new SmokeCase("Level Frame rejects non-finite input and honors cancellation", TestLevelFrameGuards);
         }
 
         private static void TestHeightMapLegacyUnitCompatibility()
@@ -1026,6 +1029,79 @@ namespace OpenVisionLab.Inspection.Smoke
                     "unique finite reference samples",
                     StringComparison.OrdinalIgnoreCase) >= 0,
                 "Level Surface must fail closed when unique finite support is insufficient.");
+        }
+
+        private static void TestLevelFrameBasis()
+        {
+            LevelFrameResult result = new LevelFrameTool().Execute(
+                new LevelFramePlane(0.0, 0.0, 12.5));
+
+            Require(result.Success && result.SourceToFrameValues.Count == 12,
+                "Level Frame must return one complete source-to-frame 3x4 matrix.");
+            RequireApproximately(result.Origin.X, 0.0, 0.0, "Level Frame origin X must use the grid origin.");
+            RequireApproximately(result.Origin.Y, 12.5, 0.0, "Level Frame origin must lie on the fitted plane.");
+            RequireApproximately(result.Origin.Z, 0.0, 0.0, "Level Frame origin Z must use the grid origin.");
+            RequireApproximately(result.UAxis.X, 1.0, 1e-12, "Level Frame U must deterministically project +X.");
+            RequireApproximately(result.UAxis.Y, 0.0, 1e-12, "Level Frame U must lie on the fitted plane.");
+            RequireApproximately(result.UAxis.Z, 0.0, 1e-12, "Level Frame U must lie on the fitted plane.");
+            RequireApproximately(result.VAxis.Z, -1.0, 1e-12, "Level Frame V must preserve a right-handed U/V/H convention.");
+            RequireApproximately(result.HAxis.Y, 1.0, 1e-12, "Level Frame H must point toward positive Y.");
+            RequireApproximately(result.LinearDeterminant, 1.0, 1e-12, "Level Frame basis must have determinant +1.");
+        }
+
+        private static void TestLevelFramePlaneMapping()
+        {
+            const double slopeX = 0.5;
+            const double slopeZ = -0.25;
+            const double intercept = 40.0;
+            LevelFrameResult result = new LevelFrameTool().Execute(
+                new LevelFramePlane(slopeX, slopeZ, intercept));
+
+            Require(result.Success, "A finite fitted plane must produce a Level Frame.");
+            double[] points = { 0.0, 40.0, 0.0, 3.0, 41.0, 2.0, -4.0, 36.5, 6.0 };
+            for (int index = 0; index < points.Length; index += 3)
+            {
+                double x = points[index];
+                double y = points[index + 1];
+                double z = points[index + 2];
+                double h = (result.HAxis.X * x)
+                    + (result.HAxis.Y * y)
+                    + (result.HAxis.Z * z)
+                    - ((result.HAxis.X * result.Origin.X)
+                        + (result.HAxis.Y * result.Origin.Y)
+                        + (result.HAxis.Z * result.Origin.Z));
+                RequireApproximately(h, 0.0, 1e-12,
+                    "A point on the fitted plane must map to zero Level Frame H.");
+            }
+        }
+
+        private static void TestLevelFrameGuards()
+        {
+            LevelFrameResult invalid = new LevelFrameTool().Execute(
+                new LevelFramePlane(double.NaN, 0.0, 1.0));
+            Require(!invalid.Success
+                && invalid.Message.IndexOf("finite", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Level Frame must fail closed for non-finite plane parameters.");
+
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                new LevelFrameTool().Execute(
+                    new LevelFramePlane(0.1, -0.2, 3.0),
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(canceled, "Level Frame must honor cancellation before constructing output.");
         }
 
     }
