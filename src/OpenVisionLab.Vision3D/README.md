@@ -83,6 +83,33 @@ The output keeps the source frame, units, pitches, source ID, finite values, and
 missing cells. Its origin advances to the selected source row and column. The
 tool does not own file I/O, recipe identity, Preview/Publish, or acceptance policy.
 
+## Height-map domain mask quick start
+
+```csharp
+HeightGridMask domain = new HeightGridMask(
+    rowCount: source.Rows,
+    columnCount: source.Columns,
+    foreground: foregroundCells);
+HeightMapDomainMaskResult reduced = new HeightMapDomainMaskTool().Execute(
+    source,
+    domain);
+
+if (!reduced.Success)
+{
+    throw new InvalidOperationException(reduced.Message);
+}
+
+HeightMap3D output = reduced.Output;
+```
+
+`HeightMapDomainMaskTool` keeps the exact source value at every foreground
+cell and sets background cells to `NaN`. Existing foreground `NaN` values stay
+missing; the tool never interpolates or fills samples. The output preserves the
+source grid, pitches, units, frame, and source ID. A null, empty, dimensionally
+mismatched, or incorrectly sized mask returns a controlled failure without an
+output. Source identity, recipe lifecycle, file I/O, and acceptance policy
+remain consumer responsibilities.
+
 ## Surface-match pose quick start
 
 ```csharp

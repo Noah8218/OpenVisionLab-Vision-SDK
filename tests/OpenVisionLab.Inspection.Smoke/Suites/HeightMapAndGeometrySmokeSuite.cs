@@ -26,6 +26,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height map rejects infinity and non-finite coordinate extents", TestHeightMapRejectsInvalidValues);
             yield return new SmokeCase("Height-map crop preserves values, missing cells, and source-frame origin", TestHeightMapCrop);
             yield return new SmokeCase("Height-map crop rejects invalid regions and honors cancellation", TestHeightMapCropGuards);
+            yield return new SmokeCase("Height-map domain mask preserves foreground values and reduces background to missing", TestHeightMapDomainMask);
+            yield return new SmokeCase("Height-map domain mask rejects invalid masks and honors cancellation", TestHeightMapDomainMaskGuards);
             yield return new SmokeCase("Thickness pass preserves declared metadata", TestThicknessPass);
             yield return new SmokeCase("Thickness rejects a unit contract mismatch", TestThicknessUnitContractMismatch);
             yield return new SmokeCase("Thickness rejects a frame contract mismatch", TestThicknessFrameContractMismatch);
@@ -151,6 +153,118 @@ namespace OpenVisionLab.Inspection.Smoke
                 cancellation.Dispose();
             }
             Require(canceled, "A canceled crop must propagate OperationCanceledException.");
+        }
+
+        private static void TestHeightMapDomainMask()
+        {
+            HeightMap3D source = new HeightMap3D(
+                2,
+                3,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[] { 1.0, double.NaN, 3.0, 4.0, 5.0, 6.0 },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "source.domain");
+            double[] sourceBefore = source.CopyValues();
+            HeightGridMask mask = new HeightGridMask(
+                2,
+                3,
+                new[] { true, false, true, false, false, true });
+
+            HeightMapDomainMaskResult result = new HeightMapDomainMaskTool().Execute(source, mask);
+
+            Require(result.Success && result.Output != null,
+                "A valid domain mask must produce a typed output.");
+            Require(result.ForegroundCellCount == 3
+                && result.PreservedValidSampleCount == 3
+                && result.PreservedMissingSampleCount == 0
+                && result.ReducedToMissingCellCount == 2,
+                "The domain mask did not report the exact foreground and reduced-missing counts.");
+            Require(result.Output.Rows == source.Rows
+                && result.Output.Columns == source.Columns
+                && result.Output.OriginX == source.OriginX
+                && result.Output.OriginY == source.OriginY
+                && result.Output.ColumnPitch == source.ColumnPitch
+                && result.Output.RowPitch == source.RowPitch
+                && result.Output.PlanarUnit == source.PlanarUnit
+                && result.Output.HeightUnit == source.HeightUnit
+                && result.Output.FrameId == source.FrameId
+                && result.Output.SourceId == source.SourceId,
+                "The domain mask did not preserve same-grid geometry and metadata.");
+            double[] expected = { 1.0, double.NaN, 3.0, double.NaN, double.NaN, 6.0 };
+            double[] actual = result.Output.CopyValues();
+            for (int index = 0; index < expected.Length; index++)
+            {
+                Require(double.IsNaN(expected[index])
+                        ? double.IsNaN(actual[index])
+                        : actual[index] == expected[index],
+                    "The domain mask did not preserve foreground values and reduce background cells to NaN.");
+            }
+
+            double[] unchanged = source.CopyValues();
+            for (int index = 0; index < sourceBefore.Length; index++)
+            {
+                Require(double.IsNaN(sourceBefore[index])
+                        ? double.IsNaN(unchanged[index])
+                        : sourceBefore[index] == unchanged[index],
+                    "The domain mask must not mutate source values.");
+            }
+        }
+
+        private static void TestHeightMapDomainMaskGuards()
+        {
+            HeightMap3D source = new HeightMap3D(
+                2,
+                2,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                new[] { 1.0, 2.0, 3.0, 4.0 },
+                "grid-index",
+                "raw-height",
+                "fixture",
+                "source");
+            HeightMapDomainMaskTool tool = new HeightMapDomainMaskTool();
+
+            HeightMapDomainMaskResult wrongDimensions = tool.Execute(
+                source,
+                new HeightGridMask(1, 2, new[] { true, true }));
+            HeightMapDomainMaskResult wrongCount = tool.Execute(
+                source,
+                new HeightGridMask(2, 2, new[] { true, false }));
+            HeightMapDomainMaskResult empty = tool.Execute(
+                source,
+                new HeightGridMask(2, 2, new[] { false, false, false, false }));
+            Require(!wrongDimensions.Success && wrongDimensions.Output == null
+                && !wrongCount.Success && wrongCount.Output == null
+                && !empty.Success && empty.Output == null,
+                "Invalid, mismatched, and empty domain masks must fail closed without output.");
+
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                tool.Execute(
+                    source,
+                    new HeightGridMask(2, 2, new[] { true, false, false, true }),
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(canceled, "A canceled domain-mask operation must propagate OperationCanceledException.");
         }
 
         private static void TestHeightMapArrayFactory()
