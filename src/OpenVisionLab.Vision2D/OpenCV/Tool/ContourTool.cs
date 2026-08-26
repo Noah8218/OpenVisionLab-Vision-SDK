@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using OpenVisionLab.Core;
@@ -16,6 +17,9 @@ namespace OpenVisionLab.Vision2D.Tool
         public IOpenCVPropertyContour property;
 
         public List<ContourResult> results = new List<ContourResult>();
+
+        /// <summary>All source-coordinate candidates produced by the last execution, including rejected candidates.</summary>
+        public List<VisionObjectCandidate> candidates = new List<VisionObjectCandidate>();
         
         public ContourTool() { }
 
@@ -99,6 +103,7 @@ namespace OpenVisionLab.Vision2D.Tool
             int MaxArea = property.MAX_AREA;
 
             results.Clear();
+            candidates.Clear();
 
             if (OpenCvHelper.IsImageEmpty(imageSource))
             {
@@ -127,18 +132,35 @@ namespace OpenVisionLab.Vision2D.Tool
 
             ConcurrentBag<ContourResult> filteredContours = new ConcurrentBag<ContourResult>();
             ConcurrentBag<OpenCvSharp.Point[]> drawContours = new ConcurrentBag<OpenCvSharp.Point[]>();
+            ConcurrentBag<VisionObjectCandidate> detectedCandidates = new ConcurrentBag<VisionObjectCandidate>();
+            VisionObjectCandidateLimits limits = ResolveCandidateLimits();
 
             Parallel.ForEach(Contours, (item, state, index) =>
             {
-                if (TryCreateContourResult(item, index, MinArea, MaxArea, true, out ContourResult result, out OpenCvSharp.Point[] drawContour))
+                if (TryCreateContourCandidate(
+                    item,
+                    index,
+                    0,
+                    MinArea,
+                    MaxArea,
+                    true,
+                    limits,
+                    out VisionObjectCandidate candidate,
+                    out ContourResult result,
+                    out OpenCvSharp.Point[] drawContour))
                 {
-                    filteredContours.Add(result);
-                    drawContours.Add(drawContour);
+                    detectedCandidates.Add(candidate);
+                    if (result != null)
+                    {
+                        filteredContours.Add(result);
+                        drawContours.Add(drawContour);
+                    }
                 }
             });
 
             if (property.USE_DRAW_IMAGE) { Cv2.DrawContours(imageResult, drawContours.ToArray(), -1, new Scalar(property.DrawColor.B, property.DrawColor.G, property.DrawColor.R, property.DrawColor.A), property.DrawThickness, LineTypes.Link4); }
             results = ReindexContours(filteredContours.OrderBy(c => c.Index)).ToList();
+            candidates = OrderCandidates(detectedCandidates).ToList();
 
         
             return true;
@@ -152,6 +174,7 @@ namespace OpenVisionLab.Vision2D.Tool
             int MaxArea = property.MAX_AREA;
 
             results.Clear();
+            candidates.Clear();
             List<OpenCvSharp.Point[]> drawContoursList = new List<OpenCvSharp.Point[]>();
 
             if (OpenCvHelper.IsImageEmpty(imageSource))
@@ -183,22 +206,40 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 ConcurrentBag<ContourResult> filteredContours = new ConcurrentBag<ContourResult>();
                 ConcurrentBag<OpenCvSharp.Point[]> drawContours = new ConcurrentBag<OpenCvSharp.Point[]>();
+                ConcurrentBag<VisionObjectCandidate> detectedCandidates = new ConcurrentBag<VisionObjectCandidate>();
+                VisionObjectCandidateLimits limits = ResolveCandidateLimits();
 
                 Parallel.ForEach(Contours, (item, state, index) =>
                 {
-                    if (TryCreateContourResult(item, index, MinArea, MaxArea, false, out ContourResult result, out OpenCvSharp.Point[] drawContour))
+                    if (TryCreateContourCandidate(
+                        item,
+                        index,
+                        i,
+                        MinArea,
+                        MaxArea,
+                        false,
+                        limits,
+                        out VisionObjectCandidate candidate,
+                        out ContourResult result,
+                        out OpenCvSharp.Point[] drawContour))
                     {
-                        filteredContours.Add(result);
-                        drawContours.Add(drawContour);
+                        detectedCandidates.Add(candidate);
+                        if (result != null)
+                        {
+                            filteredContours.Add(result);
+                            drawContours.Add(drawContour);
+                        }
                     }
                 });
 
                 results.AddRange(filteredContours.OrderBy(c => c.Index));
                 drawContoursList.AddRange(drawContours);
+                candidates.AddRange(detectedCandidates);
             }
 
             if (property.USE_DRAW_IMAGE) { Cv2.DrawContours(imageResult, drawContoursList.ToArray(), -1, new Scalar(property.DrawColor.B, property.DrawColor.G, property.DrawColor.R, property.DrawColor.A), property.DrawThickness, LineTypes.Link4); }
             results = ReindexContours(results).ToList();
+            candidates = OrderCandidates(candidates).ToList();
             
         
 
@@ -296,23 +337,28 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private bool TryCreateContourResult(
+        private bool TryCreateContourCandidate(
             OpenCvSharp.Point[] contour,
             long sourceIndex,
+            int regionIndex,
             int minArea,
             int maxArea,
             bool useDrawContourAsResult,
+            VisionObjectCandidateLimits limits,
+            out VisionObjectCandidate candidate,
             out ContourResult result,
             out OpenCvSharp.Point[] drawContour)
         {
+            candidate = null;
             result = null;
             drawContour = null;
 
-            double contourArea = Cv2.ContourArea(contour, false);
-            if (contourArea < minArea || contourArea > maxArea)
+            if (contour == null || contour.Length == 0)
             {
                 return false;
             }
+
+            double contourArea = Cv2.ContourArea(contour, false);
 
             OpenCvSharp.Point[] contourForCalc;
             if (property.USE_APPROXPOLYDP)
@@ -335,6 +381,43 @@ namespace OpenVisionLab.Vision2D.Tool
                 bounds.Y + bounds.Height / 2);
             OpenCvSharp.Point[] resultContour = useDrawContourAsResult ? drawContour : contour;
 
+            VisionObjectCandidateDecision decision = VisionObjectCandidateEvaluator.Evaluate(
+                contourArea,
+                bounds.Width,
+                bounds.Height,
+                limits);
+            candidate = new VisionObjectCandidate
+            {
+                CandidateId = VisionObjectCandidate.CreateCandidateId(
+                    VisionObjectCandidateGenerationStage.ContourExtraction,
+                    regionIndex,
+                    (int)sourceIndex),
+                RegionIndex = regionIndex,
+                NativeIndex = (int)sourceIndex,
+                Area = contourArea,
+                Center = new Point2d(center.X, center.Y),
+                Bounding = new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height),
+                Angle = Math.Round(rotatedRect.Angle, 1),
+                Accepted = decision.Accepted,
+                RejectReasonCode = decision.Code,
+                RejectReasonText = decision.Text,
+                AppliedLimits = limits,
+                Drawing = CreateContourCandidateDrawing(
+                    resultContour,
+                    bounds,
+                    center,
+                    Math.Round(rotatedRect.Angle, 1)),
+                GenerationStage = VisionObjectCandidateGenerationStage.ContourExtraction,
+                CoordinateFrame = VisionObjectCandidateCoordinateFrame.SourceImage
+            };
+
+            // Keep the legacy results list area-filtered. The application applies
+            // its existing dimension filter after consuming candidates.
+            if (contourArea < minArea || contourArea > maxArea)
+            {
+                return true;
+            }
+
             result = new ContourResult(
                 (int)sourceIndex,
                 contourArea,
@@ -343,6 +426,50 @@ namespace OpenVisionLab.Vision2D.Tool
                 resultContour,
                 Math.Round(rotatedRect.Angle, 1));
             return true;
+        }
+
+        private VisionObjectCandidateLimits ResolveCandidateLimits()
+        {
+            IVisionObjectFilterProperty filter = property as IVisionObjectFilterProperty;
+            return new VisionObjectCandidateLimits(
+                property.MIN_AREA,
+                property.MAX_AREA,
+                filter?.MIN_WIDTH ?? 0,
+                filter?.MAX_WIDTH ?? int.MaxValue,
+                filter?.MIN_HEIGHT ?? 0,
+                filter?.MAX_HEIGHT ?? int.MaxValue);
+        }
+
+        private static VisionToolOverlay CreateContourCandidateDrawing(
+            OpenCvSharp.Point[] points,
+            OpenCvSharp.Rect bounds,
+            OpenCvSharp.Point center,
+            double angle)
+        {
+            VisionToolOverlay drawing = new VisionToolOverlay
+            {
+                Kind = VisionToolOverlayKind.Points,
+                Label = "Contour candidate",
+                Bounds = new RectangleF(bounds.X, bounds.Y, bounds.Width, bounds.Height),
+                Center = new PointF(center.X, center.Y),
+                Angle = angle
+            };
+
+            foreach (OpenCvSharp.Point point in points ?? Array.Empty<OpenCvSharp.Point>())
+            {
+                drawing.Points.Add(new PointF(point.X, point.Y));
+            }
+
+            return drawing;
+        }
+
+        private static IEnumerable<VisionObjectCandidate> OrderCandidates(
+            IEnumerable<VisionObjectCandidate> source)
+        {
+            return (source ?? Enumerable.Empty<VisionObjectCandidate>())
+                .Where(candidate => candidate != null)
+                .OrderBy(candidate => candidate.RegionIndex)
+                .ThenBy(candidate => candidate.NativeIndex);
         }
 
         private Rect NormalizeContourRoi(Rect roi)

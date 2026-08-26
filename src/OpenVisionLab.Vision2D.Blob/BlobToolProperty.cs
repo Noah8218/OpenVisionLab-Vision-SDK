@@ -7,7 +7,7 @@ namespace OpenVisionLab.Vision2D.Blob
     /// <summary>
     /// Provides a ready-to-use BlobTool configuration while preserving the customizable IOpenCVPropertyBlob contract.
     /// </summary>
-    public sealed class BlobToolProperty : IOpenCVPropertyBlob
+    public sealed class BlobToolProperty : IOpenCVPropertyBlob, IVisionObjectFilterProperty
     {
         public string NAME { get; set; } = "Blob";
         public double PIXELPERMM { get; set; } = 1d;
@@ -28,5 +28,9 @@ namespace OpenVisionLab.Vision2D.Blob
         public List<Rect> CvMASKS { get; set; } = new List<Rect>();
         public int MIN_AREA { get; set; } = 20;
         public int MAX_AREA { get; set; } = 100000;
+        public int MIN_WIDTH { get; set; } = 0;
+        public int MAX_WIDTH { get; set; } = 1000000;
+        public int MIN_HEIGHT { get; set; } = 0;
+        public int MAX_HEIGHT { get; set; } = 1000000;
     }
 }

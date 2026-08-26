@@ -2,6 +2,7 @@ using OpenCvSharp;
 using OpenVisionLab.Inspection;
 using OpenVisionLab.Vision2D.Blob;
 using OpenVisionLab.Vision2D.Property;
+using OpenVisionLab.Vision2D.Result;
 using OpenVisionLab.Vision2D.Tool;
 using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.Vision3D.Geometry;
@@ -201,7 +202,13 @@ blob.SetProperty(new BlobToolProperty
     MAX_AREA = 64
 });
 using VisionToolResult blobResult = blob.Execute(blobImage);
-if (!blobResult.Success || blob.results.Count != 1)
+if (!blobResult.Success
+    || blob.results.Count != 1
+    || blob.candidates.Count != 1
+    || !blob.candidates[0].Accepted
+    || blob.candidates[0].GenerationStage != VisionObjectCandidateGenerationStage.BlobLabeling
+    || blob.candidates[0].CoordinateFrame != VisionObjectCandidateCoordinateFrame.SourceImage
+    || blob.candidates[0].Drawing == null)
 {
     throw new InvalidOperationException(
         $"Blob package example failed: {blobResult.ErrorName}: {blobResult.Message}");
@@ -214,7 +221,13 @@ contour.SetProperty(new ContourToolProperty
     MAX_AREA = 64
 });
 using VisionToolResult contourResult = contour.Execute(blobImage);
-if (!contourResult.Success || contour.results.Count != 1)
+if (!contourResult.Success
+    || contour.results.Count != 1
+    || contour.candidates.Count != 1
+    || !contour.candidates[0].Accepted
+    || contour.candidates[0].GenerationStage != VisionObjectCandidateGenerationStage.ContourExtraction
+    || contour.candidates[0].CoordinateFrame != VisionObjectCandidateCoordinateFrame.SourceImage
+    || contour.candidates[0].Drawing == null)
 {
     throw new InvalidOperationException(
         $"Contour package example failed: {contourResult.ErrorName}: {contourResult.Message}");

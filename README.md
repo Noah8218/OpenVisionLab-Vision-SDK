@@ -175,6 +175,11 @@ The basic examples assume execution from the repository root and use `docs/sampl
 - Matching responsibility boundaries and production-baseline plan: `docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md`
 - Versioned synthetic accuracy/performance baseline and paired protocol v2: `docs/OPENVISIONLAB_VISION_SDK_IDENTITY_AND_V3_MIGRATION_PLAN_20260805.md` sections 27-28
 
+## 2D object candidate evidence
+
+Blob and Contour expose the additive, single-pass candidate contract described
+in [`docs/OBJECT_CANDIDATE_CONTRACT.md`](docs/OBJECT_CANDIDATE_CONTRACT.md).
+
 ## Build / Smoke Check
 
 Build check:
