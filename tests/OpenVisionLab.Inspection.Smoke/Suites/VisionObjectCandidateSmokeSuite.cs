@@ -16,6 +16,8 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             yield return new SmokeCase("Blob publishes stable one-pass accepted and rejected candidates", TestBlobCandidates);
             yield return new SmokeCase("Contour publishes stable one-pass accepted and rejected candidates", TestContourCandidates);
+            yield return new SmokeCase("Blob preserves masked candidates and multi-ROI source coordinates", TestBlobMaskAndMultiRoiCandidates);
+            yield return new SmokeCase("Contour preserves multi-ROI candidate identity and source coordinates", TestContourMultiRoiCandidates);
         }
 
         private static void TestBlobCandidates()
@@ -92,6 +94,110 @@ namespace OpenVisionLab.Inspection.Smoke
                         "Contour candidate IDs must remain stable across repeated execution.");
                 }
             }
+        }
+
+        private static void TestBlobMaskAndMultiRoiCandidates()
+        {
+            using (Mat source = CreateCandidateSource())
+            using (BlobTool tool = new BlobTool())
+            {
+                tool.SetProperty(new BlobToolProperty
+                {
+                    USE_THRESHOLD = true,
+                    THRESHOLD = 100,
+                    MIN_AREA = 20,
+                    MAX_AREA = 10000,
+                    MIN_WIDTH = 0,
+                    MAX_WIDTH = 1000,
+                    MIN_HEIGHT = 0,
+                    MAX_HEIGHT = 1000,
+                    CvMASKS = new List<Rect> { new Rect(80, 20, 52, 24) }
+                });
+
+                using (VisionToolResult maskedRun = tool.Execute(source))
+                {
+                    Require(maskedRun.Success, "Blob mask fixture must execute successfully with unmasked candidates.");
+                    Require(tool.candidates.Count == 5, "Blob mask fixture must retain the masked candidate row.");
+                    Require(tool.candidates.Count(candidate => candidate.RejectReasonCode == VisionObjectCandidateRejectReasonCode.Masked) == 1,
+                        "Blob mask fixture must expose exactly one Masked candidate.");
+                    Require(tool.results.Count == 4,
+                        "Blob legacy results must exclude the masked candidate while candidates retain it.");
+                    VisionObjectCandidate masked = tool.candidates.Single(candidate =>
+                        candidate.RejectReasonCode == VisionObjectCandidateRejectReasonCode.Masked);
+                    Require(masked.Bounding.X == 80 && masked.Bounding.Width == 52
+                        && masked.Drawing != null
+                        && masked.Drawing.Kind == VisionToolOverlayKind.Rectangle,
+                        "Blob masked candidate must retain source-coordinate rectangle drawing.");
+                }
+
+                tool.SetProperty(new BlobToolProperty
+                {
+                    USE_THRESHOLD = true,
+                    THRESHOLD = 100,
+                    MIN_AREA = 20,
+                    MAX_AREA = 10000,
+                    USE_MULTI_ROI = true,
+                    CvROIS = new List<Rect>
+                    {
+                        new Rect(0, 0, 180, 140),
+                        new Rect(180, 0, 180, 140)
+                    }
+                });
+
+                using (VisionToolResult multiRun = tool.Execute(source))
+                {
+                    Require(multiRun.Success, "Blob multi-ROI fixture must execute successfully.");
+                    AssertMultiRoiCandidates(tool.candidates, VisionObjectCandidateGenerationStage.BlobLabeling);
+                }
+            }
+        }
+
+        private static void TestContourMultiRoiCandidates()
+        {
+            using (Mat source = CreateCandidateSource())
+            using (ContourTool tool = new ContourTool())
+            {
+                tool.SetProperty(new ContourToolProperty
+                {
+                    USE_THRESHOLD = true,
+                    THRESHOLD = 100,
+                    MIN_AREA = 20,
+                    MAX_AREA = 10000,
+                    USE_MULTI_ROI = true,
+                    CvROIS = new List<Rect>
+                    {
+                        new Rect(0, 0, 180, 140),
+                        new Rect(180, 0, 180, 140)
+                    }
+                });
+
+                using (VisionToolResult multiRun = tool.Execute(source))
+                {
+                    Require(multiRun.Success, "Contour multi-ROI fixture must execute successfully.");
+                    AssertMultiRoiCandidates(tool.candidates, VisionObjectCandidateGenerationStage.ContourExtraction);
+                    Require(tool.candidates.All(candidate => candidate.Drawing != null && candidate.Drawing.Points.Count > 0),
+                        "Contour multi-ROI candidates must retain source-coordinate drawing points.");
+                }
+            }
+        }
+
+        private static void AssertMultiRoiCandidates(
+            IReadOnlyList<VisionObjectCandidate> candidates,
+            VisionObjectCandidateGenerationStage stage)
+        {
+            Require(candidates != null && candidates.Count == 5,
+                "The multi-ROI fixture must publish five candidates.");
+            Require(candidates.All(candidate => candidate.GenerationStage == stage),
+                "Multi-ROI candidate generation stage changed.");
+            Require(candidates.Select(candidate => candidate.CandidateId).Distinct(StringComparer.Ordinal).Count() == candidates.Count,
+                "Multi-ROI candidate IDs must be unique.");
+            Require(candidates.Select(candidate => candidate.RegionIndex).Distinct().OrderBy(index => index).SequenceEqual(new[] { 0, 1 }),
+                "Multi-ROI candidate region indexes must identify both source ROIs.");
+            Require(candidates.Any(candidate => candidate.RegionIndex == 0 && candidate.Bounding.X < 180)
+                && candidates.Any(candidate => candidate.RegionIndex == 1 && candidate.Bounding.X >= 180),
+                "Multi-ROI candidate geometry must remain in source-image coordinates.");
+            Require(candidates.All(candidate => candidate.CandidateId.StartsWith(stage + ":", StringComparison.Ordinal)),
+                "Multi-ROI candidate IDs must include their generation stage.");
         }
 
         private static void AssertCandidates(
