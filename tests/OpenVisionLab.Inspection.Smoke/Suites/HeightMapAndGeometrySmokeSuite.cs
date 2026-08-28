@@ -30,6 +30,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height-map domain mask rejects invalid masks and honors cancellation", TestHeightMapDomainMaskGuards);
             yield return new SmokeCase("Height-map threshold removal preserves inclusive foreground and missing values", TestHeightMapThresholdBackgroundRemoval);
             yield return new SmokeCase("Height-map threshold removal rejects invalid input and honors cancellation", TestHeightMapThresholdBackgroundRemovalGuards);
+            yield return new SmokeCase("Height-map background subtraction preserves signed deltas and missing pairs", TestHeightMapBackgroundSubtraction);
+            yield return new SmokeCase("Height-map background subtraction rejects misalignment and honors cancellation", TestHeightMapBackgroundSubtractionGuards);
             yield return new SmokeCase("Thickness pass preserves declared metadata", TestThicknessPass);
             yield return new SmokeCase("Thickness rejects a unit contract mismatch", TestThicknessUnitContractMismatch);
             yield return new SmokeCase("Thickness rejects a frame contract mismatch", TestThicknessFrameContractMismatch);
@@ -425,6 +427,187 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(canceled,
                 "A canceled threshold background-removal operation must propagate OperationCanceledException.");
+        }
+
+        private static void TestHeightMapBackgroundSubtraction()
+        {
+            HeightMap3D current = new HeightMap3D(
+                2,
+                3,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[] { 5.0, 4.0, double.NaN, -2.0, 8.0, 3.0 },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "current.background");
+            HeightMap3D background = new HeightMap3D(
+                2,
+                3,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[] { 2.0, 1.0, 4.0, double.NaN, 5.0, 4.0 },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "saved.background");
+            double[] currentBefore = current.CopyValues();
+            double[] backgroundBefore = background.CopyValues();
+
+            HeightMapBackgroundSubtractionResult result =
+                new HeightMapBackgroundSubtractionTool().Execute(
+                    current,
+                    background,
+                    new HeightMapBackgroundSubtractionOptions());
+
+            Require(result.Success && result.Output != null,
+                "A valid aligned pair must produce a typed subtraction output.");
+            Require(result.CurrentValidSampleCount == 5
+                && result.BackgroundValidSampleCount == 5
+                && result.PairedValidSampleCount == 4
+                && result.MissingEitherSampleCount == 2
+                && result.ZeroDeltaSampleCount == 0
+                && result.PositiveDeltaSampleCount == 3
+                && result.NegativeDeltaSampleCount == 1,
+                "Background subtraction did not report exact valid, missing, and signed-delta counts.");
+            Require(result.Output.Rows == current.Rows
+                && result.Output.Columns == current.Columns
+                && result.Output.OriginX == current.OriginX
+                && result.Output.OriginY == current.OriginY
+                && result.Output.ColumnPitch == current.ColumnPitch
+                && result.Output.RowPitch == current.RowPitch
+                && result.Output.PlanarUnit == current.PlanarUnit
+                && result.Output.HeightUnit == current.HeightUnit
+                && result.Output.FrameId == current.FrameId
+                && result.Output.SourceId == current.SourceId,
+                "Background subtraction did not preserve aligned geometry and current-source metadata.");
+            AssertHeightValues(
+                result.Output,
+                new[] { 3.0, 3.0, double.NaN, double.NaN, 3.0, -1.0 },
+                "Background subtraction did not compute current-minus-background deltas or preserve missing pairs.");
+            AssertHeightValues(current.CopyValues(), currentBefore,
+                "Background subtraction must not mutate the current input.");
+            AssertHeightValues(background.CopyValues(), backgroundBefore,
+                "Background subtraction must not mutate the saved-background input.");
+        }
+
+        private static void TestHeightMapBackgroundSubtractionGuards()
+        {
+            HeightMap3D current = new HeightMap3D(
+                2,
+                2,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[] { 2.0, 3.0, 4.0, 5.0 },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "current");
+            HeightMapBackgroundSubtractionTool tool =
+                new HeightMapBackgroundSubtractionTool();
+            HeightMapBackgroundSubtractionResult wrongDimensions = tool.Execute(
+                current,
+                new HeightMap3D(
+                    1,
+                    4,
+                    10.0,
+                    20.0,
+                    0.5,
+                    0.25,
+                    new[] { 1.0, 1.0, 1.0, 1.0 },
+                    "mm",
+                    "raw-height",
+                    "fixture-top",
+                    "background"),
+                new HeightMapBackgroundSubtractionOptions());
+            HeightMapBackgroundSubtractionResult wrongOrigin = tool.Execute(
+                current,
+                new HeightMap3D(
+                    2,
+                    2,
+                    11.0,
+                    20.0,
+                    0.5,
+                    0.25,
+                    new[] { 1.0, 1.0, 1.0, 1.0 },
+                    "mm",
+                    "raw-height",
+                    "fixture-top",
+                    "background"),
+                new HeightMapBackgroundSubtractionOptions());
+            HeightMapBackgroundSubtractionResult wrongUnit = tool.Execute(
+                current,
+                new HeightMap3D(
+                    2,
+                    2,
+                    10.0,
+                    20.0,
+                    0.5,
+                    0.25,
+                    new[] { 1.0, 1.0, 1.0, 1.0 },
+                    "um",
+                    "raw-height",
+                    "fixture-top",
+                    "background"),
+                new HeightMapBackgroundSubtractionOptions());
+            HeightMapBackgroundSubtractionResult invalidMode = tool.Execute(
+                current,
+                current,
+                new HeightMapBackgroundSubtractionOptions
+                {
+                    Mode = (HeightMapBackgroundSubtractionMode)99
+                });
+            HeightMap3D empty = new HeightMap3D(
+                2,
+                2,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[] { double.NaN, double.NaN, double.NaN, double.NaN },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "empty");
+            HeightMapBackgroundSubtractionResult noPairs = tool.Execute(
+                empty,
+                current,
+                new HeightMapBackgroundSubtractionOptions());
+            Require(!wrongDimensions.Success && wrongDimensions.Output == null
+                && !wrongOrigin.Success && wrongOrigin.Output == null
+                && !wrongUnit.Success && wrongUnit.Output == null
+                && !invalidMode.Success && invalidMode.Output == null
+                && !noPairs.Success && noPairs.Output == null,
+                "Mismatched grids, invalid mode, and no finite pairs must fail closed without output.");
+
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                tool.Execute(
+                    current,
+                    current,
+                    new HeightMapBackgroundSubtractionOptions(),
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(canceled,
+                "A canceled background subtraction operation must propagate OperationCanceledException.");
         }
 
         private static void AssertHeightValues(

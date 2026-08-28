@@ -172,6 +172,30 @@ samples outside the predicate become `NaN` in a new same-grid value. The result
 reports input/retained/removed counts; it does not infer a threshold, perform
 morphology or region filtering, mutate the source, or decide product acceptance.
 
+## Height-map saved-background subtraction quick start
+
+```csharp
+HeightMapBackgroundSubtractionResult subtraction =
+    new HeightMapBackgroundSubtractionTool().Execute(
+        current,
+        savedBackground,
+        new HeightMapBackgroundSubtractionOptions());
+
+if (!subtraction.Success)
+{
+    throw new InvalidOperationException(subtraction.Message);
+}
+
+HeightMap3D delta = subtraction.Output;
+```
+
+The explicit policy is `current - savedBackground` on identical dimensions,
+origin, pitches, units, and frame. A cell is missing when either input is
+missing; no missing value is treated as zero. The result reports paired,
+positive, negative, and exact-zero deltas. Alignment, interpolation,
+resampling, tolerance, source identity, C3D encoding, and product acceptance
+remain consumer responsibilities.
+
 ## Surface-match pose quick start
 
 ```csharp
