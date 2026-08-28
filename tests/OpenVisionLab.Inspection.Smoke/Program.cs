@@ -20,6 +20,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 runner.Run(MatchingCharacterizationSmokeSuite.Cases());
                 runner.Run(TriangleMeshDistanceCharacterizationSmokeSuite.Cases());
                 runner.Run(PointCloudBackgroundFilterSmokeSuite.Cases());
+                runner.Run(PointCloudVoxelDownsampleSmokeSuite.Cases());
                 runner.Run(NominalActualMeshComparisonCharacterizationSmokeSuite.Cases());
 
                 Console.WriteLine("OpenVisionLab.Inspection.Smoke | " + runner.Passed + "/" + runner.Total + " passed");

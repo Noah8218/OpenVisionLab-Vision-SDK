@@ -338,4 +338,43 @@ below the authored threshold and preserves the remaining current-point order.
 It performs a deterministic O(N x M) scan; alignment, ICP, interpolation,
 normal/color inference, and calibration remain caller-owned.
 
+## Point-cloud voxel reduction quick start
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+ThreeDPoint[] points =
+{
+    new ThreeDPoint(0.1, 0.1, 0.1),
+    new ThreeDPoint(0.9, 0.2, 0.4),
+    new ThreeDPoint(1.0, 0.0, 0.0)
+};
+
+PointCloudVoxelDownsampleResult reduced =
+    new PointCloudVoxelDownsampleTool().Execute(
+        points,
+        new PointCloudVoxelDownsampleOptions
+        {
+            VoxelEdgeLength = 1.0,
+            OriginX = 0.0,
+            OriginY = 0.0,
+            OriginZ = 0.0
+        });
+
+if (!reduced.Success)
+{
+    throw new InvalidOperationException(reduced.Message);
+}
+
+Console.WriteLine(
+    $"input={reduced.InputPointCount}, output={reduced.OutputPointCount}, " +
+    $"reduced={reduced.ReducedPointCount}");
+```
+
+Voxel indices are `floor((coordinate - origin) / edge)` using the explicit
+finite origin and positive edge. One first-source point represents each
+occupied voxel, and output order follows first source appearance. The tool
+does not infer an origin, average points, interpolate, align, or mutate the
+source sequence; units, frames, identity, and lineage remain caller-owned.
+
 [Complete 3D input and result contract](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/blob/main/docs/three-d-inspection.md)
