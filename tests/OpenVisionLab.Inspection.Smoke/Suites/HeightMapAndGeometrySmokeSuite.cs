@@ -28,6 +28,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height-map crop rejects invalid regions and honors cancellation", TestHeightMapCropGuards);
             yield return new SmokeCase("Height-map domain mask preserves foreground values and reduces background to missing", TestHeightMapDomainMask);
             yield return new SmokeCase("Height-map domain mask rejects invalid masks and honors cancellation", TestHeightMapDomainMaskGuards);
+            yield return new SmokeCase("Height-map threshold removal preserves inclusive foreground and missing values", TestHeightMapThresholdBackgroundRemoval);
+            yield return new SmokeCase("Height-map threshold removal rejects invalid input and honors cancellation", TestHeightMapThresholdBackgroundRemovalGuards);
             yield return new SmokeCase("Thickness pass preserves declared metadata", TestThicknessPass);
             yield return new SmokeCase("Thickness rejects a unit contract mismatch", TestThicknessUnitContractMismatch);
             yield return new SmokeCase("Thickness rejects a frame contract mismatch", TestThicknessFrameContractMismatch);
@@ -268,6 +270,184 @@ namespace OpenVisionLab.Inspection.Smoke
             }
 
             Require(canceled, "A canceled domain-mask operation must propagate OperationCanceledException.");
+        }
+
+        private static void TestHeightMapThresholdBackgroundRemoval()
+        {
+            HeightMap3D source = new HeightMap3D(
+                3,
+                4,
+                10.0,
+                20.0,
+                0.5,
+                0.25,
+                new[]
+                {
+                    double.NaN, 1.0, 3.0, 5.0,
+                    2.0, 4.0, 6.0, double.NaN,
+                    -1.0, 0.0, 7.0, 8.0
+                },
+                "mm",
+                "raw-height",
+                "fixture-top",
+                "source.threshold");
+            double[] sourceBefore = source.CopyValues();
+            HeightMapThresholdBackgroundRemovalTool tool =
+                new HeightMapThresholdBackgroundRemovalTool();
+
+            HeightMapThresholdBackgroundRemovalResult above = tool.Execute(
+                source,
+                new HeightMapThresholdBackgroundRemovalOptions
+                {
+                    Threshold = 3.0,
+                    Mode = HeightThresholdBackgroundRemovalMode.KeepAtOrAboveThreshold
+                });
+            Require(above.Success && above.Output != null,
+                "A valid at-or-above threshold must produce a typed output.");
+            Require(above.InputValidSampleCount == 10
+                && above.InputMissingSampleCount == 2
+                && above.RetainedValidSampleCount == 6
+                && above.RemovedBackgroundSampleCount == 4
+                && above.OutputMissingSampleCount == 6,
+                "The at-or-above threshold did not report exact input, retained, removed, and missing counts.");
+            Require(above.Output.Rows == source.Rows
+                && above.Output.Columns == source.Columns
+                && above.Output.OriginX == source.OriginX
+                && above.Output.OriginY == source.OriginY
+                && above.Output.ColumnPitch == source.ColumnPitch
+                && above.Output.RowPitch == source.RowPitch
+                && above.Output.PlanarUnit == source.PlanarUnit
+                && above.Output.HeightUnit == source.HeightUnit
+                && above.Output.FrameId == source.FrameId
+                && above.Output.SourceId == source.SourceId,
+                "Threshold removal did not preserve same-grid geometry and metadata.");
+            double[] expectedAbove =
+            {
+                double.NaN, double.NaN, 3.0, 5.0,
+                double.NaN, 4.0, 6.0, double.NaN,
+                double.NaN, double.NaN, 7.0, 8.0
+            };
+            AssertHeightValues(above.Output, expectedAbove,
+                "At-or-above threshold removal did not preserve inclusive foreground values.");
+
+            HeightMapThresholdBackgroundRemovalResult below = tool.Execute(
+                source,
+                new HeightMapThresholdBackgroundRemovalOptions
+                {
+                    Threshold = 3.0,
+                    Mode = HeightThresholdBackgroundRemovalMode.KeepAtOrBelowThreshold
+                });
+            Require(below.Success && below.Output != null
+                && below.RetainedValidSampleCount == 5
+                && below.RemovedBackgroundSampleCount == 5,
+                "The at-or-below threshold did not preserve its inclusive boundary and exact counts.");
+            double[] expectedBelow =
+            {
+                double.NaN, 1.0, 3.0, double.NaN,
+                2.0, double.NaN, double.NaN, double.NaN,
+                -1.0, 0.0, double.NaN, double.NaN
+            };
+            AssertHeightValues(below.Output, expectedBelow,
+                "At-or-below threshold removal did not preserve inclusive foreground values.");
+
+            double[] unchanged = source.CopyValues();
+            AssertHeightValues(unchanged, sourceBefore,
+                "Threshold removal must not mutate source values.");
+        }
+
+        private static void TestHeightMapThresholdBackgroundRemovalGuards()
+        {
+            HeightMap3D source = new HeightMap3D(
+                1,
+                2,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                new[] { 1.0, 2.0 },
+                "grid-index",
+                "raw-height",
+                "fixture",
+                "source");
+            HeightMapThresholdBackgroundRemovalTool tool =
+                new HeightMapThresholdBackgroundRemovalTool();
+            HeightMapThresholdBackgroundRemovalResult nonFiniteThreshold = tool.Execute(
+                source,
+                new HeightMapThresholdBackgroundRemovalOptions
+                {
+                    Threshold = double.NaN
+                });
+            HeightMapThresholdBackgroundRemovalResult invalidMode = tool.Execute(
+                source,
+                new HeightMapThresholdBackgroundRemovalOptions
+                {
+                    Threshold = 1.0,
+                    Mode = (HeightThresholdBackgroundRemovalMode)99
+                });
+            HeightMap3D emptySource = new HeightMap3D(
+                1,
+                2,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                new[] { double.NaN, double.NaN },
+                "grid-index",
+                "raw-height",
+                "fixture",
+                "empty");
+            HeightMapThresholdBackgroundRemovalResult noValidSamples = tool.Execute(
+                emptySource,
+                new HeightMapThresholdBackgroundRemovalOptions { Threshold = 1.0 });
+            Require(!nonFiniteThreshold.Success && nonFiniteThreshold.Output == null
+                && !invalidMode.Success && invalidMode.Output == null
+                && !noValidSamples.Success && noValidSamples.Output == null,
+                "Non-finite threshold, invalid mode, and all-missing source must fail closed without output.");
+
+            CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                tool.Execute(
+                    source,
+                    new HeightMapThresholdBackgroundRemovalOptions { Threshold = 1.0 },
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+            finally
+            {
+                cancellation.Dispose();
+            }
+
+            Require(canceled,
+                "A canceled threshold background-removal operation must propagate OperationCanceledException.");
+        }
+
+        private static void AssertHeightValues(
+            HeightMap3D map,
+            IReadOnlyList<double> expected,
+            string message)
+        {
+            AssertHeightValues(map.CopyValues(), expected, message);
+        }
+
+        private static void AssertHeightValues(
+            IReadOnlyList<double> actual,
+            IReadOnlyList<double> expected,
+            string message)
+        {
+            Require(actual.Count == expected.Count, message);
+            for (int index = 0; index < expected.Count; index++)
+            {
+                Require(double.IsNaN(expected[index])
+                        ? double.IsNaN(actual[index])
+                        : actual[index] == expected[index],
+                    message);
+            }
         }
 
         private static void TestHeightMapArrayFactory()

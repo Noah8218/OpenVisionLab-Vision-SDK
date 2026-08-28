@@ -89,6 +89,11 @@ the consuming application.
   optional expected-valid-count guard.
 - `HeightMapRegionStatisticsTool` owns deterministic finite count, coverage,
   sum, mean, and extrema for an explicit row-major rectangular region.
+- `HeightMapThresholdBackgroundRemovalTool` applies an explicit inclusive
+  keep-at-or-above or keep-at-or-below predicate to finite height samples,
+  preserves existing missing cells, and returns a same-grid result plus exact
+  retained/removed counts. It does not infer thresholds, perform morphology,
+  mutate the source, or decide product acceptance.
 - `ConnectedRegionTool` labels an explicit binary height-grid mask in
   deterministic row-major seed order. `ConnectedRegionMetricsTool` computes
   geometry-only cell-footprint metrics, while `ConnectedRegionPresenceTool`
