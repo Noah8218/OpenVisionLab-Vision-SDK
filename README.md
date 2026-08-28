@@ -406,10 +406,19 @@ Height-map inspections return input, ROI, and coverage errors as controlled `Not
 | Area | Primary Types | Role |
 | --- | --- | --- |
 | Height-map inspection | `ThicknessInspectionTool`, `WarpageInspectionTool`, `DatumPlaneRawHeightDeviationInspectionTool` | Measure a scalar map after validating unit, frame, ROI, and missing-sample coverage contracts |
-| Geometry and registration | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `RigidPointPairAlignmentTool`, `FullXyzAffineSolveTool`, `AffinePointCloudApplyTool` | Pure geometry calculation plus deterministic rigid point-pair and affine solve/apply for explicit full-XYZ input |
+| Geometry and registration | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `RigidPointPairAlignmentTool`, `ConstrainedBestFitRigidAlignmentTool`, `FullXyzAffineSolveTool`, `AffinePointCloudApplyTool` | Pure geometry calculation plus deterministic exact-three rigid, bounded all-pair proper-rigid best-fit, and affine solve/apply for explicit full-XYZ input |
 | Regular-grid construction | `ReferenceGridRegridTool` | Nearest-cell regrid on explicit right-handed U/V/H axes, preserving holes and reporting coverage |
 | Feature extraction | `DeterministicMedianFilterTool`, `DeterministicHeightDifferenceEdgeTool`, `DeterministicLineFitTool`, `LeastSquaresHeightFieldPlaneFitTool` | Deterministic filtering, edge detection, and line/plane fitting |
 | Dimensional inspection | `PlaneFlatnessInspectionTool`, `PointPairDimensionsInspectionTool`, `GapFlushInspectionTool`, `VolumeInspectionTool`, `CrossSectionDimensionsInspectionTool` | Independent measurements using caller-prepared points, regions, and planes |
+
+`ConstrainedBestFitRigidAlignmentTool` accepts four to sixty-four ordered
+source/reference full-XYZ pairs and fits one proper rotation plus translation
+using every pair. The route is deliberately constrained: it uses no scale,
+shear, reflection, weighting, or automatic outlier rejection. It rejects
+non-finite, duplicate, over-cap, and collinear correspondence sets, returns
+per-pair residuals plus RMS/maximum diagnostics, and honors cancellation. Unit,
+frame, identity, acceptance, and point-cloud lifecycle policy remain with the
+caller; the tool produces pose evidence and does not move a cloud.
 
 ## Basic Usage Examples
 

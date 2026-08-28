@@ -53,6 +53,12 @@ the consuming application.
   exactly four independent correspondence pairs using scaled partial pivoting.
   It returns matrix, determinant, condition, and residual evidence only; it
   does not move a point cloud or create a height map.
+- `ConstrainedBestFitRigidAlignmentTool` fits one source-to-reference proper
+  rotation plus translation from four to sixty-four ordered full-XYZ pairs.
+  Every pair participates in the deterministic Horn quaternion solve; scale,
+  shear, reflection, weighting, and automatic outlier rejection are excluded.
+  It returns pose, spatial-spread gates, per-pair residuals, and RMS/maximum
+  diagnostics only; it does not move a point cloud or decide acceptance.
 - `LineIntersectionTool` evaluates the closest approach, acute angle, and
   finite-segment support of two normalized full-XYZ line geometries. It does
   not choose lines, attach source/frame identity, or claim a physical corner.
@@ -134,7 +140,7 @@ source identity, units, calibration, recipes, overlays, or UI lifecycle.
 | Area | Public Tools |
 | --- | --- |
 | Height-map inspection | `ThicknessInspectionTool`, `WarpageInspectionTool`, `DatumPlaneRawHeightDeviationInspectionTool` |
-| Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool` |
+| Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `ConstrainedBestFitRigidAlignmentTool`, `RigidPointPairAlignmentTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool` |
 | Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `ConnectedRegionTool`, `ConnectedRegionMetricsTool`, `ConnectedRegionPresenceTool`, `LeastSquaresHeightFieldPlaneFitTool` |
 | Edge and feature selection | `DeterministicHeightDifferenceEdgeTool`, `DeterministicLineFitTool`, `DeterministicModelSurfaceSelectionTool`, `DeterministicModelKeyPointExtractionTool`, `DeterministicModelSurfaceEdgeExtractionTool`, `DeterministicOrganizedSceneSurfaceEdgeExtractionTool` |
 | Surface matching and mesh comparison | `DeterministicSurfaceModelPreparationTool`, `DeterministicPreparedScenePreparationTool`, `DeterministicRigidSurfacePoseSearchTool`, `DeterministicSurfaceCoverageTool`, `DeterministicSurfaceEdgeCoverageTool`, `DeterministicMultipleSurfaceMatchTool`, `TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, `DeclaredMeshNormalQualityTool`, `AcquisitionDirectionOrientationTool` |

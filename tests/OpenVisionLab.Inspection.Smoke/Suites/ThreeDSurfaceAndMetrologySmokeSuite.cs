@@ -45,6 +45,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Rigid-transform diagnostics preserve plausibility measures", TestRigidTransformDiagnostics);
             yield return new SmokeCase("Rigid point-pair alignment recovers a known proper pose", TestRigidPointPairAlignment);
             yield return new SmokeCase("Rigid point-pair alignment rejects degenerate and mismatched triangles", TestRigidPointPairAlignmentInvalid);
+            yield return new SmokeCase("Constrained best-fit rigid alignment recovers a noisy known pose", TestConstrainedBestFitRigidAlignment);
+            yield return new SmokeCase("Constrained best-fit rigid alignment enforces bounded geometry and cancellation gates", TestConstrainedBestFitRigidAlignmentInvalid);
             yield return new SmokeCase("Surface-model preparation preserves even triangle samples", TestDeterministicSurfaceModelPreparation);
             yield return new SmokeCase("Model key-point extraction preserves deterministic spatial coverage", TestDeterministicModelKeyPointExtraction);
             yield return new SmokeCase("Model key-point extraction is independent of input order", TestDeterministicModelKeyPointExtractionOrder);
@@ -1118,6 +1120,121 @@ namespace OpenVisionLab.Inspection.Smoke
             Require(!rejectedMismatch.Success && rejectedMismatch.Message.IndexOf("lengths differ", StringComparison.OrdinalIgnoreCase) >= 0,
                 "Distance-inconsistent rigid point pairs must fail closed.");
             Require(canceled, "Rigid point-pair alignment must honor cancellation before evaluation.");
+        }
+
+        private static void TestConstrainedBestFitRigidAlignment()
+        {
+            var exact = new[]
+            {
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(10.0, -4.0, 2.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(1.0, 0.0, 0.0), new ThreeDPoint(10.0, -3.0, 2.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 2.0, 0.0), new ThreeDPoint(8.0, -4.0, 2.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 0.0, 3.0), new ThreeDPoint(10.0, -4.0, 5.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(2.0, 1.0, 1.0), new ThreeDPoint(9.0, -2.0, 3.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(-1.0, 1.0, 2.0), new ThreeDPoint(9.0, -5.0, 4.0))
+            };
+            var options = new ConstrainedBestFitRigidAlignmentOptions
+            {
+                MaximumCorrespondenceCount = 64,
+                MinimumNormalizedLineSpread = 1e-12,
+                ArithmeticResidualWarning = 1e-6
+            };
+            var first = new ConstrainedBestFitRigidAlignmentTool().Execute(exact, options);
+            var second = new ConstrainedBestFitRigidAlignmentTool().Execute(exact, options);
+            var pose = first.Pose;
+
+            Require(first.Success && second.Success && pose != null, "Exact best-fit fixture must produce a pose.");
+            Require(first.PairCount == 6 && first.UsedAllCorrespondences && first.Residuals.Count == 6,
+                "Best-fit fixture must preserve every ordered correspondence and residual.");
+            RequireApproximately(pose.M11, 0.0, 1e-12, "Unexpected best-fit M11.");
+            RequireApproximately(pose.M12, -1.0, 1e-12, "Unexpected best-fit M12.");
+            RequireApproximately(pose.M21, 1.0, 1e-12, "Unexpected best-fit M21.");
+            RequireApproximately(pose.M22, 0.0, 1e-12, "Unexpected best-fit M22.");
+            RequireApproximately(pose.M33, 1.0, 1e-12, "Unexpected best-fit M33.");
+            RequireApproximately(pose.TranslationX, 10.0, 1e-12, "Unexpected best-fit translation X.");
+            RequireApproximately(pose.TranslationY, -4.0, 1e-12, "Unexpected best-fit translation Y.");
+            RequireApproximately(pose.TranslationZ, 2.0, 1e-12, "Unexpected best-fit translation Z.");
+            Require(first.RmsResidual <= 1e-12 && first.MaximumResidual <= 1e-12,
+                "Exact best-fit fixture must have machine-precision residuals.");
+            Require(second.Pose.M12 == pose.M12
+                && second.Pose.TranslationX == pose.TranslationX
+                && second.RmsResidual == first.RmsResidual,
+                "Repeated best-fit execution must be deterministic.");
+
+            var noisy = exact.Select((pair, index) => index == 4
+                ? new ConstrainedBestFitRigidCorrespondence(
+                    pair.Source,
+                    new ThreeDPoint(pair.Reference.X + 0.02, pair.Reference.Y - 0.01, pair.Reference.Z + 0.03))
+                : pair).ToArray();
+            var noisyResult = new ConstrainedBestFitRigidAlignmentTool().Execute(
+                noisy,
+                new ConstrainedBestFitRigidAlignmentOptions
+                {
+                    MaximumCorrespondenceCount = 64,
+                    MinimumNormalizedLineSpread = 1e-12,
+                    ArithmeticResidualWarning = 0.001
+                });
+            Require(noisyResult.Success
+                && noisyResult.ArithmeticResidualWarningExceeded
+                && noisyResult.RmsResidual > 0.0
+                && noisyResult.MaximumResidual > noisyResult.RmsResidual,
+                "Noisy best-fit fixture must preserve fit diagnostics and warning state.");
+            RequireApproximately(noisyResult.Pose.M12, -1.0, 0.02, "Noisy best-fit rotation drifted beyond the bounded fixture tolerance.");
+        }
+
+        private static void TestConstrainedBestFitRigidAlignmentInvalid()
+        {
+            var collinear = new[]
+            {
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(1.0, 1.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(1.0, 0.0, 0.0), new ThreeDPoint(2.0, 1.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(2.0, 0.0, 0.0), new ThreeDPoint(3.0, 1.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(3.0, 0.0, 0.0), new ThreeDPoint(4.0, 1.0, 1.0))
+            };
+            var valid = new[]
+            {
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(1.0, 1.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(1.0, 0.0, 0.0), new ThreeDPoint(2.0, 1.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 1.0, 0.0), new ThreeDPoint(1.0, 2.0, 1.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(0.0, 0.0, 1.0), new ThreeDPoint(1.0, 1.0, 2.0)),
+                new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(1.0, 1.0, 1.0), new ThreeDPoint(2.0, 2.0, 2.0))
+            };
+            var tool = new ConstrainedBestFitRigidAlignmentTool();
+            var rejectedCollinear = tool.Execute(collinear, new ConstrainedBestFitRigidAlignmentOptions());
+            var rejectedCount = tool.Execute(valid.Take(3).ToArray(), new ConstrainedBestFitRigidAlignmentOptions());
+            var rejectedCap = tool.Execute(valid, new ConstrainedBestFitRigidAlignmentOptions { MaximumCorrespondenceCount = 4 });
+            var duplicate = valid.Select((pair, index) => index == 1
+                ? new ConstrainedBestFitRigidCorrespondence(pair.Source, valid[0].Reference)
+                : pair).ToArray();
+            var rejectedDuplicate = tool.Execute(duplicate, new ConstrainedBestFitRigidAlignmentOptions());
+            var nonFinite = valid.Select((pair, index) => index == 2
+                ? new ConstrainedBestFitRigidCorrespondence(new ThreeDPoint(double.NaN, 0.0, 0.0), pair.Reference)
+                : pair).ToArray();
+            var rejectedNonFinite = tool.Execute(nonFinite, new ConstrainedBestFitRigidAlignmentOptions());
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            var canceled = false;
+            try
+            {
+                _ = tool.Execute(valid, new ConstrainedBestFitRigidAlignmentOptions(), cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+
+            Require(!rejectedCollinear.Success
+                && rejectedCollinear.Message.IndexOf("collinear", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Collinear best-fit correspondences must fail closed.");
+            Require(!rejectedCount.Success && rejectedCount.Message.IndexOf("four", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Best-fit correspondence count below four must fail closed.");
+            Require(!rejectedCap.Success && rejectedCap.Message.IndexOf("maximum", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Best-fit correspondence count above the authored cap must fail closed.");
+            Require(!rejectedDuplicate.Success && rejectedDuplicate.Message.IndexOf("unique", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Duplicate best-fit coordinates must fail closed.");
+            Require(!rejectedNonFinite.Success && rejectedNonFinite.Message.IndexOf("finite", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Non-finite best-fit coordinates must fail closed.");
+            Require(canceled, "Constrained best-fit rigid alignment must honor cancellation before evaluation.");
         }
 
         private static void TestDeterministicSurfaceModelPreparation()
