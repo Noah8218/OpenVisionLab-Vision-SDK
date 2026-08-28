@@ -296,4 +296,46 @@ Console.WriteLine(
 
 Boundary signed distances are not guessed. `TriangleMeshDistanceTool.ExecuteRobustSign` and the comparison result expose whether robust sign recovery was required.
 
+## Point-cloud background filter quick start
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+ThreeDPoint[] current =
+{
+    new ThreeDPoint(0, 0, 0),
+    new ThreeDPoint(0.4, 0, 0),
+    new ThreeDPoint(2, 0, 0)
+};
+ThreeDPoint[] savedBackground =
+{
+    new ThreeDPoint(0, 0, 0),
+    new ThreeDPoint(3, 0, 0)
+};
+
+PointCloudBackgroundFilterResult filtered =
+    new PointCloudBackgroundFilterTool().Execute(
+        current,
+        savedBackground,
+        new PointCloudBackgroundFilterOptions
+        {
+            MaximumBackgroundDistance = 0.5
+        });
+
+if (!filtered.Success)
+{
+    throw new InvalidOperationException(filtered.Message);
+}
+
+Console.WriteLine(
+    $"retained={filtered.RetainedPointCount}, " +
+    $"removed={filtered.RemovedPointCount}, " +
+    $"nearestMax={filtered.MaximumNearestBackgroundDistance}");
+```
+
+The filter removes points whose nearest saved-background distance is at or
+below the authored threshold and preserves the remaining current-point order.
+It performs a deterministic O(N x M) scan; alignment, ICP, interpolation,
+normal/color inference, and calibration remain caller-owned.
+
 [Complete 3D input and result contract](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/blob/main/docs/three-d-inspection.md)
