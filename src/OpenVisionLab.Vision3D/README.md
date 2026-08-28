@@ -8,6 +8,42 @@ dotnet add package OpenVisionLab.Vision3D --version 3.0.0
 
 The caller owns unit, coordinate-frame, source identity, calibration, recipe tolerance, and product lifecycle. `NaN` is the missing height-map sample; infinity is rejected.
 
+## Manual rigid point-pair alignment quick start
+
+`RigidPointPairAlignmentTool` constructs one proper source-to-reference pose
+from exactly three ordered, non-collinear point pairs. It is a deterministic
+construction route, not a noisy best-fit solver; the caller owns identity,
+units, frames, tolerance, and acceptance.
+
+```csharp
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+var result = new RigidPointPairAlignmentTool().Execute(
+    new[]
+    {
+        new RigidPointPairCorrespondence(
+            new ThreeDPoint(0, 0, 0), new ThreeDPoint(10, -4, 2)),
+        new RigidPointPairCorrespondence(
+            new ThreeDPoint(1, 0, 0), new ThreeDPoint(10, -3, 2)),
+        new RigidPointPairCorrespondence(
+            new ThreeDPoint(0, 1, 0), new ThreeDPoint(9, -4, 2))
+    },
+    new RigidPointPairAlignmentOptions
+    {
+        MaximumPairLengthError = 1e-9,
+        MinimumNormalizedCrossMagnitude = 1e-12
+    });
+
+if (!result.Success || result.Pose is null)
+{
+    throw new InvalidOperationException(result.Message);
+}
+```
+
+The result includes the 4x4 row-major pose, pair-length and non-collinearity
+diagnostics, and per-pair residual evidence. It does not transform a cloud or
+make a product decision.
+
 ## Organized-grid diagnostics quick start
 
 ```csharp

@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
 using static OpenVisionLab.Inspection.Smoke.SmokeFixtures;
 
@@ -42,6 +43,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Triangle-mesh distance preserves closest feature and robust sign evidence", TestTriangleMeshDistance);
             yield return new SmokeCase("Nominal/actual mesh comparison preserves streaming statistics and sampling", TestNominalActualMeshComparison);
             yield return new SmokeCase("Rigid-transform diagnostics preserve plausibility measures", TestRigidTransformDiagnostics);
+            yield return new SmokeCase("Rigid point-pair alignment recovers a known proper pose", TestRigidPointPairAlignment);
+            yield return new SmokeCase("Rigid point-pair alignment rejects degenerate and mismatched triangles", TestRigidPointPairAlignmentInvalid);
             yield return new SmokeCase("Surface-model preparation preserves even triangle samples", TestDeterministicSurfaceModelPreparation);
             yield return new SmokeCase("Model key-point extraction preserves deterministic spatial coverage", TestDeterministicModelKeyPointExtraction);
             yield return new SmokeCase("Model key-point extraction is independent of input order", TestDeterministicModelKeyPointExtractionOrder);
@@ -1031,6 +1034,90 @@ namespace OpenVisionLab.Inspection.Smoke
             Require(!rejected.Success
                 && rejected.Message.IndexOf("16 finite", StringComparison.Ordinal) >= 0,
                 "Non-finite transform input must fail closed.");
+        }
+
+        private static void TestRigidPointPairAlignment()
+        {
+            var correspondences = new[]
+            {
+                new RigidPointPairCorrespondence(
+                    new ThreeDPoint(0.0, 0.0, 0.0),
+                    new ThreeDPoint(10.0, -4.0, 2.0)),
+                new RigidPointPairCorrespondence(
+                    new ThreeDPoint(1.0, 0.0, 0.0),
+                    new ThreeDPoint(10.0, -3.0, 2.0)),
+                new RigidPointPairCorrespondence(
+                    new ThreeDPoint(0.0, 1.0, 0.0),
+                    new ThreeDPoint(9.0, -4.0, 2.0))
+            };
+            var options = new RigidPointPairAlignmentOptions
+            {
+                MaximumPairLengthError = 1e-12,
+                MinimumNormalizedCrossMagnitude = 1e-12
+            };
+            var first = new RigidPointPairAlignmentTool().Execute(correspondences, options);
+            var second = new RigidPointPairAlignmentTool().Execute(correspondences, options);
+            var pose = first.Pose;
+
+            Require(first.Success && second.Success && pose != null, "Known rigid point-pair fixture must produce a pose.");
+            RequireApproximately(pose.M11, 0.0, 1e-12, "Unexpected rigid point-pair M11.");
+            RequireApproximately(pose.M12, -1.0, 1e-12, "Unexpected rigid point-pair M12.");
+            RequireApproximately(pose.M21, 1.0, 1e-12, "Unexpected rigid point-pair M21.");
+            RequireApproximately(pose.M22, 0.0, 1e-12, "Unexpected rigid point-pair M22.");
+            RequireApproximately(pose.M33, 1.0, 1e-12, "Unexpected rigid point-pair M33.");
+            RequireApproximately(pose.TranslationX, 10.0, 1e-12, "Unexpected rigid point-pair translation X.");
+            RequireApproximately(pose.TranslationY, -4.0, 1e-12, "Unexpected rigid point-pair translation Y.");
+            RequireApproximately(pose.TranslationZ, 2.0, 1e-12, "Unexpected rigid point-pair translation Z.");
+            Require(first.Residuals.Count == 3 && first.MaximumResidual <= 1e-12,
+                "Rigid point-pair fixture must preserve three residual records at machine precision.");
+            Require(second.Success
+                && second.Pose != null
+                && second.Pose.M12 == pose.M12
+                && second.Pose.TranslationX == pose.TranslationX
+                && second.MaximumResidual == first.MaximumResidual,
+                "Repeated rigid point-pair execution must be deterministic.");
+        }
+
+        private static void TestRigidPointPairAlignmentInvalid()
+        {
+            var collinear = new[]
+            {
+                new RigidPointPairCorrespondence(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(0.0, 0.0, 0.0)),
+                new RigidPointPairCorrespondence(new ThreeDPoint(1.0, 0.0, 0.0), new ThreeDPoint(1.0, 0.0, 0.0)),
+                new RigidPointPairCorrespondence(new ThreeDPoint(2.0, 0.0, 0.0), new ThreeDPoint(2.0, 0.0, 0.0))
+            };
+            var mismatch = new[]
+            {
+                new RigidPointPairCorrespondence(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(0.0, 0.0, 0.0)),
+                new RigidPointPairCorrespondence(new ThreeDPoint(1.0, 0.0, 0.0), new ThreeDPoint(2.0, 0.0, 0.0)),
+                new RigidPointPairCorrespondence(new ThreeDPoint(0.0, 1.0, 0.0), new ThreeDPoint(0.0, 1.0, 0.0))
+            };
+            var rejectedCollinear = new RigidPointPairAlignmentTool().Execute(
+                collinear,
+                new RigidPointPairAlignmentOptions { MaximumPairLengthError = 1e-12 });
+            var rejectedMismatch = new RigidPointPairAlignmentTool().Execute(
+                mismatch,
+                new RigidPointPairAlignmentOptions { MaximumPairLengthError = 1e-12 });
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            var canceled = false;
+            try
+            {
+                _ = new RigidPointPairAlignmentTool().Execute(
+                    mismatch,
+                    new RigidPointPairAlignmentOptions { MaximumPairLengthError = 10.0 },
+                    cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+
+            Require(!rejectedCollinear.Success && rejectedCollinear.Message.IndexOf("collinear", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Collinear rigid point pairs must fail closed.");
+            Require(!rejectedMismatch.Success && rejectedMismatch.Message.IndexOf("lengths differ", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Distance-inconsistent rigid point pairs must fail closed.");
+            Require(canceled, "Rigid point-pair alignment must honor cancellation before evaluation.");
         }
 
         private static void TestDeterministicSurfaceModelPreparation()
