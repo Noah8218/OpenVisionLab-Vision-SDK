@@ -196,6 +196,33 @@ positive, negative, and exact-zero deltas. Alignment, interpolation,
 resampling, tolerance, source identity, C3D encoding, and product acceptance
 remain consumer responsibilities.
 
+## Height-map normal preparation quick start
+
+```csharp
+HeightMapNormalPreparationResult normals =
+    new HeightMapNormalPreparationTool().Execute(
+        source,
+        new HeightMapNormalPreparationOptions
+        {
+            ExpectedNormal = new ThreeDPoint(-0.5, 1.0, 0.25),
+            MinimumAlignmentCosine = 0.999
+        });
+
+if (!normals.Success)
+{
+    throw new InvalidOperationException(normals.Message);
+}
+```
+
+`HeightMapNormalPreparationTool` calculates one unit normal for each finite
+cell whose X and Z derivatives are available. Interior derivatives use both
+finite neighbors; a finite boundary uses one-sided difference; a missing
+neighbor is never interpolated and leaves that cell unavailable. An explicit
+expected normal adds alignment and angular-error evidence without changing the
+calculated samples. The route is regular-height-map preparation only; it does
+not repair meshes, smooth data, estimate general point-cloud normals, or infer
+calibration.
+
 ## Surface-match pose quick start
 
 ```csharp
