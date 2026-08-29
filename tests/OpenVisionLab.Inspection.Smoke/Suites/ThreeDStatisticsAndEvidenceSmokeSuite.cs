@@ -47,6 +47,11 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Declared mesh normal quality accepts dense aligned normals", TestDeclaredMeshNormalQualityValid);
             yield return new SmokeCase("Declared mesh normal quality rejects reversed normals", TestDeclaredMeshNormalQualityReversed);
             yield return new SmokeCase("Declared mesh normal quality rejects partial and invalid topology", TestDeclaredMeshNormalQualityPartialAndInvalidTopology);
+            yield return new SmokeCase("Height-map normal preparation recovers an analytic plane", TestHeightMapNormalPreparationAnalyticPlane);
+            yield return new SmokeCase("Height-map normal preparation preserves missing-neighbor evidence", TestHeightMapNormalPreparationMissingNeighbors);
+            yield return new SmokeCase("Height-map normal preparation rejects reversed validation", TestHeightMapNormalPreparationReversedValidation);
+            yield return new SmokeCase("Height-map normal preparation rejects invalid options", TestHeightMapNormalPreparationInvalidOptions);
+            yield return new SmokeCase("Height-map normal preparation propagates cancellation", TestHeightMapNormalPreparationCancellation);
             yield return new SmokeCase("Landmark correspondence validation accepts independent tetrahedra", TestLandmarkCorrespondenceValidation);
             yield return new SmokeCase("Landmark correspondence validation rejects a coplanar source", TestLandmarkCorrespondenceValidationCoplanar);
             yield return new SmokeCase("Landmark correspondence validation rejects the taught volume boundary", TestLandmarkCorrespondenceValidationBoundary);
@@ -1040,6 +1045,177 @@ namespace OpenVisionLab.Inspection.Smoke
                 && invalid.InvalidIndexCount == 2
                 && invalid.ComparableCornerCount == 0,
                 "Invalid topology evidence changed.");
+        }
+
+        private static void TestHeightMapNormalPreparationAnalyticPlane()
+        {
+            HeightMap3D source = CreateAnalyticNormalHeightMap();
+            HeightMapNormalPreparationResult result =
+                new HeightMapNormalPreparationTool().Execute(
+                    source,
+                    new HeightMapNormalPreparationOptions
+                    {
+                        ExpectedNormal = new ThreeDPoint(-0.5, 1.0, 0.25),
+                        MinimumAlignmentCosine = 0.999999
+                    });
+
+            Require(result.Success, result.Message);
+            Require(result.CalculatedNormalCount == 9
+                && result.UnavailableNormalCount == 0
+                && result.InputFiniteSampleCount == 9
+                && result.CentralDerivativeCount == 6
+                && result.OneSidedDerivativeCount == 12
+                && result.MissingDerivativeCount == 0,
+                "Analytic normal preparation counts changed.");
+            Require(result.Samples[0].Row == 0 && result.Samples[0].Column == 0
+                && result.Samples[4].Row == 1 && result.Samples[4].Column == 1,
+                "Normal samples must retain row-major source coordinates.");
+            Require(result.ValidationState == HeightMapNormalValidationState.Passed
+                && result.ValidatedNormalCount == 9
+                && result.ConsistentNormalCount == 9
+                && result.ReversedNormalCount == 0,
+                "Analytic normal validation must pass every calculated sample.");
+            RequireApproximately(result.MinimumAlignment, 1.0, 1e-12,
+                "Unexpected analytic normal alignment.");
+            RequireApproximately(result.MaximumAngularErrorDegrees, 0.0, 1e-8,
+                "Unexpected analytic normal angular error.");
+            RequireApproximately(result.Samples[4].Normal.X,
+                -0.5 / Math.Sqrt(1.3125),
+                1e-12,
+                "Unexpected analytic normal X component.");
+            RequireApproximately(result.Samples[4].Normal.Y,
+                1.0 / Math.Sqrt(1.3125),
+                1e-12,
+                "Unexpected analytic normal Y component.");
+            RequireApproximately(result.Samples[4].Normal.Z,
+                0.25 / Math.Sqrt(1.3125),
+                1e-12,
+                "Unexpected analytic normal Z component.");
+            RequireApproximately(source.GetHeight(1, 1), 2.25, 0.0,
+                "Normal preparation must not mutate source heights.");
+        }
+
+        private static void TestHeightMapNormalPreparationMissingNeighbors()
+        {
+            double[] values = CreateAnalyticNormalValues();
+            values[4] = double.NaN;
+            HeightMap3D source = new HeightMap3D(
+                3,
+                3,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                values,
+                "grid-index",
+                "mm",
+                "frame.normal-fixture",
+                "normal-fixture");
+
+            HeightMapNormalPreparationResult result =
+                new HeightMapNormalPreparationTool().Execute(source);
+
+            Require(result.Success, result.Message);
+            Require(result.InputFiniteSampleCount == 8
+                && result.CalculatedNormalCount > 0
+                && result.UnavailableNormalCount > 0
+                && result.MissingDerivativeCount > 0,
+                "Missing-neighbor cells must remain explicit and unavailable.");
+            Require(result.Samples.All(sample => !(sample.Row == 1 && sample.Column == 1)),
+                "Missing source cells must not produce a normal sample.");
+            Require(double.IsNaN(source.GetHeight(1, 1)),
+                "Missing source value must remain missing.");
+        }
+
+        private static void TestHeightMapNormalPreparationReversedValidation()
+        {
+            HeightMapNormalPreparationResult result =
+                new HeightMapNormalPreparationTool().Execute(
+                    CreateAnalyticNormalHeightMap(),
+                    new HeightMapNormalPreparationOptions
+                    {
+                        ExpectedNormal = new ThreeDPoint(0.5, -1.0, -0.25),
+                        MinimumAlignmentCosine = 0.5
+                    });
+
+            Require(result.Success, result.Message);
+            Require(result.ValidationState == HeightMapNormalValidationState.Failed
+                && result.ValidatedNormalCount == 9
+                && result.ConsistentNormalCount == 0
+                && result.ReversedNormalCount == 9,
+                "Reversed expected normal must fail closed with evidence.");
+        }
+
+        private static void TestHeightMapNormalPreparationInvalidOptions()
+        {
+            HeightMapNormalPreparationResult invalidExpected =
+                new HeightMapNormalPreparationTool().Execute(
+                    CreateAnalyticNormalHeightMap(),
+                    new HeightMapNormalPreparationOptions
+                    {
+                        ExpectedNormal = new ThreeDPoint(0.0, 0.0, 0.0)
+                    });
+            HeightMapNormalPreparationResult invalidCosine =
+                new HeightMapNormalPreparationTool().Execute(
+                    CreateAnalyticNormalHeightMap(),
+                    new HeightMapNormalPreparationOptions
+                    {
+                        MinimumAlignmentCosine = 2.0
+                    });
+
+            Require(!invalidExpected.Success && !invalidCosine.Success,
+                "Invalid normal-validation options must fail closed.");
+        }
+
+        private static void TestHeightMapNormalPreparationCancellation()
+        {
+            using CancellationTokenSource cancellation =
+                new CancellationTokenSource();
+            cancellation.Cancel();
+            bool canceled = false;
+            try
+            {
+                new HeightMapNormalPreparationTool().Execute(
+                    CreateAnalyticNormalHeightMap(),
+                    cancellationToken: cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                canceled = true;
+            }
+
+            Require(canceled, "Normal preparation must propagate cancellation.");
+        }
+
+        private static HeightMap3D CreateAnalyticNormalHeightMap()
+        {
+            return new HeightMap3D(
+                3,
+                3,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                CreateAnalyticNormalValues(),
+                "grid-index",
+                "mm",
+                "frame.normal-fixture",
+                "normal-fixture");
+        }
+
+        private static double[] CreateAnalyticNormalValues()
+        {
+            double[] values = new double[9];
+            for (int row = 0; row < 3; row++)
+            {
+                for (int column = 0; column < 3; column++)
+                {
+                    values[(row * 3) + column] =
+                        (0.5 * column) - (0.25 * row) + 2.0;
+                }
+            }
+
+            return values;
         }
 
         private static void TestLandmarkCorrespondenceValidation()
