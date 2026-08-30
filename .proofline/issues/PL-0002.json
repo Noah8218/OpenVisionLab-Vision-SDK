@@ -14,9 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "PL-0002는 doing이다. M1~M5 구현과 로컬 통합 검증은 완료됐다: .NET 8.0.423 Release 0/0, smoke 220/220, 5개 coverage baseline, public API 3,295/3,295 exact gate, analyzer 596 diagnostics no-regression, 5개 package와 isolated net8/win-x64 consumer 및 native root 1개가 통과했다. 문서도 2D 15/15, 3D 62/62, Markdown 22개와 Markdown/HTML 로컬 링크·이미지 52개를 최종 정적 검증했다. 다만 이 증거는 아직 uncommitted working tree이며 commit/push나 package 게시를 주장하지 않고 .NET Framework fallback은 source-only/runtime-unverified다.",
-    "next_action": "루트 통합 검토 후 현재 working tree를 정확한 source commit으로 고정하고 승인된 commit/push 전달 기록에 증거를 연결한 뒤에만 PL-0002 resolved 여부를 결정한다. package 게시·consumer 저장소 변경·tag/release/deployment와 .NET Framework runtime 검증은 별도 경계로 유지한다."
+    "status": "resolved",
+    "current_summary": "PL-0002는 resolved이다. 사용자가 승인한 감사 우선순위 1~5에 대해 2D 계약, 수치·입력 경계, 현재 문서 권위, 재현 가능한 품질 게이트, Windows x64 native package 중복을 수정했다. 최종 후보는 .NET 8.0.423 Release 0/0, smoke 220/220, coverage 5개 baseline, 415 exported types와 public API 3,295/3,295 exact gate, analyzer 596 no-regression, package 5개와 isolated net8/win-x64 consumer 및 output-root native DLL 1개를 통과했다. 검증된 구현 commit c066f16e9a6f38863b71e935d483483dc06618c6은 origin/main에 push됐다. NuGet 게시, consumer 저장소 변경, tag/release/deployment, .NET Framework runtime, 다른 RID, 실센서·계측 및 공식 성능 검증은 수행하지 않았다."
   },
   "objective": {
     "summary": "감사 우선순위 1~5를 최소한의 호환 가능한 변경으로 구현하고 문서·테스트·패키지 증거를 현재 HEAD에 정렬한다.",
@@ -86,7 +85,8 @@
         "E5",
         "E6",
         "E7",
-        "E8"
+        "E8",
+        "E9"
       ]
     }
   ],
@@ -228,6 +228,13 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\integration1",
       "observation": "기본 통합 snapshot은 3.0.1-analysis.20260831.1 packages 5개와 isolated net8/win-x64 consumer를 통과했다. consumer output은 top-level 13개 파일, 총 55,121,162 bytes이고 OpenCvSharpExtern.dll 1개를 포함한다. package 게시나 consumer 저장소 변경은 수행하지 않았다.",
       "observed_at": "2026-08-31T06:44:26.4720758+09:00"
+    },
+    {
+      "id": "E9",
+      "kind": "delivery",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\final-candidate-20260831-a1; origin/main@c066f16e9a6f38863b71e935d483483dc06618c6",
+      "observation": "새 D: 최종 후보에서 .NET SDK 8.0.423 Release build 0/0, synthetic smoke 220/220, 5개 coverage baseline, 415 exported types/public API 3,295 exact entries, analyzer 596 no-regression을 통과했다. 3.0.1-verification.20260831.1 package 5개는 필수 문서와 Core native/buildTransitive 자산을 포함했고, isolated net8/win-x64 consumer는 build·실행을 통과해 13-file/55,121,250-byte output root에 native DLL 1개만 남겼다. 상세 SHA-256은 현재 상태 문서에 기록했다. 구현 commit c066f16e9a6f38863b71e935d483483dc06618c6은 origin/main에 push됐고 local/remote divergence는 0/0이었다.",
+      "observed_at": "2026-08-31T07:17:41.0818166+09:00"
     }
   ],
   "events": [
@@ -253,8 +260,25 @@
         "E7",
         "E8"
       ]
+    },
+    {
+      "id": "D3",
+      "kind": "decision",
+      "at": "2026-08-31T07:17:41.0818166+09:00",
+      "summary": "M1~M5와 C1~C7의 최종 후보 검증 및 정확한 구현 commit의 origin/main 전달을 확인해 PL-0002를 resolved로 닫는다. 게시·release·deployment 및 미검증 runtime/생산 증거는 별도 승인 경계로 유지한다.",
+      "evidence_refs": [
+        "E9"
+      ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-31T07:17:41.0818166+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "감사 우선순위 1~5의 구현, 최종 로컬 검증, exact source commit 및 origin/main 전달이 모두 확인됐다."
     }
   ],
   "created_at": "2026-08-31T06:20:29.4969106+09:00",
-  "updated_at": "2026-08-31T07:01:00.8939272+09:00"
+  "updated_at": "2026-08-31T07:17:41.0818166+09:00"
 }

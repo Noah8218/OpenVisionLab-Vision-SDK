@@ -2,7 +2,7 @@
 
 Updated: 2026-08-31
 Project work item: `PL-0002`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
@@ -41,24 +41,26 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 
 ## Current progress
 
-`PL-0002` remains `doing`. The five implementation milestones have current local
-integration evidence, but the changes are still an uncommitted working-tree
-snapshot. This table records observed implementation and verification results; it
-does not record commit, push, publication, consumer adoption, or deployment.
+`PL-0002` is `resolved`. All five milestones passed the final local integration
+gates, and the verified implementation was committed as
+`c066f16e9a6f38863b71e935d483483dc06618c6` and pushed to `origin/main`. This
+delivery does not include package publication, consumer adoption, a tag, a release,
+or deployment.
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
-| 1 / M1 | implemented; integration verification passed | Contour mask evidence and Pipeline output routing are fixed and covered by direct regressions. |
-| 2 / M2 | implemented; integration verification passed | Large-coordinate, finite-statistics, region-bound, and LineGauge depth boundaries are fail-closed and covered. |
-| 3 / M3 | implemented; integration verification passed | Current authority/index, catalogs, versions, examples, provenance, and historical labels match the checked source tree. |
-| 4 / M4 | implemented; integration verification passed | Direct 2D execution plus coverage, exact public-API, and analyzer no-regression gates pass locally and are wired into CI. |
-| 5 / M5 | implemented; integration verification passed | Five packages and the isolated Windows x64 consumer pass with one native DLL at the consumer output root. |
+| 1 / M1 | complete; pushed | Contour mask evidence and Pipeline output routing are fixed and covered by direct regressions. |
+| 2 / M2 | complete; pushed | Large-coordinate, finite-statistics, region-bound, and LineGauge depth boundaries are fail-closed and covered. |
+| 3 / M3 | complete; pushed | Current authority/index, catalogs, versions, examples, provenance, and historical labels match the checked source tree. |
+| 4 / M4 | complete; pushed | Direct 2D execution plus coverage, exact public-API, and analyzer no-regression gates pass locally and are wired into CI. |
+| 5 / M5 | complete; pushed | Five packages and the isolated Windows x64 consumer pass with one native DLL at the consumer output root. |
 
 ## Current integrated evidence
 
-The primary integration snapshot is under
-`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0002\integration1`.
-It describes the uncommitted 2026-08-31 working tree, not an immutable Git commit.
+The final candidate evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0002\final-candidate-20260831-a1`.
+The checked working tree was committed as
+`c066f16e9a6f38863b71e935d483483dc06618c6` and pushed to `origin/main`.
 
 - .NET SDK `8.0.423`; Release build: `0` warnings and `0` errors; full synthetic
   smoke: `220/220` passed.
@@ -82,20 +84,26 @@ It describes the uncommitted 2026-08-31 working tree, not an immutable Git commi
   and an analysis-mode mismatch failed as intended. The gate uses
   `--no-incremental`; two consecutive runs against the same artifacts path each
   reproduced all 596 diagnostics and passed.
-- All five packages were created as `3.0.1-analysis.20260831.1`; an isolated-cache
+- All five packages were created as `3.0.1-verification.20260831.1`; an isolated-cache
   `net8.0`/`win-x64` package-only consumer passed its 2D native and 3D managed
-  checks. Its 13-file output totals `55,121,162` bytes and contains exactly one
+  checks. Its 13-file output totals `55,121,250` bytes and contains exactly one
   `OpenCvSharpExtern.dll`, directly at the output root.
-- Post-gate review evidence under
-  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0002\m4-m5-review`
-  re-ran the strengthened API gate and package-only consumer with the separate
-  immutable package version `3.0.1-review.20260831.1`.
+- Package SHA-256 values are: Core
+  `DD20A789D2FB2CEEB0396A47144DD4C2BEDFB7DBAD6DEBE66D001D9DC6CC667E`;
+  Inspection
+  `82EE6F92BB29B7B8CE3C70527C5A0D1301DCC20653A4B87145D47900212E3694`;
+  Vision2D
+  `170A87137EA3C801C61CCA7E425BDDB42B0D1B494ACE4B79C0FEA552FBD48436`;
+  Vision2D.Blob
+  `95C4D0A3CBC85697263A4DDA73FB188E6F4E3697CC54326E3EEF895401193727`;
+  Vision3D
+  `A42892EC4BACB76AB2869BEDC18725B0AC61423144820D8F2FEEF0795FF2745F`.
 
 The `buildTransitive/OpenVisionLab.Core.targets` fallback for
 `TargetFrameworkIdentifier == .NETFramework` was reviewed from source only. No
 .NET Framework runtime consumer was executed, so that fallback remains unverified.
-No package was published, no consumer repository was changed, and no commit, push,
-tag, release, or deployment is claimed.
+No package was published, no consumer repository was changed, and no tag, release,
+or deployment was performed.
 
 ## Priority 1 — 2D result-contract correctness
 
@@ -298,11 +306,26 @@ Do not describe `PL-0002` completion as production metrology qualification.
   does not identify those third-party binaries, their exact versions, or their
   license notices. This repository audit did not make a legal determination.
 
-## Required final evidence
+## Completion record
 
-M1–M5 now have local implementation/integration evidence, but `PL-0002` remains
-`doing` until the checked working tree is represented by an exact source commit and
-the approved delivery record is complete. The reusable final record must identify
-that commit, commands actually run, Release/smoke/gate results, package version and
-SHA-256 values, isolated consumer result, artifact locations, and all unverified
-production or release boundaries.
+Status: `Complete`
+
+Scope: audit priorities 1–5 only; 2D contracts, numerical/input boundaries,
+documentation authority, reproducible quality gates, and Windows x64 native package
+closure.
+
+Acceptance criteria: C1–C7 and M1–M5 passed with evidence recorded in
+`.proofline/issues/PL-0002.json`.
+
+Verification: .NET SDK `8.0.423`; Release `0` warnings/`0` errors; smoke `220/220`;
+five coverage thresholds; 415 exported types and `3,295/3,295` exact API entries;
+596 analyzer diagnostics at or below baseline; five same-version packages; isolated
+`net8.0`/`win-x64` consumer pass; one native DLL at the output root.
+
+Evidence: implementation commit
+`c066f16e9a6f38863b71e935d483483dc06618c6`, `origin/main`, and the final candidate
+directory above.
+
+Boundary / next dependency: no NuGet publication, tag, release, deployment, consumer
+repository change, real-sensor/metrology qualification, official performance
+baseline, other RID, or .NET Framework runtime verification was performed.
