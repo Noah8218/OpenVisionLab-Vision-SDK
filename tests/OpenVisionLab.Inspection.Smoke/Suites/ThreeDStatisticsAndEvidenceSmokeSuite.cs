@@ -23,6 +23,7 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             yield return new SmokeCase("Height-grid summary preserves missing policy and distribution", TestHeightGridSummary);
             yield return new SmokeCase("Height distribution preserves finite statistics and tie order", TestHeightDistributionStatistics);
+            yield return new SmokeCase("Height distribution fails closed when finite aggregation overflows", TestHeightDistributionStatisticsOverflow);
             yield return new SmokeCase("Grid diagnostics preserve implicit row-major evidence", TestImplicitGridDiagnostics);
             yield return new SmokeCase("Grid diagnostics preserve exact malformed explicit evidence", TestMalformedExplicitGridDiagnostics);
             yield return new SmokeCase("Connected regions preserve deterministic four- and eight-neighbor labeling", TestConnectedRegions);
@@ -34,6 +35,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Connected region fill height preserves reference-surface residuals and per-region gates", TestConnectedRegionFillHeight);
             yield return new SmokeCase("Connected region fill height fails closed on invalid inputs", TestConnectedRegionFillHeightInvalidInput);
             yield return new SmokeCase("Height-map region statistics preserve row-major aggregation", TestHeightMapRegionStatistics);
+            yield return new SmokeCase("Height-map region statistics reject overflowing region bounds", TestHeightMapRegionStatisticsOverflowingBounds);
             yield return new SmokeCase("Completeness Grid preserves reference-relative cell decisions", TestCompletenessGridInspection);
             yield return new SmokeCase("Mask-aware Completeness excludes unselected cells", TestMaskAwareCompletenessGridInspection);
             yield return new SmokeCase("Mask-aware Completeness fails closed on invalid masks", TestMaskAwareCompletenessGridInspectionInvalidInput);
@@ -53,6 +55,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height-map normal preparation rejects invalid options", TestHeightMapNormalPreparationInvalidOptions);
             yield return new SmokeCase("Height-map normal preparation propagates cancellation", TestHeightMapNormalPreparationCancellation);
             yield return new SmokeCase("Landmark correspondence validation accepts independent tetrahedra", TestLandmarkCorrespondenceValidation);
+            yield return new SmokeCase("Landmark correspondence validation is invariant under a large translation", TestLandmarkCorrespondenceValidationLargeTranslation);
             yield return new SmokeCase("Landmark correspondence validation rejects a coplanar source", TestLandmarkCorrespondenceValidationCoplanar);
             yield return new SmokeCase("Landmark correspondence validation rejects the taught volume boundary", TestLandmarkCorrespondenceValidationBoundary);
             yield return new SmokeCase("Repeatability statistics preserve sample standard deviation and range", TestRepeatabilityStatistics);
@@ -115,6 +118,34 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.Minimum, 1.0, 0.0, "Unexpected distribution minimum.");
             RequireApproximately(result.Maximum, 4.0, 0.0, "Unexpected distribution maximum.");
             RequireApproximately(result.Mean, 2.5, 0.0, "Unexpected distribution mean.");
+        }
+
+        private static void TestHeightDistributionStatisticsOverflow()
+        {
+            HeightDistributionStatisticsTool tool =
+                new HeightDistributionStatisticsTool();
+            HeightDistributionStatisticsOptions options =
+                new HeightDistributionStatisticsOptions
+                {
+                    BinCount = 2,
+                    ExpectedValidSampleCount = 2
+                };
+            HeightDistributionStatisticsResult sumOverflow = tool.Execute(
+                new[] { double.MaxValue, double.MaxValue },
+                options);
+            HeightDistributionStatisticsResult spanOverflow = tool.Execute(
+                new[] { -double.MaxValue, double.MaxValue },
+                options);
+
+            Require(!sumOverflow.Success && !spanOverflow.Success,
+                "Finite inputs that overflow aggregate statistics must fail closed.");
+            Require(!sumOverflow.HasFiniteSamples
+                    && !spanOverflow.HasFiniteSamples
+                    && double.IsNaN(sumOverflow.Mean)
+                    && double.IsNaN(spanOverflow.Mean)
+                    && sumOverflow.Bins.Count == 0
+                    && spanOverflow.Bins.Count == 0,
+                "An overflow failure must not expose partial or non-finite statistics as successful evidence.");
         }
 
         private static void TestImplicitGridDiagnostics()
@@ -694,6 +725,30 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.FiniteCoverageRatio, 1.0, 0.0, "Unexpected region coverage.");
         }
 
+        private static void TestHeightMapRegionStatisticsOverflowingBounds()
+        {
+            HeightMapRegionStatisticsTool tool =
+                new HeightMapRegionStatisticsTool();
+            HeightMapRegionStatisticsResult rowOverflow = tool.Execute(
+                1,
+                1,
+                new[] { 1.0 },
+                new HeightGridRegion(1, 0, int.MaxValue, 1));
+            HeightMapRegionStatisticsResult columnOverflow = tool.Execute(
+                1,
+                1,
+                new[] { 1.0 },
+                new HeightGridRegion(0, 1, 1, int.MaxValue));
+
+            Require(!rowOverflow.Success && !columnOverflow.Success,
+                "Overflowing row and column bounds must fail closed.");
+            Require(rowOverflow.Message == "Height-map region is outside the source grid."
+                    && columnOverflow.Message == rowOverflow.Message
+                    && rowOverflow.TotalCellCount == 0
+                    && columnOverflow.TotalCellCount == 0,
+                "Overflowing region bounds must preserve the public controlled-failure contract.");
+        }
+
         private static void TestCompletenessGridInspection()
         {
             CompletenessGridInspectionResult result =
@@ -1234,6 +1289,35 @@ namespace OpenVisionLab.Inspection.Smoke
                 1.0 / Math.Pow(Math.Sqrt(2.0), 3.0),
                 1e-15,
                 "Unexpected normalized landmark volume.");
+        }
+
+        private static void TestLandmarkCorrespondenceValidationLargeTranslation()
+        {
+            const double translation = 1e12;
+            ThreeDPoint[] tetrahedron = CreateIndependentTetrahedron();
+            ThreeDPoint[] translated = tetrahedron
+                .Select(point => new ThreeDPoint(
+                    point.X + translation,
+                    point.Y + translation,
+                    point.Z + translation))
+                .ToArray();
+            LandmarkCorrespondenceValidationTool tool =
+                new LandmarkCorrespondenceValidationTool();
+            LandmarkCorrespondenceValidationResult baseline =
+                tool.Execute(tetrahedron, tetrahedron, 0.1);
+            LandmarkCorrespondenceValidationResult shifted =
+                tool.Execute(translated, translated, 0.1);
+
+            Require(baseline.Success
+                    && shifted.Success
+                    && shifted.SourceRank == baseline.SourceRank
+                    && shifted.ReferenceRank == baseline.ReferenceRank,
+                "A common +1e12 translation must not change landmark independence.");
+            Require(shifted.SourceNormalizedTetrahedronVolume
+                    == baseline.SourceNormalizedTetrahedronVolume
+                    && shifted.ReferenceNormalizedTetrahedronVolume
+                    == baseline.ReferenceNormalizedTetrahedronVolume,
+                "A common translation changed normalized landmark volume evidence.");
         }
 
         private static void TestLandmarkCorrespondenceValidationCoplanar()

@@ -57,6 +57,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Line intersection recovers a perpendicular corner", TestLineIntersection);
             yield return new SmokeCase("Line intersection rejects parallel geometry", TestLineIntersectionParallel);
             yield return new SmokeCase("Full XYZ affine solve recovers an analytic matrix", TestFullXyzAffineSolve);
+            yield return new SmokeCase("Full XYZ affine solve is invariant under a large common translation", TestFullXyzAffineSolveLargeTranslation);
             yield return new SmokeCase("Full XYZ affine solve rejects a taught condition limit", TestFullXyzAffineCondition);
             yield return new SmokeCase("Full XYZ affine apply preserves locator order and exact transformed XYZ", TestFullXyzAffineApply);
             yield return new SmokeCase("Full XYZ affine apply rejects duplicate source locators", TestFullXyzAffineApplyDuplicateLocator);
@@ -1146,6 +1147,46 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.Matrix.M13, -0.25, 1e-12, "Unexpected affine M13.");
             RequireApproximately(result.Matrix.M14, 10.0, 1e-12, "Unexpected affine M14.");
             RequireApproximately(result.ArithmeticMaximumResidual, 0.0, 1e-10, "Exact affine residual must be zero.");
+        }
+
+        private static void TestFullXyzAffineSolveLargeTranslation()
+        {
+            const double translation = 1e12;
+            IReadOnlyList<FullXyzAffineCorrespondence> baselinePairs = CreateAffinePairs();
+            FullXyzAffineCorrespondence[] translatedPairs = baselinePairs
+                .Select(pair => new FullXyzAffineCorrespondence(
+                    new ThreeDPoint(
+                        pair.Source.X + translation,
+                        pair.Source.Y + translation,
+                        pair.Source.Z + translation),
+                    new ThreeDPoint(
+                        pair.Reference.X + translation,
+                        pair.Reference.Y + translation,
+                        pair.Reference.Z + translation)))
+                .ToArray();
+            FullXyzAffineSolveOptions options = new FullXyzAffineSolveOptions
+            {
+                MaximumConditionEstimate = 1000.0,
+                ArithmeticResidualWarning = 0.001
+            };
+            FullXyzAffineSolveTool tool = new FullXyzAffineSolveTool();
+            FullXyzAffineSolveResult baseline = tool.Execute(baselinePairs, options);
+            FullXyzAffineSolveResult translated = tool.Execute(translatedPairs, options);
+
+            Require(baseline.Success && translated.Success,
+                "A common +1e12 translation must not change affine solvability.");
+            RequireApproximately(
+                translated.SourceAugmentedDeterminant,
+                baseline.SourceAugmentedDeterminant,
+                0.0,
+                "A common translation changed the source determinant evidence.");
+            RequireApproximately(
+                translated.ConditionEstimate,
+                baseline.ConditionEstimate,
+                0.0,
+                "A common translation changed the source condition evidence.");
+            Require(!translated.ArithmeticResidualWarningExceeded,
+                "A common translation must remain below the declared arithmetic residual warning.");
         }
 
         private static void TestFullXyzAffineCondition()

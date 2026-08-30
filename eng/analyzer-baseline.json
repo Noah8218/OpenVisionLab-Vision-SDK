@@ -1,0 +1,22 @@
+{
+  "analysisLevel": "latest-recommended",
+  "analysisMode": "All",
+  "maximumWarningsByCode": {
+    "CA1051": 39,
+    "CA1305": 83,
+    "CA1507": 4,
+    "CA1707": 145,
+    "CA1716": 2,
+    "CA1805": 69,
+    "CA1806": 6,
+    "CA1816": 3,
+    "CA1822": 68,
+    "CA1825": 32,
+    "CA1843": 9,
+    "CA1859": 11,
+    "CA1861": 82,
+    "CA1869": 1,
+    "CA2208": 5,
+    "CA2249": 37
+  }
+}

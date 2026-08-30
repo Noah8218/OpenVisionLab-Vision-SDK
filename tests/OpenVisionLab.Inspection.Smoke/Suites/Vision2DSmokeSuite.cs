@@ -35,8 +35,14 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Edge matcher rejects repeated candidates as ambiguous", TestEdgeMatcherUniqueAmbiguous);
             yield return new SmokeCase("Edge matcher reports no match without a candidate", TestEdgeMatcherUniqueNoMatch);
             yield return new SmokeCase("Edge matcher global polarity is opt-in and reports the selected state", TestEdgeMatcherGlobalPolarity);
+            yield return new SmokeCase("MorphologyTool direct Execute transforms a synthetic image", TestMorphologyDirectExecution);
+            yield return new SmokeCase("FilterTool direct Execute transforms a synthetic image", TestFilterDirectExecution);
+            yield return new SmokeCase("EdgeDetectionTool direct Execute finds synthetic edges", TestEdgeDetectionDirectExecution);
+            yield return new SmokeCase("RotateScaleTool direct Execute applies the requested output size", TestRotateScaleDirectExecution);
+            yield return new SmokeCase("LineGaugeTool rejects unsupported image depth explicitly", TestLineGaugeUnsupportedDepth);
             yield return new SmokeCase("2D tool and result disposal release only owned images", TestVisionToolResourceOwnership);
             yield return new SmokeCase("Pipeline runtime honors tool, input, result, and layer ownership", TestVisionPipelineResourceOwnership);
+            yield return new SmokeCase("Pipeline routes only non-null images to named output layers", TestVisionPipelineOptionalOutputContract);
             yield return new SmokeCase("Pipeline factory creates every built-in tool from valid parameters", TestVisionPipelineFactoryBuiltIns);
             yield return new SmokeCase("Pipeline factory rejects malformed, unknown, and duplicate parameters", TestVisionPipelineFactoryRejectsInvalidParameters);
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
@@ -788,6 +794,144 @@ namespace OpenVisionLab.Inspection.Smoke
             File.WriteAllLines(Path.Combine(directory, name + "_summary.txt"), summary);
         }
 
+        private static void TestMorphologyDirectExecution()
+        {
+            using (Mat source = new Mat(new Size(9, 9), MatType.CV_8UC1, Scalar.Black))
+            using (MorphologyTool tool = new MorphologyTool())
+            {
+                Cv2.Rectangle(source, new Rect(4, 4, 1, 1), Scalar.White, Cv2.FILLED);
+                tool.SetProperty(new MorphologyToolProperty
+                {
+                    Operator = MorphTypes.Dilate,
+                    KernelWidth = 3,
+                    KernelHeight = 3,
+                    Iterations = 1
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success,
+                        "MorphologyTool direct Execute failed: " + result.ErrorName + ": " + result.Message);
+                    Require(result.ResultImage != null
+                        && result.ResultImage.Size() == source.Size()
+                        && Cv2.CountNonZero(result.ResultImage) == 9,
+                        "MorphologyTool direct Execute did not apply the 3x3 dilation.");
+                }
+            }
+        }
+
+        private static void TestFilterDirectExecution()
+        {
+            using (Mat source = new Mat(new Size(9, 9), MatType.CV_8UC1, Scalar.Black))
+            using (FilterTool tool = new FilterTool())
+            {
+                Cv2.Rectangle(source, new Rect(4, 4, 1, 1), Scalar.White, Cv2.FILLED);
+                tool.SetProperty(new FilterToolProperty
+                {
+                    FilterType = FilterToolType.Blur,
+                    KernelWidth = 3,
+                    KernelHeight = 3
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success,
+                        "FilterTool direct Execute failed: " + result.ErrorName + ": " + result.Message);
+                    Require(result.ResultImage != null
+                        && result.ResultImage.Size() == source.Size()
+                        && Cv2.CountNonZero(result.ResultImage) > 1
+                        && Cv2.Norm(source, result.ResultImage, NormTypes.L1) > 0d,
+                        "FilterTool direct Execute did not apply the 3x3 blur.");
+                }
+            }
+        }
+
+        private static void TestEdgeDetectionDirectExecution()
+        {
+            using (Mat source = new Mat(new Size(32, 32), MatType.CV_8UC1, Scalar.Black))
+            using (EdgeDetectionTool tool = new EdgeDetectionTool())
+            {
+                Cv2.Rectangle(source, new Rect(8, 8, 16, 16), Scalar.White, Cv2.FILLED);
+                tool.SetProperty(new EdgeDetectionToolProperty
+                {
+                    EdgeType = EdgeDetectionToolType.Canny,
+                    CannyThresholdLow = 50,
+                    CannyThresholdHigh = 100
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success,
+                        "EdgeDetectionTool direct Execute failed: " + result.ErrorName + ": " + result.Message);
+                    Require(result.ResultImage != null
+                        && result.ResultImage.Size() == source.Size()
+                        && Cv2.CountNonZero(result.ResultImage) > 0,
+                        "EdgeDetectionTool direct Execute did not publish the synthetic rectangle edges.");
+                }
+            }
+        }
+
+        private static void TestRotateScaleDirectExecution()
+        {
+            using (Mat source = new Mat(new Size(20, 10), MatType.CV_8UC1, Scalar.White))
+            using (RotateScaleTool tool = new RotateScaleTool())
+            {
+                tool.SetProperty(new RotateScaleToolProperty
+                {
+                    ScaleXPercent = 50,
+                    ScaleYPercent = 200
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success,
+                        "RotateScaleTool direct Execute failed: " + result.ErrorName + ": " + result.Message);
+                    Require(result.ResultImage != null
+                        && result.ResultImage.Width == 10
+                        && result.ResultImage.Height == 20,
+                        "RotateScaleTool direct Execute did not apply the requested 50% x 200% size.");
+                }
+            }
+        }
+
+        private static void TestLineGaugeUnsupportedDepth()
+        {
+            using (Mat supported = new Mat(new Size(128, 64), MatType.CV_8UC1, Scalar.Black))
+            using (Mat unsupported = new Mat(new Size(128, 64), MatType.CV_16UC1, Scalar.Black))
+            using (LineGaugeTool tool = new LineGaugeTool())
+            {
+                Cv2.Rectangle(supported, new Rect(64, 0, 64, 64), Scalar.All(255), Cv2.FILLED);
+                Cv2.Rectangle(unsupported, new Rect(64, 0, 64, 64), Scalar.All(ushort.MaxValue), Cv2.FILLED);
+                tool.SetProperty(new LineGaugeToolProperty
+                {
+                    USE_ROI = true,
+                    CvROI = new Rect(0, 0, 128, 64),
+                    PRJ_DIR = OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR.X_LTOR,
+                    PRJ_PORALITY = OpenVisionLab.Core.FormulaUtil.PROJECTION_POLARITY.BTOW,
+                    CONTRAST = 30,
+                    THICKNESS = 3,
+                    SAMPLING_STEP = 8
+                });
+
+                using (VisionToolResult supportedResult = tool.Execute(supported))
+                {
+                    Require(supportedResult.Success,
+                        "LineGaugeTool CV_8UC1 control execution failed: "
+                        + supportedResult.ErrorName + ": " + supportedResult.Message);
+                }
+
+                using (VisionToolResult unsupportedResult = tool.Execute(unsupported))
+                {
+                    Require(!unsupportedResult.Success
+                        && unsupportedResult.ErrorCode == VisionToolErrorCode.InputImageInvalid
+                        && unsupportedResult.ResultStatus == VisionToolResultStatus.InvalidInput
+                        && unsupportedResult.Exception == null
+                        && unsupportedResult.Message.Contains("8-bit unsigned", StringComparison.OrdinalIgnoreCase),
+                        "LineGaugeTool CV_16UC1 input must fail explicitly as InputImageInvalid.");
+                }
+            }
+        }
+
         private static void TestVisionToolResourceOwnership()
         {
             using (Mat source = new Mat(4, 4, MatType.CV_8UC1, new Scalar(10)))
@@ -1000,6 +1144,55 @@ namespace OpenVisionLab.Inspection.Smoke
                 Require(firstTool.WasDisposed && throwingTool.WasDisposed, "The exception path did not dispose every factory-owned tool.");
                 Require(firstTool.ResultSnapshot != null && firstTool.ResultSnapshot.IsDisposed, "The exception path did not dispose a completed step result.");
                 Require(throwingTool.LastSource != null && throwingTool.LastSource.IsDisposed, "The exception path did not dispose the active input layer clone.");
+            }
+        }
+
+        private static void TestVisionPipelineOptionalOutputContract()
+        {
+            VisionPipeline unnamedOutput = new VisionPipeline { Name = "Unnamed output fixture" };
+            unnamedOutput.Steps.Add(new VisionPipelineStep
+            {
+                Name = "No output layer",
+                ToolType = "image",
+                InputLayer = "input"
+            });
+
+            VisionPipeline nullOutput = new VisionPipeline { Name = "Null output fixture" };
+            nullOutput.Steps.Add(new VisionPipelineStep
+            {
+                Name = "No result image",
+                ToolType = "pass-through",
+                InputLayer = "input",
+                OutputLayer = "preserved"
+            });
+
+            using (Mat source = new Mat(4, 4, MatType.CV_8UC1, Scalar.All(7)))
+            using (Mat preservedSource = new Mat(4, 4, MatType.CV_8UC1, Scalar.All(23)))
+            using (VisionPipelineContext context = new VisionPipelineContext())
+            {
+                context.SetLayer("input", source);
+                context.SetLayer("preserved", preservedSource);
+
+                using (VisionPipelineRunResult unnamedResult =
+                    new VisionPipelineRuntime(_ => new ImageReturningVisionTool()).Run(unnamedOutput, context))
+                {
+                    Require(unnamedResult.Success
+                        && unnamedResult.StepResults[0].ToolResult.ResultImage != null,
+                        "A successful pipeline step with an unnamed output must complete without routing an image.");
+                }
+
+                using (VisionPipelineRunResult nullResult =
+                    new VisionPipelineRuntime(_ => new PassThroughVisionTool()).Run(nullOutput, context))
+                using (Mat preserved = context.GetLayer("preserved"))
+                {
+                    Require(nullResult.Success
+                        && nullResult.StepResults[0].ToolResult.ResultImage == null,
+                        "A successful pipeline step may complete without a result image.");
+                    Require(preserved != null
+                        && !preserved.Empty()
+                        && Cv2.Mean(preserved).Val0 == 23d,
+                        "A null pipeline result image must not replace the existing named output layer.");
+                }
             }
         }
 

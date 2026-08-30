@@ -27,6 +27,13 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
+            if (imageSource.Depth() != MatType.CV_8U)
+            {
+                errorCode = VisionToolErrorCode.InputImageInvalid;
+                message = $"LineGauge supports only 8-bit unsigned source images. Actual={imageSource.Type()}.";
+                return false;
+            }
+
             if (property.SAMPLING_STEP < 1 || property.THICKNESS < 1)
             {
                 errorCode = VisionToolErrorCode.LineGaugeInvalidSampling;

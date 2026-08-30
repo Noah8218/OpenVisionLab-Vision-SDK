@@ -17,6 +17,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Blob publishes stable one-pass accepted and rejected candidates", TestBlobCandidates);
             yield return new SmokeCase("Contour publishes stable one-pass accepted and rejected candidates", TestContourCandidates);
             yield return new SmokeCase("Blob preserves masked candidates and multi-ROI source coordinates", TestBlobMaskAndMultiRoiCandidates);
+            yield return new SmokeCase("Contour preserves masked candidates and excludes masked legacy results", TestContourMaskCandidates);
             yield return new SmokeCase("Contour preserves multi-ROI candidate identity and source coordinates", TestContourMultiRoiCandidates);
         }
 
@@ -178,6 +179,48 @@ namespace OpenVisionLab.Inspection.Smoke
                     Require(tool.candidates.All(candidate => candidate.Drawing != null && candidate.Drawing.Points.Count > 0),
                         "Contour multi-ROI candidates must retain source-coordinate drawing points.");
                 }
+            }
+        }
+
+        private static void TestContourMaskCandidates()
+        {
+            using (Mat source = CreateCandidateSource())
+            using (ContourTool tool = new ContourTool())
+            {
+                tool.SetProperty(new ContourToolProperty
+                {
+                    USE_THRESHOLD = true,
+                    THRESHOLD = 100,
+                    MIN_AREA = 20,
+                    MAX_AREA = 10000,
+                    MIN_WIDTH = 0,
+                    MAX_WIDTH = 1000,
+                    MIN_HEIGHT = 0,
+                    MAX_HEIGHT = 1000,
+                    CvMASKS = new List<Rect> { new Rect(80, 20, 52, 24) }
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success, "Contour mask fixture must execute successfully with unmasked candidates.");
+                    Require(tool.candidates.Count == 5, "Contour mask fixture must retain the masked candidate row.");
+                    Require(tool.candidates.Count(candidate => candidate.RejectReasonCode == VisionObjectCandidateRejectReasonCode.Masked) == 1,
+                        "Contour mask fixture must expose exactly one Masked candidate.");
+                    Require(tool.results.Count == 4,
+                        "Contour legacy results must exclude the masked candidate while candidates retain it.");
+                    VisionObjectCandidate masked = tool.candidates.Single(candidate =>
+                        candidate.RejectReasonCode == VisionObjectCandidateRejectReasonCode.Masked);
+                    Require(masked.Bounding.X == 80 && masked.Bounding.Width == 52
+                        && masked.Drawing != null
+                        && masked.Drawing.Kind == VisionToolOverlayKind.Points
+                        && masked.Drawing.Points.Count > 0,
+                        "Contour masked candidate must retain source-coordinate contour drawing.");
+                }
+
+                Require(tool.SquareRun(), "Contour square execution must honor the same mask contract.");
+                Require(tool.results.Count == 4
+                    && tool.results.All(contour => contour.Bounding.X != 80),
+                    "Contour square results must exclude the configured masked rectangle.");
             }
         }
 

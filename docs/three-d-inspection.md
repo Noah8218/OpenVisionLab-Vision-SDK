@@ -138,15 +138,18 @@ one-sample occlusion, translation no-match, and candidate-budget rejection.
 
 ## Public Tool catalog
 
-The catalog below lists every public sealed `*Tool` in `OpenVisionLab.Vision3D 3.0.0`. A name in
-this table means the numerical Tool is public; it does not imply that the Tool owns
-source identity, units, calibration, recipes, overlays, or UI lifecycle.
+The catalog below lists every public sealed `*Tool` in the `3.0.0` API/assembly
+baseline at the current source revision. The repository-local package default is
+`3.0.1-dev.1`; install or verification work must use the exact immutable package
+version that was actually packed. A name in this table means the numerical Tool is
+public; it does not imply that the Tool owns source identity, units, calibration,
+recipes, overlays, or UI lifecycle.
 
 | Area | Public Tools |
 | --- | --- |
 | Height-map inspection | `ThicknessInspectionTool`, `WarpageInspectionTool`, `DatumPlaneRawHeightDeviationInspectionTool` |
-| Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `ConstrainedBestFitRigidAlignmentTool`, `RigidPointPairAlignmentTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool` |
-| Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `ConnectedRegionTool`, `ConnectedRegionMetricsTool`, `ConnectedRegionPresenceTool`, `LeastSquaresHeightFieldPlaneFitTool` |
+| Basic geometry and alignment | `TwoPointLineTool`, `ThreePointPlaneTool`, `LineIntersectionTool`, `FullXyzAffineSolveTool`, `ConstrainedBestFitRigidAlignmentTool`, `RigidPointPairAlignmentTool`, `AffinePointCloudApplyTool`, `LandmarkCorrespondenceValidationTool`, `RigidTransformDiagnosticsTool`, `RigidPoseSymmetryEquivalenceTool`, `LevelFrameTool` |
+| Grid, reconstruction and preprocessing | `GridDiagnosticsTool`, `HeightMapCropTool`, `HeightMapDomainMaskTool`, `HeightMapThresholdBackgroundRemovalTool`, `HeightMapBackgroundSubtractionTool`, `HeightMapNormalPreparationTool`, `ReferenceGridRegridTool`, `ReferenceGridPointReconstructionTool`, `DeterministicMedianFilterTool`, `DeterministicLocalMedianOutlierFilterTool`, `LevelSurfaceTool`, `PointCloudBackgroundFilterTool`, `PointCloudVoxelDownsampleTool`, `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`, `HeightMapRegionStatisticsTool`, `ConnectedRegionTool`, `ConnectedRegionMetricsTool`, `ConnectedRegionPresenceTool`, `ConnectedRegionFillHeightTool`, `LeastSquaresHeightFieldPlaneFitTool` |
 | Edge and feature selection | `DeterministicHeightDifferenceEdgeTool`, `DeterministicLineFitTool`, `DeterministicModelSurfaceSelectionTool`, `DeterministicModelKeyPointExtractionTool`, `DeterministicModelSurfaceEdgeExtractionTool`, `DeterministicOrganizedSceneSurfaceEdgeExtractionTool` |
 | Surface matching and mesh comparison | `DeterministicSurfaceModelPreparationTool`, `DeterministicPreparedScenePreparationTool`, `DeterministicRigidSurfacePoseSearchTool`, `DeterministicSurfaceCoverageTool`, `DeterministicSurfaceEdgeCoverageTool`, `DeterministicMultipleSurfaceMatchTool`, `TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, `DeclaredMeshNormalQualityTool`, `AcquisitionDirectionOrientationTool` |
 | Statistics and inspection decisions | `CompletenessGridInspectionTool`, `DualSurfaceThicknessInspectionTool`, `HeightDeviationInspectionTool`, `RepeatabilityStatisticsTool`, `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool` |

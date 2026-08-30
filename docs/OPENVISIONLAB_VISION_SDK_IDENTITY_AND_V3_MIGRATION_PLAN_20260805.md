@@ -1,8 +1,14 @@
 # OpenVisionLab Vision SDK 제품 정체성 및 3.0 마이그레이션 계획
 
-문서 상태: Complete  
-승인일: 2026-08-05  
-개발 상태: GitHub 저장소 이름 변경 및 3.0 main 반영 완료, NuGet 게시 및 소비 저장소 전환 전
+> **Historical migration and benchmark ledger.** 이 파일은 2026-08의 승인,
+> migration 완료 기록, 당시 test count와 benchmark attempt를 보존한다. 내부의
+> `Complete`와 `Incomplete`는 각 기록된 slice에만 적용되며 현재 프로젝트 상태,
+> 우선순위, 명령 또는 package 설치 버전을 뜻하지 않는다. 현재 권위는
+> [`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md)이다.
+
+문서 상태: Historical completion ledger
+승인일: 2026-08-05
+기록 당시 개발 상태: GitHub 저장소 이름 변경 및 3.0 main 반영 완료, NuGet 게시 및 소비 저장소 전환 전
 
 ## 1. 승인된 결정
 

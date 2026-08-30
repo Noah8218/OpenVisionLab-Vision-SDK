@@ -253,8 +253,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 || region.Column < 0
                 || region.RowCount < 1
                 || region.ColumnCount < 1
-                || region.Row + region.RowCount > rowCount
-                || region.Column + region.ColumnCount > columnCount)
+                || region.Row > rowCount - region.RowCount
+                || region.Column > columnCount - region.ColumnCount)
             {
                 throw new InvalidDataException(
                     "Height-map region is outside the source grid.");

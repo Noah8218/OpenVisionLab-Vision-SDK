@@ -381,11 +381,16 @@ namespace OpenVisionLab.Vision2D.Tool
                 bounds.Y + bounds.Height / 2);
             OpenCvSharp.Point[] resultContour = useDrawContourAsResult ? drawContour : contour;
 
-            VisionObjectCandidateDecision decision = VisionObjectCandidateEvaluator.Evaluate(
-                contourArea,
-                bounds.Width,
-                bounds.Height,
-                limits);
+            bool masked = IsMasked(bounds);
+            VisionObjectCandidateDecision decision = masked
+                ? new VisionObjectCandidateDecision(
+                    VisionObjectCandidateRejectReasonCode.Masked,
+                    "Candidate is inside a configured mask.")
+                : VisionObjectCandidateEvaluator.Evaluate(
+                    contourArea,
+                    bounds.Width,
+                    bounds.Height,
+                    limits);
             candidate = new VisionObjectCandidate
             {
                 CandidateId = VisionObjectCandidate.CreateCandidateId(
@@ -413,7 +418,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             // Keep the legacy results list area-filtered. The application applies
             // its existing dimension filter after consuming candidates.
-            if (contourArea < minArea || contourArea > maxArea)
+            if (masked || contourArea < minArea || contourArea > maxArea)
             {
                 return true;
             }
@@ -597,6 +602,11 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             Rect bounds = Cv2.BoundingRect(approxPoints);
+            if (IsMasked(bounds))
+            {
+                return false;
+            }
+
             RotatedRect rotatedRect = Cv2.MinAreaRect(approxPoints);
             OpenCvSharp.Point center = new OpenCvSharp.Point(
                 bounds.X + bounds.Width / 2,
@@ -611,6 +621,24 @@ namespace OpenVisionLab.Vision2D.Tool
                 squarePoints,
                 Math.Round(rotatedRect.Angle, 1));
             return true;
+        }
+
+        private bool IsMasked(Rect bounds)
+        {
+            if (property.CvMASKS == null || property.CvMASKS.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < property.CvMASKS.Count; i++)
+            {
+                if (property.CvMASKS[i].Contains(bounds))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool HasNearRightAngle(OpenCvSharp.Point[] points)

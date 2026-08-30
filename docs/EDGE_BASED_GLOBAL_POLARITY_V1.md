@@ -2,6 +2,10 @@
 
 Updated: 2026-07-28
 
+Status: Current polarity contract with historical verification evidence. Use
+[`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md) for project
+state and current verification boundaries.
+
 `IOpenCVPropertyEdgeBasedTemplateMatching.ALLOW_GLOBAL_POLARITY_REVERSAL`
 enables one optional whole-candidate contrast reversal.
 
@@ -16,9 +20,14 @@ enables one optional whole-candidate contrast reversal.
 - Existing score, unique-match, search, angle, scale, suppression, and count
   gates remain active.
 
-Verification: Release solution build and `Lib.Inspection.Smoke` 67/67,
+Historical verification: the former `Lib.Inspection.Smoke` runner recorded 67/67,
 including legacy reversed rejection, opt-in Same, opt-in Reversed, and no-target
-rejection.
+rejection. That count is not a current-source result. Verify the current source with:
+
+```powershell
+dotnet build OpenVisionLab.VisionSdk.sln -c Release
+dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build
+```
 
 This is deterministic synthetic core evidence, not physical-feature or field
 qualification.

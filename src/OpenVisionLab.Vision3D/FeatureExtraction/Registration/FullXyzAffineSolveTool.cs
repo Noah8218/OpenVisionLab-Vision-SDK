@@ -169,10 +169,18 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 Validate(correspondences, options);
                 cancellationToken.ThrowIfCancellationRequested();
                 double[][] source = new double[RequiredPairCount][];
+                ThreeDPoint sourceOrigin = correspondences[0].Source;
+                ThreeDPoint referenceOrigin = correspondences[0].Reference;
                 for (int index = 0; index < RequiredPairCount; index++)
                 {
                     FullXyzAffineCorrespondence pair = correspondences[index];
-                    source[index] = new[] { pair.Source.X, pair.Source.Y, pair.Source.Z, 1.0 };
+                    source[index] = new[]
+                    {
+                        pair.Source.X - sourceOrigin.X,
+                        pair.Source.Y - sourceOrigin.Y,
+                        pair.Source.Z - sourceOrigin.Z,
+                        1.0
+                    };
                 }
 
                 double[,] inverse = InvertScaledPartialPivot(source, cancellationToken);
@@ -191,10 +199,25 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     {
                         for (int index = 0; index < RequiredPairCount; index++)
                         {
-                            coefficients[row, coordinate] += inverse[row, index] * Reference(correspondences[index].Reference, coordinate);
+                            coefficients[row, coordinate] += inverse[row, index]
+                                * (Reference(correspondences[index].Reference, coordinate)
+                                    - Reference(referenceOrigin, coordinate));
                         }
                     }
                 }
+
+                coefficients[3, 0] += referenceOrigin.X
+                    - (coefficients[0, 0] * sourceOrigin.X)
+                    - (coefficients[1, 0] * sourceOrigin.Y)
+                    - (coefficients[2, 0] * sourceOrigin.Z);
+                coefficients[3, 1] += referenceOrigin.Y
+                    - (coefficients[0, 1] * sourceOrigin.X)
+                    - (coefficients[1, 1] * sourceOrigin.Y)
+                    - (coefficients[2, 1] * sourceOrigin.Z);
+                coefficients[3, 2] += referenceOrigin.Z
+                    - (coefficients[0, 2] * sourceOrigin.X)
+                    - (coefficients[1, 2] * sourceOrigin.Y)
+                    - (coefficients[2, 2] * sourceOrigin.Z);
 
                 FullXyzAffineMatrix matrix = new FullXyzAffineMatrix(
                     coefficients[0, 0], coefficients[1, 0], coefficients[2, 0], coefficients[3, 0],

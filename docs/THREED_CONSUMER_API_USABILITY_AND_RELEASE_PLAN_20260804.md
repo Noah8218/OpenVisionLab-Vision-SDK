@@ -1,6 +1,14 @@
 # 3D 소비자 API 사용성 및 정식 배포 통합 계획
 
-Status: Complete
+> **Historical record — 2026-08-04.** 이 문서는 Library-Noah 2.8/2.9 통합
+> 당시의 관찰, 계획, 명령, 수치와 artifact 경로를 보존한다. 아래 `Complete`는
+> 당시 작업 slice에만 적용되며 현재 OpenVisionLab Vision SDK 상태나 설치 버전을
+> 뜻하지 않는다. 현재 권위는
+> [`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md)이다. 현재
+> solution과 smoke entry point는 `OpenVisionLab.VisionSdk.sln` 및
+> `tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj`다.
+
+Document status: Historical completion record
 
 ## 목적
 

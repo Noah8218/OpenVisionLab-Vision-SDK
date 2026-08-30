@@ -1,6 +1,17 @@
 # Auto MPoint V1 And Representative-Image Extension
 
-Status: Complete for Library-Noah V1 and optional representative-image ranking
+Status: Current contract; the completion evidence below is a historical
+Library-Noah snapshot from 2026-07-24.
+
+Use [`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md) for current
+project state. Historical commands, case counts, binary versions, hashes, and
+artifact paths in this file do not prove the current source. Current verification
+uses:
+
+```powershell
+dotnet build OpenVisionLab.VisionSdk.sln -c Release
+dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build
+```
 
 ## Purpose
 
@@ -69,7 +80,7 @@ References:
 - <https://www.mvtec.com/doc/halcon/2111/en/inspect_shape_model.html>
 - <https://www.mvtec.com/doc/halcon/2405/en/determine_shape_model_params.html>
 
-Library-Noah follows the same staged principle without copying proprietary
+OpenVisionLab Vision SDK follows the same staged principle without copying proprietary
 implementation details:
 
 1. Score all windows with inexpensive contrast and edge-distribution measures.
@@ -184,7 +195,7 @@ V1 is complete only when current-source smoke evidence proves:
 2. a repeated pattern fails the uniqueness gate;
 3. an invalid ROI or pattern size fails closed with a stable error;
 4. candidate ranking and drawings are deterministic for identical inputs;
-5. the complete Library-Noah solution builds and the full inspection smoke runner
+5. the complete OpenVisionLab Vision SDK solution builds and the full inspection smoke runner
    passes.
 6. multiple representative images select the candidate with the strongest
    cross-image evidence rather than the highest reference-image score alone;
@@ -197,9 +208,10 @@ The PropertyGrid UI will expose explicit `Analyze candidates` and `Use this patt
 actions. Merely selecting a candidate must not save a template, mutate a recipe,
 change a layer route, Preview, or Run.
 
-## Completion Evidence
+## Historical completion evidence
 
-Current-source Release verification on 2026-07-24:
+The following commands and counts were recorded against the former Library-Noah
+layout on 2026-07-24. The named solution and runner no longer exist in this checkout.
 
 ```text
 dotnet build Lib.Common.sln -c Release
@@ -217,7 +229,8 @@ The Auto MPoint smoke matrix proves:
 - out-of-image analysis ROI and oversized pattern definitions fail with stable
   Auto MPoint errors.
 
-Evidence: `artifacts\auto_mpoint_v1_20260724`.
+Historical evidence path recorded at the time:
+`artifacts\auto_mpoint_v1_20260724`. It is not present in the current checkout.
 
 Representative-image extension verification on 2026-07-24:
 
@@ -233,10 +246,11 @@ The added matrix proves that actual representative-image results can reverse a
 reference-only candidate ordering and that invalid representative sets fail with
 `AutoMPointRepresentativeImageInvalid`.
 
-Evidence:
-`artifacts\auto_mpoint_representative_v2_20260724`.
+Historical evidence path recorded at the time:
+`artifacts\auto_mpoint_representative_v2_20260724`. It is not present in the
+current checkout.
 
-Current Release output provenance:
+Historical Release output provenance:
 
 ```text
 Lib.OpenCV.dll assembly version: 2.1.0.0

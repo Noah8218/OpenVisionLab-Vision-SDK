@@ -1,9 +1,9 @@
 ﻿<Project>
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
     <OpenVisionLabCoreNativeDlls Include="$(MSBuildThisFileDirectory)..\runtimes\win-x64\native\OpenCvSharpExtern.dll" />
   </ItemGroup>
 
-  <Target Name="CopyOpenVisionLabCoreNativeDlls" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(TargetDir)' != ''">
+  <Target Name="CopyOpenVisionLabCoreNativeDlls" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework' and '$(TargetDir)' != ''">
     <Copy SourceFiles="@(OpenVisionLabCoreNativeDlls)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" Condition="Exists('%(OpenVisionLabCoreNativeDlls.FullPath)')" />
   </Target>
 </Project>

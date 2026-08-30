@@ -2,8 +2,13 @@
 
 One runner for independent OpenVisionLab 2D tools and height-map `IThreeDInspectionTool` steps.
 
+`3.0.0` is the API/assembly baseline, not the install version. Use the exact
+immutable version from your package source; `3.0.1-dev.1` is only the current
+repository-local default.
+
 ```powershell
-dotnet add package OpenVisionLab.Inspection --version 3.0.0
+$packageVersion = "3.0.1-dev.1" # Replace when pack or your feed uses another version.
+dotnet add package OpenVisionLab.Inspection --version $packageVersion
 ```
 
 ```csharp
@@ -37,6 +42,6 @@ using CombinedInspectionRunResult result = new CombinedInspectionRunner().Run(
 Console.WriteLine($"success={result.Success}, steps={result.Steps.Count}");
 ```
 
-Every configured step runs even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image or height map. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
+Every configured step runs even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image, height map, or supplied tools. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
 
 [Repository and full documentation](https://github.com/Noah8218/OpenVisionLab-Vision-SDK)

@@ -1,0 +1,260 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0002",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "Vision SDK 감사 우선순위 1~5 구현 및 검증",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user request",
+    "summary": "2026-08-31 사용자가 전체 문서·코드 감사 결과를 문서에 명시하고 권장 우선순위 1~5를 모두 진행하도록 요청했다.",
+    "refs": []
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "PL-0002는 doing이다. M1~M5 구현과 로컬 통합 검증은 완료됐다: .NET 8.0.423 Release 0/0, smoke 220/220, 5개 coverage baseline, public API 3,295/3,295 exact gate, analyzer 596 diagnostics no-regression, 5개 package와 isolated net8/win-x64 consumer 및 native root 1개가 통과했다. 문서도 2D 15/15, 3D 62/62, Markdown 22개와 Markdown/HTML 로컬 링크·이미지 52개를 최종 정적 검증했다. 다만 이 증거는 아직 uncommitted working tree이며 commit/push나 package 게시를 주장하지 않고 .NET Framework fallback은 source-only/runtime-unverified다.",
+    "next_action": "루트 통합 검토 후 현재 working tree를 정확한 source commit으로 고정하고 승인된 commit/push 전달 기록에 증거를 연결한 뒤에만 PL-0002 resolved 여부를 결정한다. package 게시·consumer 저장소 변경·tag/release/deployment와 .NET Framework runtime 검증은 별도 경계로 유지한다."
+  },
+  "objective": {
+    "summary": "감사 우선순위 1~5를 최소한의 호환 가능한 변경으로 구현하고 문서·테스트·패키지 증거를 현재 HEAD에 정렬한다.",
+    "constraints": [
+      "기존 3.x 공개 호환 표면과 호스트 소유 Preview/Run 계약을 보존한다.",
+      "NuGet 게시와 소비자 저장소 변경은 별도 승인 없이 수행하지 않는다.",
+      "실센서 계측, 공식 paired 성능 재측정, 타 OS/RID 지원 추가는 이번 범위에 포함하지 않는다.",
+      "검증 데이터와 산출물은 D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK 아래에 둔다.",
+      "승인된 변경은 main에서 편집·검증한 뒤 하나의 일관된 커밋 묶음으로 push한다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "현재 권위 문서가 감사 우선순위 1~5의 원인, 범위, 완료 기준, 검증 경계와 진행 상태를 명시한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Contour CvMASKS와 pipeline OutputLayer/ResultImage 계약 결함이 수정되고 직접 회귀 테스트가 통과한다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "대좌표 landmark/affine, finite 통계, region overflow, LineGauge 입력 depth 계약이 수정되고 경계 테스트가 통과한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "도구 카탈로그, 설치 버전, dispose 예제, stale 명령과 현재 상태 문서가 실제 코드·빌드 계약과 일치한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "누락된 2D direct-execution 테스트와 재현 가능한 coverage, public API compatibility, analyzer no-regression CI gate가 추가되어 통과한다.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E5",
+        "E6"
+      ]
+    },
+    {
+      "id": "C6",
+      "text": "Windows x64 native DLL 배치 계약이 명시되고 package-only consumer output의 불필요한 중복이 제거된 상태로 실행 검증이 통과한다.",
+      "evidence_refs": [
+        "E7",
+        "E8"
+      ]
+    },
+    {
+      "id": "C7",
+      "text": "Release build, 전체 smoke, package pack·검사, isolated consumer와 새 품질 게이트가 모두 통과하고 승인 범위 밖의 게시·소비자 변경이 없다.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "Contour CvMASKS와 pipeline 출력 계약 결함을 수정하고 회귀 테스트로 고정한다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "대좌표 수치 안정성, finite 통계, region bounds와 LineGauge depth 계약을 수정한다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "현재 권위 문서와 공개 카탈로그·버전·예제를 실제 구현에 맞춘다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "2D 실행 테스트와 coverage·API compatibility·analyzer no-regression 게이트를 도입한다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M5",
+      "summary": "native/RID 패키징 중복을 제거하고 전체 Release·package 검증을 완료한다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C6",
+        "C7"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "repository",
+      "location": "C:\\Git\\OpenVisionLab-Vision-SDK"
+    },
+    {
+      "kind": "analysis evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\analysis-20260830"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "documentation index",
+      "location": "docs/README.md"
+    },
+    {
+      "kind": "primary integration evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\integration1"
+    },
+    {
+      "kind": "post-gate review evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review"
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "inspection",
+      "location": "C:\\Git\\OpenVisionLab-Vision-SDK\\docs\\OPENVISIONLAB_CURRENT_STATUS.md",
+      "observation": "최종 source/document 정적 대조에서 public non-legacy 2D Tool 15/15, public 3D Tool 62/62, Markdown 22개, docs/*.md index 13/13, Markdown/HTML 로컬 링크·이미지 52개, code-fence 균형, 활성 3.0.0 install 오용 0개, disposable 2D Tool 13개와 VisionToolResult 14개 예제의 using 소유권, 활성 dotnet solution/project 명령 대상 29개와 gate/project 경로 10/10이 일치했다.",
+      "observed_at": "2026-08-31T07:01:00.8939272+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review\\coverage-review.log",
+      "observation": "전체 synthetic smoke 220/220가 통과했다. Contour masked-candidate/legacy-result exclusion, Pipeline named/non-null routing, LineGauge unsupported depth, +1e12 affine/landmark, finite aggregation, region-bound overflow와 4개 direct 2D Tool 회귀를 포함한다. 로그 SHA-256 E1C4991A2FC191E318D1431D9F128EEF9A0703D9FB638C724E3A6116B3F0652B.",
+      "observed_at": "2026-08-31T06:43:08.4982354+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "build",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\verification_audit\\green1\\build-final.log",
+      "observation": ".NET SDK 8.0.423 Release build가 warnings 0, errors 0으로 통과했다. 로그 SHA-256 5CFCFAF16442E824CB2B78D42A7ABD670235F58C70F2E407009A28AA38AC8326.",
+      "observed_at": "2026-08-31T06:35:15.7910009+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "gate",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review\\coverage-review.cobertura.xml",
+      "observation": "Line coverage가 Core 21.68%>=20%, Inspection 69.92%>=68%, Vision2D 72.32%>=68%, Vision2D.Blob 69.17%>=68%, Vision3D 90.68%>=89%로 각 baseline을 통과했다.",
+      "observed_at": "2026-08-31T06:43:07.3656172+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "gate",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review",
+      "observation": "5개 assembly의 415 exported types와 public API 3,295/3,295 exact baseline이 통과했다. baseline 항목 누락, unreviewed addition, parameter 이름 변경 음성 검사가 의도대로 실패했다. positive 로그 SHA-256 F5B09CDD8B34DC6BA60363AAF67AEB68984A0B7EC1F5071C6B8DC53D8C0830A8.",
+      "observed_at": "2026-08-31T06:54:02.2585103+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "gate",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review",
+      "observation": "latest-recommended/All analyzer gate가 동일 artifacts 경로 연속 2회 각각 596 diagnostics로 no-regression 통과했다. zero-diagnostic UpdateBaseline과 analysisMode mismatch 음성 검사는 의도대로 실패했다. 두 번째 반복 로그 SHA-256 C0AC8A02410EA24DEBF5FADB215790206C0A3510ED8C758C53C4F4D72A47BA8F.",
+      "observed_at": "2026-08-31T06:55:45.9464926+09:00"
+    },
+    {
+      "id": "E7",
+      "kind": "package",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\m4-m5-review",
+      "observation": "3.0.1-review.20260831.1 nupkg 5개를 pack하고 clean isolated net8/win-x64 consumer를 실행해 2D native와 3D managed checks를 통과했으며 OpenCvSharpExtern.dll은 output root에 1개만 존재했다. nupkg SHA-256: Core 41B4B45ED945C4F91BF9A61E321C5545D2D46D7EE68AEAF5A9F102E5F53AE0B1; Inspection 7F6C4AAA7E30A97403EE66B4818C4D4604D2CBE13061FEAA2B1E12E9C8EAEE44; Vision2D 5CD7B8A060FE0B562FE0D0AD25A21F7401B4457EEBF3134057F6F9B65609F180; Vision2D.Blob A862C15DA8BEA8D998B52BCAE7576D1BCD54C3A0FD3CC38CE17DE35BD60E5325; Vision3D D80A1AA347839DA86FF015040E002A1844E1BA539E64FF39EFC27DC8DEC8AA65. .NET Framework fallback은 source/nupkg-only이며 runtime 미검증이다.",
+      "observed_at": "2026-08-31T06:57:41.7500539+09:00"
+    },
+    {
+      "id": "E8",
+      "kind": "package",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\integration1",
+      "observation": "기본 통합 snapshot은 3.0.1-analysis.20260831.1 packages 5개와 isolated net8/win-x64 consumer를 통과했다. consumer output은 top-level 13개 파일, 총 55,121,162 bytes이고 OpenCvSharpExtern.dll 1개를 포함한다. package 게시나 consumer 저장소 변경은 수행하지 않았다.",
+      "observed_at": "2026-08-31T06:44:26.4720758+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-31T06:20:29.4969106+09:00",
+      "summary": "사용자가 감사 결과를 문서에 기록하고 권장 우선순위 1~5를 모두 구현하도록 승인했다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "D2",
+      "kind": "decision",
+      "at": "2026-08-31T07:01:00.8939272+09:00",
+      "summary": "M1~M5를 local milestone done으로 기록하되, uncommitted working-tree evidence를 source commit/push 또는 package release로 과장하지 않고 PL-0002 전체 상태는 doing으로 유지한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8"
+      ]
+    }
+  ],
+  "created_at": "2026-08-31T06:20:29.4969106+09:00",
+  "updated_at": "2026-08-31T07:01:00.8939272+09:00"
+}

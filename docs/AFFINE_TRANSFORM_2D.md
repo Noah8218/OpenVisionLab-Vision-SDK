@@ -21,7 +21,10 @@ Compatibility aliases: `Affine`, `AffineMatrix`.
 
 ## Version and compatibility
 
-The package version is `3.0.0` and the assembly/file version is `3.0.0.0`.
+The API baseline is `3.0.0`, the assembly/file version is `3.0.0.0`, and the
+repository-local package default is `3.0.1-dev.1`. Install the exact immutable
+package version produced or published for the selected package source; do not infer
+an installable package version from the API baseline.
 The `AffineTransformTool` type/member and numerical contract is preserved from
 `Lib.OpenCV 2.9.1`; only the package, assembly and namespace identity changes.
 

@@ -418,8 +418,15 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         -1);
                 }
 
-                int[] bins = new int[options.BinCount];
+                double mean = sum / validCount;
                 double span = maximum - minimum;
+                if (!IsFinite(sum) || !IsFinite(mean) || !IsFinite(span))
+                {
+                    throw new InvalidDataException(
+                        "Height-distribution statistics produced a non-finite value or overflow.");
+                }
+
+                int[] bins = new int[options.BinCount];
                 for (int index = 0; index < values.Count; index++)
                 {
                     if ((index & 0x3fff) == 0)
@@ -459,7 +466,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     values.Count - validCount,
                     minimum,
                     maximum,
-                    sum / validCount,
+                    mean,
                     Array.AsReadOnly(bins),
                     peakBinIndex);
             }

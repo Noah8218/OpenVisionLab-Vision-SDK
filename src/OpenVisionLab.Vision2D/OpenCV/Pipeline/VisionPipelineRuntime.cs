@@ -94,8 +94,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
                                 break;
                             }
 
-                            if (toolResult.Success
-                                || (toolResult.ResultImage != null && !string.IsNullOrWhiteSpace(step.OutputLayer)))
+                            if (toolResult.ResultImage != null
+                                && !string.IsNullOrWhiteSpace(step.OutputLayer))
                             {
                                 context.SetLayer(step.OutputLayer, toolResult.ResultImage);
                             }

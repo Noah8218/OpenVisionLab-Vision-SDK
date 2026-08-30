@@ -1,5 +1,10 @@
 # Lib.* 2.9.1에서 OpenVisionLab.* 3.0.0으로 마이그레이션
 
+> 이 문서의 `3.0.0`은 패키지·DLL·네임스페이스의 마이그레이션 및 API
+> baseline이다. 설치할 패키지는 선택한 feed에서 검증한 정확한 immutable
+> `PackageVersion`을 사용한다. 현재 저장소의 로컬 기본값은 `3.0.1-dev.1`이며,
+> 공유할 package를 만들 때는 고유 prerelease 버전으로 override한다.
+
 `3.0.0`은 제품명, 패키지 ID, DLL과 네임스페이스를 함께 바꾸는 breaking
 release다. 알고리즘 수식, 공차 의미, 3D 단위·좌표 프레임·결측값·커버리지 계약은
 `2.9.1`과 동일하게 유지한다.
@@ -18,14 +23,16 @@ release다. 알고리즘 수식, 공차 의미, 3D 단위·좌표 프레임·결
 
 ```powershell
 dotnet remove package Lib.ThreeD
-dotnet add package OpenVisionLab.Vision3D --version 3.0.0
+$packageVersion = "3.0.1-dev.1" # 선택한 feed의 정확한 버전으로 교체한다.
+dotnet add package OpenVisionLab.Vision3D --version $packageVersion
 ```
 
 로컬 빌드 패키지를 사용할 때는 저장소 루트에서 먼저 pack한다.
 
 ```powershell
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release
-dotnet add package OpenVisionLab.Vision3D --version 3.0.0 --source .\artifacts\packages
+$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
+dotnet add package OpenVisionLab.Vision3D --version $packageVersion --source .\artifacts\packages
 ```
 
 ## 2. 네임스페이스 교체

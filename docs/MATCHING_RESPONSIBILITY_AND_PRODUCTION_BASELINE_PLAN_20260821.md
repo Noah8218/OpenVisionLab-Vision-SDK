@@ -2,6 +2,12 @@
 
 작성일: 2026-08-21
 
+> **Active responsibility boundary with historical Track A evidence.** Track A의
+> 완료 수치, package 버전과 artifact 경로는 2026-08-21 기록이며 현재 source
+> 검증 결과가 아니다. Track B는 아래 입력 prerequisite가 확보될 때까지 미완료다.
+> 현재 프로젝트 상태와 우선순위는
+> [`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md)를 따른다.
+
 ## 1. 목표와 경계
 
 이 문서는 두 작업을 분리한다.

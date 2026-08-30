@@ -127,9 +127,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             double[][] matrix = new double[RequiredPairCount][];
             double maximum = 0.0;
+            ThreeDPoint origin = points[0];
             for (int row = 0; row < RequiredPairCount; row++)
             {
-                matrix[row] = new[] { points[row].X, points[row].Y, points[row].Z, 1.0 };
+                matrix[row] = new[]
+                {
+                    points[row].X - origin.X,
+                    points[row].Y - origin.Y,
+                    points[row].Z - origin.Z,
+                    1.0
+                };
                 for (int column = 0; column < RequiredPairCount; column++)
                 {
                     maximum = Math.Max(maximum, Math.Abs(matrix[row][column]));

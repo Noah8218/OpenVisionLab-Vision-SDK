@@ -8,9 +8,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
     env:
       PACKAGE_VERSION: 3.0.1-ci.${{ github.run_number }}.${{ github.run_attempt }}
 
@@ -21,7 +25,10 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 8.0.423
+
+      - name: Restore quality tools
+        run: dotnet tool restore
 
       - name: Restore
         run: dotnet restore OpenVisionLab.VisionSdk.sln
@@ -29,8 +36,20 @@ jobs:
       - name: Build
         run: dotnet build OpenVisionLab.VisionSdk.sln -c Release --no-restore
 
-      - name: Smoke 2D and 3D combined inspection
-        run: dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build
+      - name: Smoke 2D and 3D with coverage gate
+        shell: pwsh
+        run: |
+          ./eng/Verify-Coverage.ps1 `
+            -SmokeAssembly tests/OpenVisionLab.Inspection.Smoke/bin/Release/net8.0/OpenVisionLab.Inspection.Smoke.dll `
+            -OutputPath "$env:RUNNER_TEMP/openvisionlab-coverage.cobertura.xml"
+
+      - name: Verify public API compatibility
+        shell: pwsh
+        run: ./eng/Verify-PublicApi.ps1 -AssemblyDirectory tests/OpenVisionLab.Inspection.Smoke/bin/Release/net8.0
+
+      - name: Verify analyzer no-regression baseline
+        shell: pwsh
+        run: ./eng/Verify-AnalyzerBaseline.ps1 -SolutionPath OpenVisionLab.VisionSdk.sln -ArtifactsPath "$env:RUNNER_TEMP/openvisionlab-analyzer"
 
       - name: Pack
         run: dotnet pack OpenVisionLab.VisionSdk.sln -c Release --no-build -o artifacts/packages "-p:PackageVersion=$env:PACKAGE_VERSION"
@@ -64,3 +83,19 @@ jobs:
 
       - name: Run package-only 2D and 3D consumer
         run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+
+      - name: Verify one Windows x64 native runtime copy
+        shell: pwsh
+        run: |
+          $outputRoot = 'tests/OpenVisionLab.PackageConsumer.Smoke/bin/Release/net8.0/win-x64'
+          if (-not (Test-Path -LiteralPath $outputRoot -PathType Container)) {
+            throw "Missing package consumer output root: $outputRoot"
+          }
+          $nativeFiles = @(Get-ChildItem -LiteralPath $outputRoot -Recurse -Filter OpenCvSharpExtern.dll -File)
+          if ($nativeFiles.Count -ne 1) {
+            throw "Expected one OpenCvSharpExtern.dll under $outputRoot, found $($nativeFiles.Count)."
+          }
+          $expectedNativePath = [System.IO.Path]::GetFullPath((Join-Path $outputRoot 'OpenCvSharpExtern.dll'))
+          if ($nativeFiles[0].FullName -ne $expectedNativePath) {
+            throw "Expected the native DLL at $expectedNativePath, found $($nativeFiles[0].FullName)."
+          }

@@ -2,8 +2,13 @@
 
 UI-independent height-map, full-XYZ geometry, surface matching, mesh comparison, and inspection algorithms for OpenVisionLab Vision SDK 3.0.
 
+`3.0.0` is the API/assembly baseline, not the install version. Use the exact
+immutable version from your package source; `3.0.1-dev.1` is only the current
+repository-local default.
+
 ```powershell
-dotnet add package OpenVisionLab.Vision3D --version 3.0.0
+$packageVersion = "3.0.1-dev.1" # Replace when pack or your feed uses another version.
+dotnet add package OpenVisionLab.Vision3D --version $packageVersion
 ```
 
 The caller owns unit, coordinate-frame, source identity, calibration, recipe tolerance, and product lifecycle. `NaN` is the missing height-map sample; infinity is rejected.

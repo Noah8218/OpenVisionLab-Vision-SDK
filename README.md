@@ -1,5 +1,10 @@
 # OpenVisionLab Vision SDK
 
+> **Current project authority:** read the
+> [current status and work contract](docs/OPENVISIONLAB_CURRENT_STATUS.md) before
+> continuing project work. Use the [documentation index](docs/README.md) to
+> distinguish current contracts from dated historical records.
+
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
 > `OpenVisionLab.* 3.0` packages, DLLs, and namespaces. Before migrating an
@@ -33,10 +38,10 @@ To reference the source projects directly, add only the projects required by you
 </ItemGroup>
 ```
 
-To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. Never reuse the example version after changing package content.
+To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. `3.0.0` is the API/assembly baseline, not the current install version. `3.0.1-dev.1` is only the repository-local package default. Never reuse a package version after changing package content.
 
 ```powershell
-$packageVersion = "3.0.1-dev.20260821.1"
+$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
 dotnet add package OpenVisionLab.Vision2D --version $packageVersion --source .\artifacts\packages
 dotnet add package OpenVisionLab.Vision2D.Blob --version $packageVersion --source .\artifacts\packages
@@ -166,14 +171,21 @@ When `HeightMapInputRequirements` is present, units and frames are compared exac
 - Input sample: `docs/samples/vision_sample.png`
 - README detection-result images: `docs/images/*.png`
 
-The basic examples assume execution from the repository root and use `docs/samples/vision_sample.png`. When running elsewhere, adjust the image path relative to the executable.
+The basic examples assume execution from the repository root and use
+`docs/samples/vision_sample.png`. That file is a legacy-branded demonstration input,
+not a calibration or production artifact. The six `docs/images/*.png` files are
+synthetic visual-reference captures made from other scenes; they were not generated
+from `vision_sample.png`. No tracked generator, parameter manifest, source revision,
+or checksum record currently makes those captures reproducible, so they are
+illustrations rather than test or release evidence. When running elsewhere, adjust
+the sample path relative to the executable.
 
 ## Matching Contract References
 
-- Auto MPoint teaching core: `docs/AUTO_MPOINT_V1.md`
-- Edge-based fail-closed unique result: `docs/EDGE_BASED_UNIQUE_MATCH_V1.md`
-- Matching responsibility boundaries and production-baseline plan: `docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md`
-- Versioned synthetic accuracy/performance baseline and paired protocol v2: `docs/OPENVISIONLAB_VISION_SDK_IDENTITY_AND_V3_MIGRATION_PLAN_20260805.md` sections 27-28
+- [Auto MPoint teaching core](docs/AUTO_MPOINT_V1.md)
+- [Edge-based fail-closed unique result](docs/EDGE_BASED_UNIQUE_MATCH_V1.md)
+- [Matching responsibility boundaries and production-baseline plan](docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md)
+- [Historical synthetic accuracy/performance attempts](docs/OPENVISIONLAB_VISION_SDK_IDENTITY_AND_V3_MIGRATION_PLAN_20260805.md) — sections 27–29 are recorded evidence, not current status
 
 ## 2D object candidate evidence
 
@@ -196,7 +208,7 @@ Smoke check including packaging:
 dotnet restore OpenVisionLab.VisionSdk.sln
 dotnet build OpenVisionLab.VisionSdk.sln -c Debug
 dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build
-$packageVersion = "3.0.1-dev.20260821.1"
+$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$packageVersion"
 ```
 
@@ -206,12 +218,14 @@ dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$
 
 The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It performs the following steps for pushes to `main` and for pull requests.
 
-1. Install the .NET SDK
-2. `dotnet restore OpenVisionLab.VisionSdk.sln`
-3. `dotnet build OpenVisionLab.VisionSdk.sln -c Release --no-restore`
-4. `dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Release --no-build`
-5. Pack all five packages with a unique `3.0.1-ci.<run>.<attempt>` version
-6. Restore and run the package-only consumer from the packed output and an isolated NuGet cache
+1. Install .NET SDK `8.0.423` and restore the repository-pinned quality tool.
+2. Restore and Release-build `OpenVisionLab.VisionSdk.sln`.
+3. Execute all 2D/3D smoke cases while enforcing the five-assembly line-coverage baseline.
+4. Compare all five assemblies to the exact reviewed public-API baseline.
+5. Run the `latest-recommended`/`All` analyzer no-regression baseline.
+6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version and inspect required package documentation.
+7. Restore and run the `net8.0`/`win-x64` package-only consumer from the packed output and an isolated NuGet cache.
+8. Require exactly one `OpenCvSharpExtern.dll` directly at the package consumer output root.
 
 ## License
 
@@ -268,9 +282,11 @@ OpenVisionLab-Vision-SDK
 |  |  `- Inspection
 |  `- OpenVisionLab.Inspection
 `- tests
-   `- OpenVisionLab.Inspection.Smoke
-      |- Suites
-      `- Support
+   |- OpenVisionLab.Inspection.Smoke
+   |  |- Suites
+   |  `- Support
+   |- OpenVisionLab.Vision3D.Benchmark
+   `- OpenVisionLab.PackageConsumer.Smoke
 ```
 
 | Project | Role |
@@ -281,6 +297,8 @@ OpenVisionLab-Vision-SDK
 | `OpenVisionLab.Vision3D` | UI-independent height-map/full-XYZ contracts, feature extraction, and 3D inspection algorithms |
 | `OpenVisionLab.Inspection` | Execution contract that runs 2D and 3D tools in sequence while preserving each original result |
 | `OpenVisionLab.Inspection.Smoke` | Executable contract and regression checks with synthetic input, separated into an entry point, domain suites, and shared support code |
+| `OpenVisionLab.Vision3D.Benchmark` | Isolated deterministic benchmark harness; it is not production-performance evidence |
+| `OpenVisionLab.PackageConsumer.Smoke` | Package-only consumer restored from a freshly packed isolated source/cache; intentionally outside the solution |
 
 Reference relationships:
 
@@ -340,9 +358,13 @@ IVisionTool
    |- FilterTool
    |- EdgeDetectionTool
    |- RotateScaleTool
+   |- AffineTransformTool
    |- ContourTool
    |- CornerTool
    |- MatchingTool
+   |- EdgeBasedTemplateMatchingTool
+   |- AutoMPointTool
+   |- SiftTool
    |- LineGaugeTool
    |- MeanTool
    `- BlobTool
@@ -379,6 +401,7 @@ else
 | `FilterTool` | Blur, Gaussian, Median, Bilateral, and related filters | `FilterToolProperty` |
 | `EdgeDetectionTool` | Canny, Sobel, Scharr, and Laplacian edge detection | `EdgeDetectionToolProperty` |
 | `RotateScaleTool` | Image rotation and scale transforms | `RotateScaleToolProperty` |
+| `AffineTransformTool` | Explicit affine-matrix image transform | `AffineTransformToolProperty` |
 | `ContourTool` | Contour detection and area filtering | `ContourToolProperty` or an `IOpenCVPropertyContour` implementation |
 | `CornerTool` | Sub-pixel corner detection with global-coordinate results | `ContourToolProperty` or an `IOpenCVPropertyContour` implementation |
 | `BlobTool` | Blob labeling and area filtering | `BlobToolProperty` or an `IOpenCVPropertyBlob` implementation |
@@ -437,7 +460,7 @@ public static class ThresholdExample
     {
         using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Color))
         {
-            ThresholdTool tool = new ThresholdTool();
+            using ThresholdTool tool = new ThresholdTool();
             tool.SetProperty(new ThresholdToolProperty
             {
                 Mode = ThresholdToolMode.Threshold,
@@ -446,14 +469,13 @@ public static class ThresholdExample
                 ThresholdType = ThresholdTypes.Binary
             });
 
-            VisionToolResult result = tool.Execute(source);
+            using VisionToolResult result = tool.Execute(source);
             if (!result.Success)
             {
                 throw new InvalidOperationException($"{result.ErrorName}: {result.Message}");
             }
 
             Cv2.ImWrite("result_threshold.png", result.ResultImage);
-            result.ResultImage?.Dispose();
         }
     }
 }
@@ -471,7 +493,7 @@ using OpenCvSharp;
 
 using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Grayscale))
 {
-    FilterTool filter = new FilterTool();
+    using FilterTool filter = new FilterTool();
     filter.SetProperty(new FilterToolProperty
     {
         FilterType = FilterToolType.GaussianBlur,
@@ -479,13 +501,13 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
         KernelHeight = 5
     });
 
-    VisionToolResult filtered = filter.Execute(source);
+    using VisionToolResult filtered = filter.Execute(source);
     if (!filtered.Success)
     {
         throw new Exception(filtered.Message);
     }
 
-    EdgeDetectionTool edge = new EdgeDetectionTool();
+    using EdgeDetectionTool edge = new EdgeDetectionTool();
     edge.SetProperty(new EdgeDetectionToolProperty
     {
         EdgeType = EdgeDetectionToolType.Canny,
@@ -494,7 +516,7 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
         CannyApertureSize = 3
     });
 
-    VisionToolResult edgeResult = edge.Execute(filtered.ResultImage);
+    using VisionToolResult edgeResult = edge.Execute(filtered.ResultImage);
     if (!edgeResult.Success)
     {
         throw new Exception(edgeResult.Message);
@@ -502,8 +524,6 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
 
     Cv2.ImWrite("result_edge.png", edgeResult.ResultImage);
 
-    filtered.ResultImage?.Dispose();
-    edgeResult.ResultImage?.Dispose();
 }
 ```
 
@@ -527,7 +547,7 @@ using OpenCvSharp;
 
 using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Grayscale))
 {
-    BlobTool tool = new BlobTool();
+    using BlobTool tool = new BlobTool();
     tool.SetProperty(new BlobToolProperty
     {
         USE_THRESHOLD = true,
@@ -538,7 +558,7 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
         CvROI = new Rect(100, 100, 300, 200)
     });
 
-    VisionToolResult result = tool.Execute(source);
+    using VisionToolResult result = tool.Execute(source);
     if (!result.Success)
     {
         throw new Exception(result.Message);
@@ -549,7 +569,6 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
         Console.WriteLine($"#{blob.Index}, Area={blob.Area}, Center={blob.Center}");
     }
 
-    result.ResultImage?.Dispose();
 }
 ```
 
@@ -658,7 +677,10 @@ Recommended flow:
 
 ### Example Detection Images
 
-The following images show Edge, Matching, Edge-Based Matching, Contour, Blob, and LineGauge detection or fitting applied to the README sample image. They provide a quick visual reference for the output displayed by each tool.
+The following synthetic captures illustrate Edge, Matching, Edge-Based Matching,
+Contour, Blob, and LineGauge output. They use scenes other than the README sample
+image and have no tracked generator or parameter manifest, so do not use them as
+reproducible verification evidence.
 
 <table>
   <tr>
@@ -800,7 +822,7 @@ public static class VisionDisplayHelper
 Usage:
 
 ```csharp
-VisionToolResult result = tool.Execute(source);
+using VisionToolResult result = tool.Execute(source);
 
 using (Mat display = VisionDisplayHelper.DrawVisionResult(source, result))
 {
@@ -829,7 +851,7 @@ using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
 using OpenCvSharp;
 
-MatchingTool tool = new MatchingTool();
+using MatchingTool tool = new MatchingTool();
 tool.SetProperty(new MatchingToolProperty
 {
     USE_FIND_ANGLE = false,
@@ -837,7 +859,7 @@ tool.SetProperty(new MatchingToolProperty
 });
 tool.SetTemplateImage(template);
 
-VisionToolResult result = tool.Execute(source);
+using VisionToolResult result = tool.Execute(source);
 
 using (Mat display = VisionDisplayHelper.DrawVisionResult(source, result))
 {
@@ -856,11 +878,11 @@ Edge-based matching uses the same display approach.
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
 
-EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool();
+using EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool();
 tool.SetProperty(new EdgeBasedTemplateMatchingToolProperty());
 tool.SetTemplateImage(template);
 
-VisionToolResult result = tool.Execute(source);
+using VisionToolResult result = tool.Execute(source);
 
 using (Mat display = VisionDisplayHelper.DrawVisionResult(source, result))
 {
@@ -874,14 +896,14 @@ using (Mat display = VisionDisplayHelper.DrawVisionResult(source, result))
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
 
-ContourTool contourTool = new ContourTool();
+using ContourTool contourTool = new ContourTool();
 contourTool.SetProperty(new ContourToolProperty
 {
     MIN_AREA = 50,
     MAX_AREA = 5000
 });
 
-VisionToolResult contourResult = contourTool.Execute(source);
+using VisionToolResult contourResult = contourTool.Execute(source);
 
 using (Mat contourDisplay = VisionDisplayHelper.DrawVisionResult(source, contourResult))
 {
@@ -892,14 +914,14 @@ using (Mat contourDisplay = VisionDisplayHelper.DrawVisionResult(source, contour
 ```csharp
 using OpenVisionLab.Vision2D.Blob;
 
-BlobTool blobTool = new BlobTool();
+using BlobTool blobTool = new BlobTool();
 blobTool.SetProperty(new BlobToolProperty
 {
     MIN_AREA = 50,
     MAX_AREA = 5000
 });
 
-VisionToolResult blobResult = blobTool.Execute(source);
+using VisionToolResult blobResult = blobTool.Execute(source);
 
 using (Mat blobDisplay = VisionDisplayHelper.DrawVisionResult(source, blobResult))
 {
@@ -914,13 +936,13 @@ using OpenCvSharp;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
 
-LineGaugeTool lineTool = new LineGaugeTool();
+using LineGaugeTool lineTool = new LineGaugeTool();
 lineTool.SetProperty(new LineGaugeToolProperty
 {
     CvROI = new Rect(100, 100, 300, 200)
 });
 
-VisionToolResult lineResult = lineTool.Execute(source);
+using VisionToolResult lineResult = lineTool.Execute(source);
 
 using (Mat lineDisplay = VisionDisplayHelper.DrawVisionResult(source, lineResult))
 {
@@ -946,7 +968,7 @@ Tools that implement `IOpenCVPropertyBase` can use the shared preprocessing opti
 - `USE_ADAPTIVE_THRESHOLD`: Apply Adaptive Threshold before execution
 - `USE_BITWISENOT`: Invert black and white
 
-When an ROI has zero width or height, the tool either substitutes the full image or fails, depending on its contract. Tools that require an ROI, such as `LineGaugeTool`, must receive a valid `CvROI` or `CvROIS`.
+When an ROI has zero width or height, the tool either substitutes the full image or fails, depending on its contract. Tools that require an ROI, such as `LineGaugeTool`, must receive a valid `CvROI` or `CvROIS`. The modern `LineGaugeTool` accepts only `CV_8U` input depth; supported multi-channel input is converted to grayscale single-channel data, while another depth fails with `InputImageInvalid`.
 
 ## Legacy API
 
@@ -990,7 +1012,7 @@ Ordinary development commits, benchmark-protocol changes, and branch pushes do n
 A package ID and version identify exactly one package content. After a package has been shared, consumed, or published, do not rebuild different content under that version. Use one new version for every changed development or CI package, keep all five OpenVisionLab packages on that version, and remove the prerelease suffix only for an approved release.
 
 ```text
-Development: 3.0.1-dev.20260821.1 -> 3.0.1-dev.20260821.2
+Development: 3.0.1-dev.<unique-run-id>; use another ID after any content change
 CI:          3.0.1-ci.<run>.<attempt>
 Release:     3.0.1
 Next fix:    3.0.2; never replace the existing 3.0.1 package
@@ -1003,7 +1025,7 @@ Next fix:    3.0.2; never replace the existing 3.0.1 package
 NuGet's global package cache is keyed by package ID and version. An older package with the same version can therefore hide a newly packed file. `RestoreAdditionalProjectSources` alone does not prove that the consumer used the new package. Verify the packed output with a dedicated empty cache and the packed directory as the only package source.
 
 ```powershell
-$packageVersion = "3.0.1-dev.20260821.1"
+$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 $packageRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\packages\$packageVersion"
 $consumerCache = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\package-cache\$packageVersion"
 
@@ -1042,11 +1064,15 @@ Each NuGet package includes a dedicated README for its specific role and first-u
 To create all five packages with one immutable version, pack the solution once.
 
 ```powershell
-$packageVersion = "3.0.1-dev.20260821.1"
+$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
 ```
 
-`OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under `runtimes/win-x64/native` and copies it to the output directory through `buildTransitive/OpenVisionLab.Core.targets`.
+`OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under
+`runtimes/win-x64/native`. Modern SDK-style `win-x64` consumers resolve that runtime
+asset to the output root. `buildTransitive/OpenVisionLab.Core.targets` is a
+`.NET Framework` fallback only; its source contract is reviewed, but no .NET
+Framework runtime consumer has been executed.
 
 GitHub Actions separately restores and runs
 `tests/OpenVisionLab.PackageConsumer.Smoke`, which references only the packed output. This check verifies that 2D native calls, height-map inspection, Surface Match, and Mesh Comparison work without a ProjectReference.

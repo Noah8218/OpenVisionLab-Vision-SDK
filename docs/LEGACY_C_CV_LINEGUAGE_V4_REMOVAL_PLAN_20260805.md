@@ -4,6 +4,13 @@
 대상 제품: OpenVisionLab Vision SDK
 제품 경계: UI 독립적인 2D/3D 비전 알고리즘 SDK
 
+> **Active 3.x compatibility policy with historical inventory evidence.** 이
+> 문서의 type 수, consumer 검색, Smoke 수치와 artifact 경로는 작성일 당시의
+> 조사 기록이다. 3.x 유지 및 별도 승인 없는 4.0 제거 금지 정책은 계속
+> 적용되며, 실제 제거 전에는 현재 source와 consumer를 다시 검증해야 한다.
+> 현재 프로젝트 상태는
+> [`OPENVISIONLAB_CURRENT_STATUS.md`](OPENVISIONLAB_CURRENT_STATUS.md)를 따른다.
+
 ## 1. 결론
 
 현재 `C*`, `CV*`, `LineGuage` 공개 API 24개는 3.x에서 유지한다. 이번 조사에서는
