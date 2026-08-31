@@ -38,7 +38,7 @@ To reference the source projects directly, add only the projects required by you
 </ItemGroup>
 ```
 
-To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. `3.0.0` is the API/assembly baseline, not the current install version. `3.0.1-dev.1` is only the repository-local package default. Never reuse a package version after changing package content.
+To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. `3.0.0` is the API/assembly baseline, not the current install version. `3.0.1-dev.1` is only the repository-local package default. Never reuse a package version after changing package content. The short command below is suitable for local iteration; use the commit-fixed procedure in [Packaging Notes](#packaging-notes) before treating packages as reusable evidence or candidates.
 
 ```powershell
 $packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
@@ -223,7 +223,7 @@ The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It perf
 3. Execute all 2D/3D smoke cases while enforcing the five-assembly line-coverage baseline.
 4. Compare all five assemblies to the exact reviewed public-API baseline.
 5. Run the `latest-recommended`/`All` analyzer no-regression baseline.
-6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version and inspect required package documentation.
+6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, and internal dependency declarations to that checkout.
 7. Restore and run the `net8.0`/`win-x64` package-only consumer from the packed output and an isolated NuGet cache.
 8. Require exactly one `OpenCvSharpExtern.dll` directly at the package consumer output root.
 
@@ -1020,16 +1020,36 @@ Next fix:    3.0.2; never replace the existing 3.0.1 package
 
 `3.0.1-dev.1` is only a safe repository default after the former mutable `3.0.0` local packages. Pass a unique `PackageVersion` whenever package content can leave the current build directory. Build metadata such as `+commit` is not used as the uniqueness boundary; use a prerelease suffix.
 
-### Isolated package-only verification
+### Commit-fixed package and isolated consumer verification
 
-NuGet's global package cache is keyed by package ID and version. An older package with the same version can therefore hide a newly packed file. `RestoreAdditionalProjectSources` alone does not prove that the consumer used the new package. Verify the packed output with a dedicated empty cache and the packed directory as the only package source.
+Create a reusable package candidate only from a committed, clean worktree. Use a new D-drive run directory so build output, package output, the consumer cache, and the provenance manifest cannot reuse earlier bytes. NuGet's global package cache is keyed by package ID and version, so an older package with the same version can otherwise hide newly packed content.
 
 ```powershell
 $packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
-$packageRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\packages\$packageVersion"
-$consumerCache = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\package-cache\$packageVersion"
+$commit = (git rev-parse HEAD).Trim()
+$runRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\packages\$packageVersion"
+if (Test-Path -LiteralPath $runRoot) {
+  throw "Use a fresh verification root: $runRoot"
+}
+$artifactRoot = Join-Path $runRoot "artifacts"
+$packageRoot = Join-Path $runRoot "packages"
+$consumerCache = Join-Path $runRoot "consumer-cache"
+$manifest = Join-Path $runRoot "package-provenance.json"
 
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion" -o $packageRoot
+if (git status --porcelain=v1 --untracked-files=all) {
+  throw "Commit package sources before creating a provenance candidate."
+}
+
+dotnet pack OpenVisionLab.VisionSdk.sln -c Release `
+  --artifacts-path $artifactRoot `
+  "-p:PackageVersion=$packageVersion" `
+  -o $packageRoot
+./eng/Verify-PackageProvenance.ps1 `
+  -PackageDirectory $packageRoot `
+  -ExpectedVersion $packageVersion `
+  -ExpectedCommit $commit `
+  -RequireCleanWorktree `
+  -ManifestPath $manifest
 dotnet restore tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.PackageConsumer.Smoke.csproj `
   "-p:PackageVersion=$packageVersion" `
   "-p:RestorePackagesPath=$consumerCache" `
@@ -1040,7 +1060,9 @@ dotnet run --project tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.Pac
   "-p:RestorePackagesPath=$consumerCache"
 ```
 
-Use another physical test-data root on a machine without `D:`. Do not clear the machine-wide NuGet cache as the normal verification path.
+The provenance verifier requires exactly the five expected packages, their immutable package version, Git repository URL and full commit, the same commit in each package's assembly product version, required documentation/runtime entries, and the reviewed internal dependency graph. NuGet writes a bare dependency version as a minimum range (`[version,)`), so this check proves a consistent declared lower bound; it does not claim an exact dependency-resolution pin.
+
+Use another physical test-data root on a machine without `D:`. Do not clear the machine-wide NuGet cache as the normal verification path. A successful provenance and consumer check does not publish a package or authorize a tag, release, deployment, or consumer-repository update.
 
 For a controlled release, record this minimal evidence:
 
@@ -1060,13 +1082,6 @@ Each NuGet package includes a dedicated README for its specific role and first-u
 | `OpenVisionLab.Vision2D.Blob` | [Blob Tool contract](src/OpenVisionLab.Vision2D.Blob/README.md) |
 | `OpenVisionLab.Vision3D` | [Surface Match and Mesh Quick Start](src/OpenVisionLab.Vision3D/README.md) |
 | `OpenVisionLab.Inspection` | [Combined 2D/3D execution Quick Start](src/OpenVisionLab.Inspection/README.md) |
-
-To create all five packages with one immutable version, pack the solution once.
-
-```powershell
-$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
-```
 
 `OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under
 `runtimes/win-x64/native`. Modern SDK-style `win-x64` consumers resolve that runtime

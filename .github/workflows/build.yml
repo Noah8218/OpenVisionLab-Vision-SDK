@@ -54,29 +54,14 @@ jobs:
       - name: Pack
         run: dotnet pack OpenVisionLab.VisionSdk.sln -c Release --no-build -o artifacts/packages "-p:PackageVersion=$env:PACKAGE_VERSION"
 
-      - name: Verify package documentation
+      - name: Verify package provenance and documentation
         shell: pwsh
         run: |
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $packages = @(Get-ChildItem artifacts/packages/*.nupkg)
-          if ($packages.Count -ne 5) { throw "Expected 5 packages, found $($packages.Count)." }
-          foreach ($package in $packages) {
-            if ($package.Name -notlike "*.$env:PACKAGE_VERSION.nupkg") {
-              throw "$($package.Name) does not use the immutable CI version $env:PACKAGE_VERSION."
-            }
-            $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
-            try {
-              $nuspec = $archive.Entries | Where-Object FullName -Like '*.nuspec' | Select-Object -First 1
-              $packageId = [System.IO.Path]::GetFileNameWithoutExtension($nuspec.FullName)
-              foreach ($required in @('README.md', "lib/netstandard2.0/$packageId.xml")) {
-                if (-not ($archive.Entries.FullName -contains $required)) {
-                  throw "$($package.Name) is missing $required."
-                }
-              }
-            } finally {
-              $archive.Dispose()
-            }
-          }
+          ./eng/Verify-PackageProvenance.ps1 `
+            -PackageDirectory artifacts/packages `
+            -ExpectedVersion $env:PACKAGE_VERSION `
+            -ExpectedCommit $env:GITHUB_SHA `
+            -RequireCleanWorktree
 
       - name: Restore package-only consumer
         run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"

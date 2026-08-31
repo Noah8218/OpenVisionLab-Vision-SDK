@@ -1,0 +1,100 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0003",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "커밋 고정 패키지 출처 무결성 게이트",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "user request",
+    "summary": "2026-08-31 사용자가 다음 우선순위로 선정된 clean-commit package provenance gate의 구현과 검증을 승인했다.",
+    "refs": []
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "PL-0003는 doing이다. PL-0002 최종 후보 nupkg 5개가 기능 검증은 통과했지만 모두 구현 commit c066f16이 아닌 이전 HEAD 6da3bcf를 RepositoryCommit으로 기록한 재현 가능한 추적성 결함을 확인했다. 로컬과 CI가 같은 검증기로 clean worktree, exact HEAD, package ID/version/repository commit/url, 내부 OpenVisionLab dependency version을 확인하도록 구현한다. package 게시, tag, release, deployment는 범위 밖이다.",
+    "next_action": "현재 pack 흐름과 nuspec dependency 구조를 기준으로 최소 Verify-PackageProvenance.ps1 계약을 구현하고 stale commit, dirty tree, version/commit mismatch 음성 검사를 실행한다."
+  },
+  "objective": {
+    "summary": "검증 후보 패키지를 깨끗한 정확한 source commit과 결속하고, 5개 nupkg의 provenance와 내부 버전 정합성을 로컬 및 CI에서 재현 가능하게 강제한다.",
+    "constraints": [
+      "기존 5개 package ID와 3.x 공개 API/동작을 변경하지 않는다.",
+      "후보 검증은 새 D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK 경로의 산출물을 사용한다.",
+      "일반 개발 빌드는 차단하지 않고 명시적 package-integrity 검증 경로에서만 clean-worktree 조건을 강제한다.",
+      "NuGet 게시, version release, tag, consumer repository 변경, deployment는 수행하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "하나의 검증기가 정확히 5개 package ID, 동일 expected version, repository type/url/commit, 내부 OpenVisionLab dependency version을 검사하고 로컬과 CI에서 실행된다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "dirty worktree, expected commit과 HEAD 불일치, nupkg commit/version 불일치 음성 검사가 각각 fail closed로 실패한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "깨끗한 구현 commit에서 새 D: artifacts 경로로 restore/build/pack한 5개 package가 exact commit gate를 통과하고 commit과 SHA-256이 함께 기록된다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Release build, 220 smoke/coverage, exact public API, analyzer baseline, package-only net8/win-x64 consumer와 remote main CI가 통과한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "현재 권위 문서와 원장이 exact source/package provenance 결과와 게시·tag·release·deployment 제외 경계를 기록한다.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0002"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "workflow",
+      "location": ".github/workflows/build.yml"
+    },
+    {
+      "kind": "stale package evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\final-candidate-20260831-a1\\packages"
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "inspection",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\final-candidate-20260831-a1\\packages",
+      "observation": "3.0.1-verification.20260831.1 nupkg 5개가 모두 RepositoryCommit=6da3bcf521efb88681a17e4a7b23a091e7fcbacf를 기록했다. 이는 검증된 구현 commit c066f16e9a6f38863b71e935d483483dc06618c6의 직전 parent다. 기능 검증 결과를 무효화하지 않지만 package 자체의 source commit 추적성은 부정확하다.",
+      "observed_at": "2026-08-31T08:52:06.3694539+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-31T08:52:06.3694539+09:00",
+      "summary": "사용자가 package source-commit 결속 게이트를 다음 즉시 우선순위로 승인했으며 기존 기능 범위나 release 단계로 확장하지 않는다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    }
+  ],
+  "created_at": "2026-08-31T08:52:06.3694539+09:00",
+  "updated_at": "2026-08-31T08:52:06.3694539+09:00"
+}

@@ -1,8 +1,8 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-08-31
-Project work item: `PL-0002`
-Overall state: `resolved`
+Project work item: `PL-0003`
+Overall state: `doing`
 
 ## Authority
 
@@ -41,11 +41,13 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 
 ## Current progress
 
-`PL-0002` is `resolved`. All five milestones passed the final local integration
-gates, and the verified implementation was committed as
-`c066f16e9a6f38863b71e935d483483dc06618c6` and pushed to `origin/main`. This
-delivery does not include package publication, consumer adoption, a tag, a release,
-or deployment.
+`PL-0002` remains resolved for its approved functional scope. `PL-0003` is now
+`doing` after a package-traceability review found that all five PL-0002 verification
+packages embed the previous HEAD `6da3bcf521efb88681a17e4a7b23a091e7fcbacf`
+instead of implementation commit `c066f16e9a6f38863b71e935d483483dc06618c6` in
+both `.nuspec` repository metadata and the packaged assemblies' product versions.
+This does not invalidate the observed functional checks, but those packages are not
+commit-fixed release artifacts.
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
@@ -61,6 +63,9 @@ The final candidate evidence is under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0002\final-candidate-20260831-a1`.
 The checked working tree was committed as
 `c066f16e9a6f38863b71e935d483483dc06618c6` and pushed to `origin/main`.
+The packages were created before that commit and therefore record their build-time
+HEAD `6da3bcf521efb88681a17e4a7b23a091e7fcbacf`; their hashes below identify
+functional verification artifacts, not source-commit-fixed candidates.
 
 - .NET SDK `8.0.423`; Release build: `0` warnings and `0` errors; full synthetic
   smoke: `220/220` passed.
@@ -104,6 +109,44 @@ The `buildTransitive/OpenVisionLab.Core.targets` fallback for
 .NET Framework runtime consumer was executed, so that fallback remains unverified.
 No package was published, no consumer repository was changed, and no tag, release,
 or deployment was performed.
+
+## Current priority — PL-0003 package provenance integrity
+
+Cause: package verification can run against an uncommitted working tree and `pack
+--no-build` can reuse assemblies built at a different HEAD. Before PL-0003, the
+inline CI check covered package count, version, README, and XML documentation but did
+not bind package or assembly metadata to the expected source commit.
+
+Scope:
+
+- require the expected commit to equal repository HEAD and optionally require a
+  clean worktree for package-integrity verification;
+- verify exactly five package IDs, one immutable version, repository type/URL/commit,
+  packaged assembly product-version commit, required package files, and all internal
+  OpenVisionLab dependency declaration values as consistent minimum floors rather
+  than exact resolution pins;
+- run the same verifier locally and in CI, and create final local evidence only from
+  a fresh D-drive artifact directory after the implementation commit exists;
+- leave package publication, version release, consumer-repository change, tag,
+  release, and deployment outside PL-0003.
+
+Completion criteria:
+
+- dirty-worktree, expected-commit, package-commit/version, and stale-assembly probes
+  fail closed;
+- a clean committed source produces five packages whose `.nuspec` and packaged
+  assembly metadata equal the expected full commit and whose internal versions are
+  consistently declared;
+- Release build, smoke/coverage, public API, analyzer, isolated package consumer,
+  package hashes, and remote `main` CI pass and are recorded together;
+- `PL-0003` remains `doing` until the exact implementation commit and reusable
+  evidence are recorded.
+
+Verification boundary: a commit-fixed development package is not a published or
+legally cleared release. Third-party OpenCvSharp/OpenCV provenance and notices remain
+the next separate commercialization gate.
+
+Recommended model: `gpt-5.6-luna` | Reasoning effort: `medium`
 
 ## Priority 1 — 2D result-contract correctness
 
@@ -306,7 +349,7 @@ Do not describe `PL-0002` completion as production metrology qualification.
   does not identify those third-party binaries, their exact versions, or their
   license notices. This repository audit did not make a legal determination.
 
-## Completion record
+## PL-0002 completion record
 
 Status: `Complete`
 
