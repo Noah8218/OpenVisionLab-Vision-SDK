@@ -14,9 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "PL-0004는 doing이다. managed 두 DLL은 공식 OpenCvSharp4 4.4.0.20200915 NuGet entries와, native DLL은 공식 GitHub 4.3.0.20200708 release ZIP entry와 byte-for-byte 일치한다. Core package의 manifest·provisional notice·license evidence와 로컬/CI drift gate가 구현되고 음성 검사를 통과했다. 다만 Blob BSD/LGPL 충돌, exact IPPICV 재배포 grant, ittnotify license 선택과 최종 배포 책임자 승인이 없어 redistribution clearance는 blocked로 고정된다.",
-    "next_action": "구현을 commit한 clean HEAD에서 fresh D: 전체 품질·package·isolated consumer 검증을 실행하고 origin/main remote CI를 확인한 뒤 기술 작업의 종료 근거와 license unblock prerequisite를 기록한다."
+    "status": "resolved",
+    "current_summary": "PL-0004는 resolved다. 세 vendored DLL의 exact official technical provenance, mixed 4.4 managed/4.3 native 정체성, provisional notice와 preserved license/conflict evidence가 manifest와 package에 고정됐다. 검증된 구현 commit c5d46d846de9fde574d6ff0caf1d6eb1bcd386b1의 fresh D: 전체 검증과 GitHub Actions run 33348179667이 통과했다. 이 기술 작업의 Complete 상태는 법적 재배포 승인이 아니며, Blob BSD/LGPL 충돌, exact IPPICV grant, ittnotify 선택과 최종 distribution/legal-owner 승인이 확보될 때까지 redistribution clearance는 별도 blocked 경계다."
   },
   "objective": {
     "summary": "현재 번들 세 DLL의 exact technical provenance와 적용되는 공식 license/notice source를 재현 가능하게 기록하고, package/CI가 해당 bytes와 notice를 함께 fail-closed 검증하게 한다.",
@@ -32,7 +31,8 @@
       "id": "C1",
       "text": "세 DLL 각각의 SHA-256, size, managed/native identity, version/source metadata, architecture, repository history가 재현 가능한 manifest와 evidence로 기록된다.",
       "evidence_refs": [
-        "E2"
+        "E2",
+        "E4"
       ]
     },
     {
@@ -46,26 +46,33 @@
       "id": "C3",
       "text": "NOTICE, consumer documentation, package contents가 입증된 third-party identity, copyright/license source, 기술적 provenance와 비법률판단 경계를 일관되게 제공한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4"
       ]
     },
     {
       "id": "C4",
       "text": "로컬과 CI의 최소 공용 검증이 세 source DLL hash/metadata와 모든 package의 notice/provenance 필수 항목 drift를 fail closed한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4",
+        "E5"
       ]
     },
     {
       "id": "C5",
       "text": "fresh D: Release build, smoke/coverage, public API, analyzer, five-package provenance, isolated net8/win-x64 consumer, 음성 검사와 remote main CI가 통과한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4",
+        "E5"
+      ]
     },
     {
       "id": "C6",
       "text": "현재 권위 문서와 원장이 exact evidence, 미확정 범위, 비게시·비릴리스·비법률승인 경계를 기록한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E6"
       ]
     }
   ],
@@ -127,6 +134,27 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0004\\implementation-check-20260831-a2; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0004\\negative-probes-20260831-a1",
       "observation": "Core-owned manifest, provisional notice, three exact official license texts와 Blob conflict evidence가 package에 포함되고 shared verifier가 source binaries, metadata, package bytes, root NOTICE/LICENSE/README, exact Core third-party set와 non-Core absence를 검사한다. uncommitted checkpoint pack 5개가 양성 검증을 통과했으며 source manifest hash, packaged notice, packaged native DLL, case-insensitive duplicate path, non-Core contamination, license-clearance bypass의 6개 음성 검사가 의도한 오류로 fail closed했다.",
       "observed_at": "2026-08-31T10:13:22.3914829+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "final local verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0004\\final-c5d46d84-20260831-a1",
+      "observation": "Clean implementation commit c5d46d846de9fde574d6ff0caf1d6eb1bcd386b1에서 .NET SDK 8.0.423 fresh D: Release build 0 warnings/0 errors, smoke 220/220와 5개 coverage floor, exact public API 3295, analyzer 596 baseline, version 3.0.1-provenance.c5d46d84.1의 five-package provenance, 대표 mutation 3/3 fail-closed와 harness exit 0, isolated net8/win-x64 package consumer, exact native root copy 1개가 통과했다. validation-summary.json SHA-256은 3DE1897AEBF6180D1652648E8EB77EA844FA5CB6A0262F175360C255C10B4D91이다.",
+      "observed_at": "2026-08-31T10:44:34.0097513+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "remote CI",
+      "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/33348179667",
+      "observation": "origin/main final commit c5d46d846de9fde574d6ff0caf1d6eb1bcd386b1의 Build run 33348179667/job 99356239743이 success로 완료되어 build, 220/220 smoke와 coverage, API 3295, analyzer 596, 5-package provenance, 3/3 fail-closed guard, isolated consumer와 native root copy를 모두 통과했다. 직전 run 33347973409는 probes 자체가 모두 통과했지만 마지막 expected child exit 1을 반환해 실패했고, final commit이 명시적 success exit 0으로 교정했다. Node.js 20-target v4 actions를 runner가 Node.js 24로 강제했다는 비차단 annotation만 남았다.",
+      "observed_at": "2026-08-31T10:44:34.0097513+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "documentation closure",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md; docs/README.md; README.md; NOTICE; src/OpenVisionLab.Core/ThirdParty; .proofline/issues/PL-0004.json",
+      "observation": "현재 권위 문서, root/package notice, package consumer documentation과 ledger가 exact three-binary provenance, mixed upstream identity, final local/remote evidence, non-publication boundary와 redistribution-clearance unblock prerequisites를 구분해 기록한다.",
+      "observed_at": "2026-08-31T10:44:34.0097513+09:00"
     }
   ],
   "events": [
@@ -148,8 +176,16 @@
         "E2",
         "E3"
       ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-31T10:44:34.0097513+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "C1-C6가 exact official artifact evidence, packaged notice/manifest, clean final commit, fresh local quality/package/consumer checks, representative fail-closed probes, remote main CI와 durable documentation으로 모두 충족됐다. Redistribution clearance는 PL-0004 Complete와 분리된 외부 prerequisite 경계로 유지된다."
     }
   ],
   "created_at": "2026-08-31T09:39:38.0534187+09:00",
-  "updated_at": "2026-08-31T10:13:22.3914829+09:00"
+  "updated_at": "2026-08-31T10:44:34.0097513+09:00"
 }

@@ -9,7 +9,7 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Current PL-0004 third-party binary provenance/notice scope and the completed PL-0002/PL-0003 evidence |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Completed PL-0004 technical provenance/notice evidence, blocked redistribution-clearance prerequisite, and prior PL-0002/PL-0003 evidence |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
@@ -79,7 +79,8 @@ Analyzer results are compared by diagnostic code so existing debt cannot grow
 silently.
 
 The package-provenance entry point is `eng/Verify-PackageProvenance.ps1`; its
-minimal fail-closed regression check is `eng/Test-PackageProvenanceNegative.ps1`. See the
+minimal fail-closed regression check is
+`eng/Test-PackageProvenanceNegative.ps1`. See the
 repository [`README.md`](../README.md#commit-fixed-package-and-isolated-consumer-verification)
 for its runnable fresh D-drive pack, manifest, and isolated-consumer sequence. The
 gate requires a clean committed worktree and proves package metadata, required
