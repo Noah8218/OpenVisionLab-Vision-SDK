@@ -165,3 +165,4 @@ $summaryPath = Join-Path $outputRoot 'summary.json'
     ($summary | ConvertTo-Json -Depth 5) + [Environment]::NewLine,
     [System.Text.UTF8Encoding]::new($false))
 Write-Host "Package provenance negative probes passed: $($results.Count). Evidence: $summaryPath"
+exit 0
