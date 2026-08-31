@@ -14,9 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "PL-0003는 doing이다. PL-0002 최종 후보 nupkg 5개가 기능 검증은 통과했지만 모두 구현 commit c066f16이 아닌 이전 HEAD 6da3bcf를 RepositoryCommit으로 기록한 재현 가능한 추적성 결함을 확인했다. 로컬과 CI가 같은 검증기로 clean worktree, exact HEAD, package ID/version/repository commit/url, 내부 OpenVisionLab dependency version을 확인하도록 구현한다. package 게시, tag, release, deployment는 범위 밖이다.",
-    "next_action": "현재 pack 흐름과 nuspec dependency 구조를 기준으로 최소 Verify-PackageProvenance.ps1 계약을 구현하고 stale commit, dirty tree, version/commit mismatch 음성 검사를 실행한다."
+    "status": "resolved",
+    "current_summary": "PL-0003는 resolved다. 공유 provenance 검증기가 clean exact HEAD와 5개 nupkg의 ID/version/repository URL·commit/assembly ProductVersion/필수 항목/내부 dependency floor를 로컬과 CI에서 검증한다. 구현 commit 89a6421cf54e24478afc32fcd2a539d6824bf519의 fresh D: 후보, 음성 검사, 전체 품질 게이트, isolated consumer, GitHub Actions run 33344346670이 통과했다. 게시, tag, release, deployment, consumer 저장소 변경은 수행하지 않았다."
   },
   "objective": {
     "summary": "검증 후보 패키지를 깨끗한 정확한 source commit과 결속하고, 5개 nupkg의 provenance와 내부 버전 정합성을 로컬 및 CI에서 재현 가능하게 강제한다.",
@@ -31,27 +30,41 @@
     {
       "id": "C1",
       "text": "하나의 검증기가 정확히 5개 package ID, 동일 expected version, repository type/url/commit, 내부 OpenVisionLab dependency version을 검사하고 로컬과 CI에서 실행된다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4",
+        "E5"
+      ]
     },
     {
       "id": "C2",
       "text": "dirty worktree, expected commit과 HEAD 불일치, nupkg commit/version 불일치 음성 검사가 각각 fail closed로 실패한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2"
+      ]
     },
     {
       "id": "C3",
       "text": "깨끗한 구현 commit에서 새 D: artifacts 경로로 restore/build/pack한 5개 package가 exact commit gate를 통과하고 commit과 SHA-256이 함께 기록된다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
     },
     {
       "id": "C4",
       "text": "Release build, 220 smoke/coverage, exact public API, analyzer baseline, package-only net8/win-x64 consumer와 remote main CI가 통과한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3",
+        "E4",
+        "E5"
+      ]
     },
     {
       "id": "C5",
       "text": "현재 권위 문서와 원장이 exact source/package provenance 결과와 게시·tag·release·deployment 제외 경계를 기록한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E6"
+      ]
     }
   ],
   "relations": [
@@ -82,6 +95,41 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0002\\final-candidate-20260831-a1\\packages",
       "observation": "3.0.1-verification.20260831.1 nupkg 5개가 모두 RepositoryCommit=6da3bcf521efb88681a17e4a7b23a091e7fcbacf를 기록했다. 이는 검증된 구현 commit c066f16e9a6f38863b71e935d483483dc06618c6의 직전 parent다. 기능 검증 결과를 무효화하지 않지만 package 자체의 source commit 추적성은 부정확하다.",
       "observed_at": "2026-08-31T08:52:06.3694539+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "negative test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0003\\negative-*",
+      "observation": "검증기는 untracked dirty worktree(a2), expected HEAD mismatch, nupkg repository commit mismatch, nupkg version mismatch, 동일 HEAD nuspec과 stale DLL ProductVersion을 만든 실제 pack --no-build 재현, 내부 dependency version mismatch, duplicate README entry를 각각 의도한 오류로 fail closed했다. canonical 결과는 negative-dirty-worktree-20260831-a2, negative-head-mismatch-20260831-a1, negative-package-commit-20260831-a1, negative-package-version-20260831-a1, negative-no-build-20260831-a1, negative-dependency-20260831-a1, negative-duplicate-entry-20260831-a1에 있다.",
+      "observed_at": "2026-08-31T09:24:27.3793635+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "local verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0003\\final-candidate-20260831-a1",
+      "observation": ".NET SDK 8.0.423의 fresh D: Release build가 0 warnings/0 errors, smoke 220/220, coverage Core 21.68%/Inspection 69.92%/Vision2D 72.32%/Vision2D.Blob 69.17%/Vision3D 90.68%, exact public API 3295/3295, analyzer 596 diagnostics at or below baseline으로 통과했다. verification-summary.json과 logs 폴더가 실제 결과와 대체된 test-harness 시도를 함께 기록한다.",
+      "observed_at": "2026-08-31T09:24:27.3793635+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "package",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0003\\final-candidate-20260831-a1\\package-provenance.json",
+      "observation": "clean implementation commit 89a6421cf54e24478afc32fcd2a539d6824bf519에서 fresh integrated pack한 3.0.1-provenance.20260831.1 패키지 5개가 같은 repository commit과 assembly ProductVersion suffix를 기록했다. SHA-256은 Core A9DC520ED2A9DB10470872D24A8D91039B8B8D8BB66B0577348630430C22A45D, Inspection F7907CF088BCC73B751D10BD13BABE8C3DB243DF228A9DA4E1BAC2ED55C35645, Vision2D EE9FCF85B98A858FB24042C106E4053C0706DFA3312C8BB045074EDF2B6E559A, Vision2D.Blob EB06B7A0D01B1872A72F3E75A409B75CFE60198009DD08602F8CB46797628056, Vision3D 3D1CB5A262D92916AEA2405936880B5A1C3599B395B63DA6C98E3DD5970AF294다. fresh isolated net8/win-x64 consumer b1은 13 files, 55,121,246 bytes, output root native DLL 1개로 통과했다.",
+      "observed_at": "2026-08-31T09:24:27.3793635+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "remote CI",
+      "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/33344346670",
+      "observation": "origin/main implementation commit 89a6421cf54e24478afc32fcd2a539d6824bf519의 Build run 33344346670/job 99345533674가 2m2s에 success로 완료됐다. build, smoke/coverage, API, analyzer, pack, 새 package provenance, isolated consumer, native DLL 단계가 모두 통과했다. v4 actions의 Node.js 20 선언을 runner가 Node.js 24로 강제했다는 비차단 annotation이 있었다.",
+      "observed_at": "2026-08-31T09:24:27.3793635+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "documentation",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md; docs/README.md; README.md; .proofline/issues/PL-0003.json",
+      "observation": "현재 권위 문서와 navigation/consumer 문서가 commit-fixed fresh D: workflow, exact commit/package hashes, dependency minimum-floor 의미, 검증 결과, 비게시·비릴리스 경계, 다음 third-party provenance prerequisite를 기록한다.",
+      "observed_at": "2026-08-31T09:24:27.3793635+09:00"
     }
   ],
   "events": [
@@ -93,8 +141,16 @@
       "evidence_refs": [
         "E1"
       ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-31T09:24:27.3793635+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "C1-C5가 exact implementation commit, fresh package manifest, fail-closed probes, full local quality gates, isolated consumer, remote main CI와 durable documentation으로 모두 충족됐다."
     }
   ],
   "created_at": "2026-08-31T08:52:06.3694539+09:00",
-  "updated_at": "2026-08-31T08:52:06.3694539+09:00"
+  "updated_at": "2026-08-31T09:24:27.3793635+09:00"
 }

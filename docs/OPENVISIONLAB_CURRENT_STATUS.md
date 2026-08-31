@@ -2,15 +2,16 @@
 
 Updated: 2026-08-31
 Project work item: `PL-0003`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0002.json` ledger records live milestone state and evidence;
-it is not a second design or release authority.
+`.proofline/issues/PL-0003.json` ledger records the current work-item closure, while
+`.proofline/issues/PL-0002.json` preserves the preceding milestone evidence. Neither
+ledger is a second design or release authority.
 
 If a dated plan, completion record, benchmark count, command, version example, or
 artifact path conflicts with this file, treat the dated material as historical
@@ -41,13 +42,13 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 
 ## Current progress
 
-`PL-0002` remains resolved for its approved functional scope. `PL-0003` is now
-`doing` after a package-traceability review found that all five PL-0002 verification
-packages embed the previous HEAD `6da3bcf521efb88681a17e4a7b23a091e7fcbacf`
-instead of implementation commit `c066f16e9a6f38863b71e935d483483dc06618c6` in
-both `.nuspec` repository metadata and the packaged assemblies' product versions.
-This does not invalidate the observed functional checks, but those packages are not
-commit-fixed release artifacts.
+`PL-0002` remains resolved for its approved functional scope. `PL-0003` is also
+resolved: local and CI package verification now use the same fail-closed provenance
+gate, implementation commit `89a6421cf54e24478afc32fcd2a539d6824bf519` is on
+`origin/main`, and GitHub Actions run `33344346670` passed every build, quality,
+package-provenance, consumer, and native-runtime step. The older PL-0002 packages
+remain valid functional evidence but are not commit-fixed release artifacts because
+their repository and assembly metadata name the previous HEAD.
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
@@ -57,7 +58,7 @@ commit-fixed release artifacts.
 | 4 / M4 | complete; pushed | Direct 2D execution plus coverage, exact public-API, and analyzer no-regression gates pass locally and are wired into CI. |
 | 5 / M5 | complete; pushed | Five packages and the isolated Windows x64 consumer pass with one native DLL at the consumer output root. |
 
-## Current integrated evidence
+## Prior PL-0002 integrated evidence
 
 The final candidate evidence is under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0002\final-candidate-20260831-a1`.
@@ -110,43 +111,84 @@ The `buildTransitive/OpenVisionLab.Core.targets` fallback for
 No package was published, no consumer repository was changed, and no tag, release,
 or deployment was performed.
 
-## Current priority — PL-0003 package provenance integrity
+## PL-0003 completion record
 
-Cause: package verification can run against an uncommitted working tree and `pack
---no-build` can reuse assemblies built at a different HEAD. Before PL-0003, the
-inline CI check covered package count, version, README, and XML documentation but did
-not bind package or assembly metadata to the expected source commit.
+Status: `Complete`
 
-Scope:
+Scope: added `eng/Verify-PackageProvenance.ps1` as the single local/CI gate for a
+clean exact HEAD, five expected package IDs and filenames, package version,
+repository type/URL/full commit, required package entries, assembly product-version
+commit, reviewed internal dependency declarations, SHA-256 output, and an optional
+JSON manifest. The CI workflow now invokes this gate before its isolated consumer.
 
-- require the expected commit to equal repository HEAD and optionally require a
-  clean worktree for package-integrity verification;
-- verify exactly five package IDs, one immutable version, repository type/URL/commit,
-  packaged assembly product-version commit, required package files, and all internal
-  OpenVisionLab dependency declaration values as consistent minimum floors rather
-  than exact resolution pins;
-- run the same verifier locally and in CI, and create final local evidence only from
-  a fresh D-drive artifact directory after the implementation commit exists;
-- leave package publication, version release, consumer-repository change, tag,
-  release, and deployment outside PL-0003.
+Acceptance criteria:
 
-Completion criteria:
+- C1 — Pass. The shared verifier passed locally and as GitHub Actions step
+  `Verify package provenance and documentation` for the exact five-package graph.
+- C2 — Pass. Untracked dirty worktree, expected HEAD, `.nuspec` commit, `.nuspec`
+  version, stale `pack --no-build` assembly, internal dependency version, and
+  duplicate required-entry probes all failed for their intended reasons.
+- C3 — Pass. A fresh D-drive build and integrated pack from clean commit
+  `89a6421cf54e24478afc32fcd2a539d6824bf519` produced version
+  `3.0.1-provenance.20260831.1`; all five repository commits and assembly product
+  versions equal that full commit.
+- C4 — Pass. Release build, `220/220` smoke and all five coverage floors, exact
+  `3295/3295` public API, 596-diagnostic analyzer baseline, isolated
+  `net8.0`/`win-x64` package consumer, one native runtime DLL, and remote `main` CI
+  passed.
+- C5 — Pass. This authority document, the documentation index, consumer README,
+  workflow, JSON manifest, verification summary, and `PL-0003` ledger record the
+  exact provenance and exclusions.
 
-- dirty-worktree, expected-commit, package-commit/version, and stale-assembly probes
-  fail closed;
-- a clean committed source produces five packages whose `.nuspec` and packaged
-  assembly metadata equal the expected full commit and whose internal versions are
-  consistently declared;
-- Release build, smoke/coverage, public API, analyzer, isolated package consumer,
-  package hashes, and remote `main` CI pass and are recorded together;
-- `PL-0003` remains `doing` until the exact implementation commit and reusable
-  evidence are recorded.
+Verification:
 
-Verification boundary: a commit-fixed development package is not a published or
-legally cleared release. Third-party OpenCvSharp/OpenCV provenance and notices remain
-the next separate commercialization gate.
+- .NET SDK `8.0.423`; fresh Release build: `0` warnings, `0` errors; smoke:
+  `220/220`.
+- Coverage: Core `21.68% >= 20.00%`; Inspection `69.92% >= 68.00%`; Vision2D
+  `72.32% >= 68.00%`; Vision2D.Blob `69.17% >= 68.00%`; Vision3D
+  `90.68% >= 89.00%`.
+- Public API: exact `3295/3295`; analyzer: 596 diagnostics at or below baseline.
+- Isolated consumer: 13 top-level files, `55,121,246` bytes, exactly one
+  `OpenCvSharpExtern.dll` at the output root.
+- GitHub Actions: run
+  [`33344346670`](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/33344346670)
+  passed in `2m2s` for implementation commit `89a6421cf54e24478afc32fcd2a539d6824bf519`.
 
-Recommended model: `gpt-5.6-luna` | Reasoning effort: `medium`
+| Package | SHA-256 |
+| --- | --- |
+| `OpenVisionLab.Core` | `A9DC520ED2A9DB10470872D24A8D91039B8B8D8BB66B0577348630430C22A45D` |
+| `OpenVisionLab.Inspection` | `F7907CF088BCC73B751D10BD13BABE8C3DB243DF228A9DA4E1BAC2ED55C35645` |
+| `OpenVisionLab.Vision2D` | `EE9FCF85B98A858FB24042C106E4053C0706DFA3312C8BB045074EDF2B6E559A` |
+| `OpenVisionLab.Vision2D.Blob` | `EB06B7A0D01B1872A72F3E75A409B75CFE60198009DD08602F8CB46797628056` |
+| `OpenVisionLab.Vision3D` | `3D1CB5A262D92916AEA2405936880B5A1C3599B395B63DA6C98E3DD5970AF294` |
+
+Evidence:
+
+- Implementation commit: `89a6421cf54e24478afc32fcd2a539d6824bf519`.
+- Reusable local root:
+  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0003\final-candidate-20260831-a1`.
+- Package manifest: `package-provenance.json`; combined local/CI record:
+  `verification-summary.json`; complete command output: `logs\` under that root.
+- Fail-closed probe results are retained in sibling `negative-*` directories under
+  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0003`.
+
+Boundary / next dependency: these are commit-fixed development packages, not
+published or legally cleared release artifacts. No package publication, version
+release, consumer-repository change, tag, release, deployment, other RID, .NET
+Framework runtime, real sensor, calibration, or legal-clearance check was performed.
+The internal dependency strings prove consistent minimum floors, not exact NuGet
+resolution pins. Remote CI also emitted a non-failing annotation that v4 checkout and
+setup-dotnet actions still declare Node.js 20 and were forced onto Node.js 24.
+
+## Next priority — third-party binary provenance and notices
+
+Prerequisite: obtain authoritative source/version/license provenance for the bundled
+`OpenCvSharp.dll`, `OpenCvSharp.Blob.dll`, and `OpenCvSharpExtern.dll`, including the
+rebuild or vendor-package relationship. Do not begin redistribution or legal-
+clearance changes until that evidence is available.
+
+After the prerequisite is available: Recommended model: `gpt-5.6-luna` | Reasoning
+effort: `medium`
 
 ## Priority 1 — 2D result-contract correctness
 
