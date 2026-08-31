@@ -9,7 +9,8 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Current direction, completed PL-0003 package-provenance evidence, prior PL-0002 completion evidence, and the next commercialization prerequisite |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Current PL-0004 third-party binary provenance/notice scope and the completed PL-0002/PL-0003 evidence |
+| [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
 | [Affine Transform 2D](AFFINE_TRANSFORM_2D.md) | Current 2D affine Tool and Pipeline contract |
@@ -77,7 +78,8 @@ or recorded parameter-name change requires an explicit compatibility decision.
 Analyzer results are compared by diagnostic code so existing debt cannot grow
 silently.
 
-The package-provenance entry point is `eng/Verify-PackageProvenance.ps1`. See the
+The package-provenance entry point is `eng/Verify-PackageProvenance.ps1`; its
+minimal fail-closed regression check is `eng/Test-PackageProvenanceNegative.ps1`. See the
 repository [`README.md`](../README.md#commit-fixed-package-and-isolated-consumer-verification)
 for its runnable fresh D-drive pack, manifest, and isolated-consumer sequence. The
 gate requires a clean committed worktree and proves package metadata, required

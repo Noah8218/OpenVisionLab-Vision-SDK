@@ -1,17 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-08-31
-Project work item: `PL-0003`
-Overall state: `resolved`
+Project work item: `PL-0004`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0003.json` ledger records the current work-item closure, while
-`.proofline/issues/PL-0002.json` preserves the preceding milestone evidence. Neither
-ledger is a second design or release authority.
+`.proofline/issues/PL-0004.json` ledger records the current work item, while
+`.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
+preceding closures. No ledger is a second design or release authority.
 
 If a dated plan, completion record, benchmark count, command, version example, or
 artifact path conflicts with this file, treat the dated material as historical
@@ -42,13 +42,12 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 
 ## Current progress
 
-`PL-0002` remains resolved for its approved functional scope. `PL-0003` is also
-resolved: local and CI package verification now use the same fail-closed provenance
-gate, implementation commit `89a6421cf54e24478afc32fcd2a539d6824bf519` is on
-`origin/main`, and GitHub Actions run `33344346670` passed every build, quality,
-package-provenance, consumer, and native-runtime step. The older PL-0002 packages
-remain valid functional evidence but are not commit-fixed release artifacts because
-their repository and assembly metadata name the previous HEAD.
+`PL-0002` and `PL-0003` remain resolved for their approved functional and package-
+source traceability scopes. `PL-0004` is `doing`: it must establish the exact
+technical origin and official license sources for the three vendored OpenCvSharp/
+OpenCV binaries, add accurate third-party notices, and prevent unnoticed binary or
+notice drift. This work does not itself make a legal determination or authorize
+commercial redistribution.
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
@@ -180,15 +179,51 @@ The internal dependency strings prove consistent minimum floors, not exact NuGet
 resolution pins. Remote CI also emitted a non-failing annotation that v4 checkout and
 setup-dotnet actions still declare Node.js 20 and were forced onto Node.js 24.
 
-## Next priority — third-party binary provenance and notices
+## Current priority — PL-0004 third-party binary provenance and notices
 
-Prerequisite: obtain authoritative source/version/license provenance for the bundled
-`OpenCvSharp.dll`, `OpenCvSharp.Blob.dll`, and `OpenCvSharpExtern.dll`, including the
-rebuild or vendor-package relationship. Do not begin redistribution or legal-
-clearance changes until that evidence is available.
+Verified evidence and current blocker:
 
-After the prerequisite is available: Recommended model: `gpt-5.6-luna` | Reasoning
-effort: `medium`
+- `OpenCvSharp.dll` is `862,208` bytes with SHA-256
+  `A5C477750EB4321B608F4B9183949915D4A42FE0B5D80CFB8376F5A326FA5F24`.
+- `OpenCvSharp.Blob.dll` is `40,960` bytes with SHA-256
+  `E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54`.
+- Both managed assemblies are byte-identical to the `netstandard2.0` entries in the
+  official, repository-signed NuGet package `OpenCvSharp4 4.4.0.20200915`. They
+  declare product version `1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae`,
+  assembly version `1.0.0.0`, and public key token `6adad1e807fea099`; that embedded
+  source revision is not the later `4.4.0.20200916` tag commit.
+- Native `OpenCvSharpExtern.dll` is `53,231,104` bytes with SHA-256
+  `C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249` and is
+  byte-identical to `NativeLib/win/x64/OpenCvSharpExtern.dll` in the official GitHub
+  release `4.3.0.20200708`. It is an unsigned AMD64 PE with no version resource and
+  reports OpenCV core `d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba`, contrib
+  `0d92fd8041ae36d855ca40dd444b2102e754bfe3`, and IPP/IW `2020.0.0`.
+- The three bytes therefore have exact official technical provenance but form a
+  mixed `4.4` managed / `4.3` native set. The machine-readable manifest must preserve
+  that split.
+- Redistribution clearance remains blocked. Official `BSD-3-Clause` package and
+  top-level license evidence conflicts with an unspecified `LGPL` claim in the same
+  source revision's Blob ReadMe. The exact IPPICV archive lacks an authoritative
+  complete redistribution grant, and the ittnotify license selection is unconfirmed.
+  The new notice set preserves these facts; it is not a legal determination.
+
+Scope and completion criteria:
+
+- prove each binary's local identity and repository history, then compare it with
+  official OpenCvSharp/OpenCV source and package artifacts using reproducible hashes;
+- record only exact matches and official license sources; if a binary cannot be
+  traced exactly, state the missing external prerequisite rather than assigning an
+  inferred version;
+- update `NOTICE`, package documentation, and package contents with the proven
+  third-party identity and non-legal-advice boundary;
+- add the smallest shared local/CI drift check for the source DLL hashes/metadata and
+  packaged notice/provenance files;
+- pass fresh D-drive build, smoke/coverage, API, analyzer, package provenance,
+  isolated Windows x64 consumer, fail-closed probes, and remote `main` CI;
+- do not replace or upgrade the binaries, publish packages, create a stable version
+  or tag, release, deploy, change a consumer repository, or claim legal clearance.
+
+Recommended model: `gpt-5.6-luna` | Reasoning effort: `medium`
 
 ## Priority 1 — 2D result-contract correctness
 
@@ -385,11 +420,12 @@ Do not describe `PL-0002` completion as production metrology qualification.
   performance host. Historical benchmark sessions do not satisfy that prerequisite.
 - NuGet publication, a stable `3.0.1` release, consumer package/hash updates, tag
   creation, and deployment remain separate authorization boundaries.
-- Vendored OpenCvSharp/OpenCV binaries require exact source/version/license
-  provenance and any required third-party notices before commercial redistribution
-  can be claimed ready. The current `NOTICE` contains project attribution only; it
-  does not identify those third-party binaries, their exact versions, or their
-  license notices. This repository audit did not make a legal determination.
+- Vendored OpenCvSharp/OpenCV binary bytes now have exact official artifact
+  provenance and provisional notice evidence. Commercial redistribution is still
+  blocked by the unresolved Blob BSD/LGPL conflict, unspecified LGPL version,
+  incomplete exact IPPICV redistribution terms, unconfirmed ittnotify license
+  selection, and the absence of project distribution/legal-owner approval for the
+  final notice bundle. This repository audit did not make a legal determination.
 
 ## PL-0002 completion record
 

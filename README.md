@@ -223,27 +223,46 @@ The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It perf
 3. Execute all 2D/3D smoke cases while enforcing the five-assembly line-coverage baseline.
 4. Compare all five assemblies to the exact reviewed public-API baseline.
 5. Run the `latest-recommended`/`All` analyzer no-regression baseline.
-6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, and internal dependency declarations to that checkout.
+6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, internal dependency declarations, vendored binary hashes, and provisional third-party evidence to that checkout. Exercise the duplicate-path, unsafe-path, and renamed non-Core binary guards with `eng/Test-PackageProvenanceNegative.ps1`.
 7. Restore and run the `net8.0`/`win-x64` package-only consumer from the packed output and an isolated NuGet cache.
 8. Require exactly one `OpenCvSharpExtern.dll` directly at the package consumer output root.
 
 ## License
 
-This project is distributed under the MIT License. Commercial use, modification, and distribution are permitted, but any use of this project or a substantial portion of its source must retain the copyright notice, license text, and attribution notices in `NOTICE`.
+The OpenVisionLab-authored portions are distributed under the MIT License. Use of
+those portions must retain the copyright notice, license text, and attribution in
+`NOTICE` when the MIT terms require it. This statement does not relicense bundled
+third-party software.
 
 Copyright (c) 2026 Noah Choi (최노아)
 
 - Full license: [LICENSE](LICENSE)
 - Attribution notices: [NOTICE](NOTICE)
+- Core third-party provenance and provisional notices:
+  [src/OpenVisionLab.Core/ThirdParty/NOTICE.md](src/OpenVisionLab.Core/ThirdParty/NOTICE.md)
+- Machine-readable binary lock:
+  [src/OpenVisionLab.Core/ThirdParty/provenance.json](src/OpenVisionLab.Core/ThirdParty/provenance.json)
 
-If redistribution, packaging, or derivative work includes a substantial part of this library, do not remove or obscure `LICENSE` or `NOTICE`.
+`OpenVisionLab.Core` currently mixes official OpenCvSharp managed binaries from
+`4.4.0.20200915` with an official native binary from `4.3.0.20200708`. Their exact
+bytes are proven, but redistribution clearance remains blocked by the documented
+Blob BSD/LGPL conflict and unresolved IPPICV/ittnotify terms. Do not treat the
+repository's MIT license or the provisional evidence bundle as approval to publish
+or commercially redistribute those binaries.
+
+Run `pwsh -File ./eng/Verify-ThirdPartyBinaries.ps1` to check the reviewed source bytes,
+managed/native identities, exact official-artifact lock, and provisional evidence.
+The package provenance verifier runs the same check and additionally compares every
+Core `third-party/` and vendored-binary entry with the repository source.
 
 ## Development Environment
 
 - Visual Studio 2022 or the .NET SDK
 - C# / .NET Standard 2.0
+- PowerShell 7 or later for the provenance and quality scripts
 - Windows runtime recommended
-- OpenCvSharp-related DLLs are included under `src/OpenVisionLab.Core/DLL`.
+- OpenCvSharp-related DLLs are included under `src/OpenVisionLab.Core/DLL`; read
+  `src/OpenVisionLab.Core/ThirdParty/NOTICE.md` before any redistribution decision.
 
 Build:
 
@@ -1044,7 +1063,7 @@ dotnet pack OpenVisionLab.VisionSdk.sln -c Release `
   --artifacts-path $artifactRoot `
   "-p:PackageVersion=$packageVersion" `
   -o $packageRoot
-./eng/Verify-PackageProvenance.ps1 `
+pwsh -File ./eng/Verify-PackageProvenance.ps1 `
   -PackageDirectory $packageRoot `
   -ExpectedVersion $packageVersion `
   -ExpectedCommit $commit `
@@ -1088,6 +1107,13 @@ Each NuGet package includes a dedicated README for its specific role and first-u
 asset to the output root. `buildTransitive/OpenVisionLab.Core.targets` is a
 `.NET Framework` fallback only; its source contract is reviewed, but no .NET
 Framework runtime consumer has been executed.
+
+The Core package also carries `third-party/provenance.json`, the provisional
+`third-party/NOTICE.md`, and the exact upstream license/conflict evidence named by
+that manifest. The package provenance verifier requires those files and all three
+vendored DLLs to be byte-identical to the reviewed repository sources; the other
+four packages must not contain Core's vendored DLL or `third-party/` entries. This
+technical gate does not change the blocked redistribution-clearance status.
 
 GitHub Actions separately restores and runs
 `tests/OpenVisionLab.PackageConsumer.Smoke`, which references only the packed output. This check verifies that 2D native calls, height-map inspection, Surface Match, and Mesh Comparison work without a ProjectReference.

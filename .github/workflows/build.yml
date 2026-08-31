@@ -63,6 +63,15 @@ jobs:
             -ExpectedCommit $env:GITHUB_SHA `
             -RequireCleanWorktree
 
+      - name: Exercise package provenance fail-closed guards
+        shell: pwsh
+        run: |
+          ./eng/Test-PackageProvenanceNegative.ps1 `
+            -PackageDirectory artifacts/packages `
+            -ExpectedVersion $env:PACKAGE_VERSION `
+            -ExpectedCommit $env:GITHUB_SHA `
+            -OutputDirectory "$env:RUNNER_TEMP/openvisionlab-package-provenance-negative-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+
       - name: Restore package-only consumer
         run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"
 

@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "scope": "Vendored third-party binaries packaged only by OpenVisionLab.Core",
+  "licenseEvidence": {
+    "status": "unresolved",
+    "redistributionClearance": "blocked",
+    "conflicts": [
+      "OpenCvSharp4 4.4.0.20200915 declares BSD-3-Clause, while its OpenCvSharp.Blob ReadMe declares LGPL without a version or full license text.",
+      "The exact native build reports Intel IPP/IW 2020.0.0, but the exact IPPICV archive does not contain an authoritative complete redistribution license.",
+      "The applicable ittnotify license choice has not been confirmed."
+    ],
+    "unblockCondition": "Obtain written rights-holder clarification for the Blob BSD/LGPL conflict and LGPL version, authoritative redistribution terms for the exact IPPICV 2020 archive, confirmation of the ittnotify license selection, and project distribution/legal-owner approval of the final notice bundle."
+  },
+  "binaries": [
+    {
+      "logicalName": "OpenCvSharp",
+      "sourcePath": "src/OpenVisionLab.Core/DLL/OpenCvSharp.dll",
+      "packagePath": "lib/netstandard2.0/OpenCvSharp.dll",
+      "size": 862208,
+      "sha256": "A5C477750EB4321B608F4B9183949915D4A42FE0B5D80CFB8376F5A326FA5F24",
+      "gitBlob": "ba0134e38e3c8bf0c139a3b34e6197f0fc57145b",
+      "identity": {
+        "format": "managed",
+        "peMachine": "I386",
+        "targetFramework": ".NETStandard,Version=v2.0",
+        "assemblyName": "OpenCvSharp",
+        "assemblyVersion": "1.0.0.0",
+        "fileVersion": "1.0.0.0",
+        "productVersion": "1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "publicKeyToken": "6adad1e807fea099",
+        "mvid": "7bf27df7-5c34-4d9d-ab35-d168a19854af",
+        "strongNameVerification": "verified during PL-0004; this is not a publisher signature",
+        "authenticode": "NotSigned"
+      },
+      "officialArtifact": {
+        "type": "NuGet",
+        "id": "OpenCvSharp4",
+        "version": "4.4.0.20200915",
+        "containerUrl": "https://api.nuget.org/v3-flatcontainer/opencvsharp4/4.4.0.20200915/opencvsharp4.4.4.0.20200915.nupkg",
+        "containerSize": 2682577,
+        "containerSha256": "D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1",
+        "containerSignature": "NuGet.org repository signature verified during PL-0004",
+        "entryPath": "lib/netstandard2.0/OpenCvSharp.dll",
+        "entrySize": 862208,
+        "entrySha256": "A5C477750EB4321B608F4B9183949915D4A42FE0B5D80CFB8376F5A326FA5F24",
+        "byteMatch": "exact",
+        "sourceCommit": "daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "tagBoundary": "The 4.4.0.20200916 tag is a different commit and is not substituted for the embedded source revision."
+      },
+      "repositoryHistory": [
+        "82eec4142efea31f46a27c14544a07d07372d51f",
+        "a32f36a6ee698f0e890cf8bd3e5fe526d56246cf"
+      ]
+    },
+    {
+      "logicalName": "OpenCvSharp.Blob",
+      "sourcePath": "src/OpenVisionLab.Core/DLL/OpenCvSharp.Blob.dll",
+      "packagePath": "lib/netstandard2.0/OpenCvSharp.Blob.dll",
+      "size": 40960,
+      "sha256": "E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54",
+      "gitBlob": "d2fc535d357ea483ee3a822a2b990760ef3f66c8",
+      "identity": {
+        "format": "managed",
+        "peMachine": "I386",
+        "targetFramework": ".NETStandard,Version=v2.0",
+        "assemblyName": "OpenCvSharp.Blob",
+        "assemblyVersion": "1.0.0.0",
+        "fileVersion": "1.0.0.0",
+        "productVersion": "1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "publicKeyToken": "6adad1e807fea099",
+        "mvid": "5051054c-f945-47d1-8523-860f9ecacf79",
+        "strongNameVerification": "verified during PL-0004; this is not a publisher signature",
+        "authenticode": "NotSigned"
+      },
+      "officialArtifact": {
+        "type": "NuGet",
+        "id": "OpenCvSharp4",
+        "version": "4.4.0.20200915",
+        "containerUrl": "https://api.nuget.org/v3-flatcontainer/opencvsharp4/4.4.0.20200915/opencvsharp4.4.4.0.20200915.nupkg",
+        "containerSize": 2682577,
+        "containerSha256": "D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1",
+        "containerSignature": "NuGet.org repository signature verified during PL-0004",
+        "entryPath": "lib/netstandard2.0/OpenCvSharp.Blob.dll",
+        "entrySize": 40960,
+        "entrySha256": "E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54",
+        "byteMatch": "exact",
+        "sourceCommit": "daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "tagBoundary": "The 4.4.0.20200916 tag is a different commit and is not substituted for the embedded source revision."
+      },
+      "repositoryHistory": [
+        "abaf6bba17259ff9014b1c6650e6a2d22571e9a4",
+        "82eec4142efea31f46a27c14544a07d07372d51f",
+        "a32f36a6ee698f0e890cf8bd3e5fe526d56246cf"
+      ]
+    },
+    {
+      "logicalName": "OpenCvSharpExtern",
+      "sourcePath": "src/OpenVisionLab.Core/DLL/OpenCvSharpExtern.dll",
+      "packagePath": "runtimes/win-x64/native/OpenCvSharpExtern.dll",
+      "size": 53231104,
+      "sha256": "C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249",
+      "gitBlob": "a7939cec94591c353014385d797345462a04a6a6",
+      "identity": {
+        "format": "native",
+        "peMachine": "Amd64",
+        "hasClrMetadata": false,
+        "coffTimestampUtc": "2020-07-01T01:15:59Z",
+        "linkerVersion": "14.26",
+        "fileVersion": null,
+        "productVersion": null,
+        "authenticode": "NotSigned",
+        "pdbPath": "C:\\Projects\\opencvsharp\\src\\Release\\x64\\OpenCvSharpExtern.pdb",
+        "pdbGuid": "f1b7f028-32b9-4a8c-92fa-a9a302ef53c9",
+        "pdbAge": 42,
+        "exportCount": 5746,
+        "openCvVersion": "4.3.0",
+        "openCvCoreCommit": "d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba",
+        "openCvContribCommit": "0d92fd8041ae36d855ca40dd444b2102e754bfe3",
+        "openCvBuildTimestampUtc": "2020-04-04T07:59:40Z",
+        "build": "Visual Studio 2019, MSVC 1925, C++11, /MT, static OpenCV libraries",
+        "intelIpp": "2020.0.0",
+        "nonFreeAlgorithms": true,
+        "reportedThirdPartyDependencies": [
+          "ittnotify",
+          "libprotobuf",
+          "zlib",
+          "libjpeg-turbo",
+          "libwebp",
+          "libpng",
+          "libtiff",
+          "libjasper",
+          "IlmImf",
+          "quirc",
+          "ippiw",
+          "ippicv"
+        ]
+      },
+      "officialArtifact": {
+        "type": "GitHubRelease",
+        "tag": "4.3.0.20200708",
+        "tagCommit": "206eba074db5e85b09843ae1f9275ef192969e1c",
+        "assetId": 22677192,
+        "containerUrl": "https://github.com/shimat/opencvsharp/releases/download/4.3.0.20200708/OpenCvSharp-4.3.0-20200708.zip",
+        "containerSize": 79315607,
+        "containerSha256": "1639AF0E08245F7A50D3A299636EF36ACC527CA5CCFFB1F97CEC861C774D97EB",
+        "publishedDigest": null,
+        "containerHashBoundary": "Observed download hash; GitHub provided no publisher digest or signature.",
+        "entryPath": "NativeLib/win/x64/OpenCvSharpExtern.dll",
+        "entrySize": 53231104,
+        "entrySha256": "C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249",
+        "byteMatch": "exact"
+      },
+      "repositoryHistory": [
+        "abaf6bba17259ff9014b1c6650e6a2d22571e9a4",
+        "a32f36a6ee698f0e890cf8bd3e5fe526d56246cf"
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "role": "provisional-notice-and-boundary",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/NOTICE.md",
+      "packagePath": "third-party/NOTICE.md",
+      "size": 4637,
+      "sha256": "CD5082119AEA73B697191C14D56A8FCF13A96E2AA837402E4549E25E8CF1C9CC"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp-BSD-3-Clause.txt",
+      "packagePath": "third-party/licenses/OpenCvSharp-BSD-3-Clause.txt",
+      "size": 1506,
+      "sha256": "073ED4C2934A375D1FEE5ABBCC8B79D965512379A084B2E92FF4E6D9E624B214",
+      "sourceUrl": "https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-4.3-BSD-3-Clause.txt",
+      "packagePath": "third-party/licenses/OpenCV-4.3-BSD-3-Clause.txt",
+      "size": 2294,
+      "sha256": "A5A7CF90FE5AC9763BAAD852CF69CF9D9B89BFF934A679FDC5C8FCECAEBA9A25",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-Contrib-BSD-3-Clause.txt",
+      "packagePath": "third-party/licenses/OpenCV-Contrib-BSD-3-Clause.txt",
+      "size": 2234,
+      "sha256": "FEFBF16CD163AD49B23AE8A37A1D0EACAA86A78EA5A150C1EA46642D038463C8",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv_contrib/0d92fd8041ae36d855ca40dd444b2102e754bfe3/LICENSE"
+    },
+    {
+      "role": "conflicting-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-ReadMe.txt",
+      "packagePath": "third-party/evidence/OpenCvSharp.Blob-ReadMe.txt",
+      "size": 184,
+      "sha256": "32FC160242CC3921D8E47D4BFFF6AB3CB0E0C99B9AAE33E39F1B84317D68FCAA",
+      "sourceUrl": "https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/src/OpenCvSharp.Blob/ReadMe.txt"
+    }
+  ]
+}

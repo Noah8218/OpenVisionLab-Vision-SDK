@@ -1,3 +1,5 @@
+#requires -Version 7.0
+
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -58,8 +60,66 @@ function Copy-ArchiveEntry {
     }
 }
 
+function Get-ArchiveEntrySha256 {
+    param([Parameter(Mandatory = $true)][System.IO.Compression.ZipArchiveEntry] $Entry)
+
+    $stream = $Entry.Open()
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '')
+    }
+    finally {
+        $algorithm.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Compare-ArchiveEntryToFile {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.Compression.ZipArchive] $Archive,
+        [Parameter(Mandatory = $true)][string] $EntryPath,
+        [Parameter(Mandatory = $true)][string] $SourcePath,
+        [Parameter(Mandatory = $true)][string] $PackageId,
+        [Parameter(Mandatory = $true)] $Failures
+    )
+
+    $entries = @($Archive.Entries | Where-Object { $_.FullName -ceq $EntryPath })
+    if ($entries.Count -ne 1) {
+        return
+    }
+    $archiveHash = Get-ArchiveEntrySha256 $entries[0]
+    $sourceHash = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash
+    if (-not [string]::Equals($archiveHash, $sourceHash, [StringComparison]::Ordinal)) {
+        $Failures.Add("$PackageId $EntryPath SHA-256 $archiveHash does not match repository source $sourceHash.")
+    }
+}
+
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $packageRoot = (Resolve-Path -LiteralPath $PackageDirectory).Path
+$thirdPartyProvenanceFile = (Resolve-Path -LiteralPath (
+    Join-Path $repositoryRoot 'src/OpenVisionLab.Core/ThirdParty/provenance.json')).Path
+& (Join-Path $PSScriptRoot 'Verify-ThirdPartyBinaries.ps1') `
+    -RepositoryRoot $repositoryRoot `
+    -ProvenancePath $thirdPartyProvenanceFile
+$thirdPartyProvenance = Get-Content -LiteralPath $thirdPartyProvenanceFile -Raw | ConvertFrom-Json
+$rootPackageFiles = [ordered] @{
+    'LICENSE' = Join-Path $repositoryRoot 'LICENSE'
+    'NOTICE' = Join-Path $repositoryRoot 'NOTICE'
+}
+$coreThirdPartyFiles = [ordered] @{
+    'third-party/provenance.json' = $thirdPartyProvenanceFile
+}
+foreach ($document in @($thirdPartyProvenance.documents)) {
+    $coreThirdPartyFiles[[string] $document.packagePath] = Join-Path $repositoryRoot ([string] $document.sourcePath)
+}
+$coreBinaryFiles = [ordered] @{}
+$coreBinaryPathsByHash = [ordered] @{}
+$coreBinarySizes = [System.Collections.Generic.HashSet[long]]::new()
+foreach ($binary in @($thirdPartyProvenance.binaries)) {
+    $coreBinaryFiles[[string] $binary.packagePath] = Join-Path $repositoryRoot ([string] $binary.sourcePath)
+    $coreBinaryPathsByHash[[string] $binary.sha256] = [string] $binary.packagePath
+    $null = $coreBinarySizes.Add([long] $binary.size)
+}
 if (-not [regex]::IsMatch($ExpectedCommit, '\A[0-9a-fA-F]{40}\z')) {
     throw "ExpectedCommit must be a full 40-character Git SHA: '$ExpectedCommit'."
 }
@@ -120,6 +180,32 @@ try {
     foreach ($package in $packages) {
         $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
         try {
+            $entryNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach ($entry in $archive.Entries) {
+                $entryPath = $entry.FullName
+                $segments = @($entryPath.Split('/'))
+                $hasUnsafeSegment = @(
+                    $segments |
+                        Where-Object {
+                            [string]::IsNullOrWhiteSpace($_) -or
+                            $_ -eq '.' -or
+                            $_ -eq '..' -or
+                            -not [string]::Equals($_, $_.Trim(), [StringComparison]::Ordinal) -or
+                            $_.EndsWith('.', [StringComparison]::Ordinal) -or
+                            $_.Contains(':', [StringComparison]::Ordinal)
+                        }).Count -gt 0
+                if ([string]::IsNullOrWhiteSpace($entryPath) -or
+                    $entryPath.StartsWith('/', [StringComparison]::Ordinal) -or
+                    $entryPath.EndsWith('/', [StringComparison]::Ordinal) -or
+                    $entryPath.Contains('\', [StringComparison]::Ordinal) -or
+                    $hasUnsafeSegment) {
+                    $failures.Add("$($package.Name) contains unsafe archive path '$entryPath'.")
+                }
+                if (-not $entryNames.Add($entry.FullName)) {
+                    $failures.Add("$($package.Name) contains duplicate archive path '$($entry.FullName)' ignoring case.")
+                }
+            }
+
             $nuspecEntries = @($archive.Entries | Where-Object { $_.FullName -like '*.nuspec' })
             if ($nuspecEntries.Count -ne 1) {
                 $failures.Add("$($package.Name) contains $($nuspecEntries.Count) nuspec files; expected one.")
@@ -172,11 +258,9 @@ try {
                 "lib/netstandard2.0/$packageId.dll",
                 "lib/netstandard2.0/$packageId.xml")
             if ($packageId -eq 'OpenVisionLab.Core') {
-                $requiredEntries += @(
-                    'lib/netstandard2.0/OpenCvSharp.dll',
-                    'lib/netstandard2.0/OpenCvSharp.Blob.dll',
-                    'runtimes/win-x64/native/OpenCvSharpExtern.dll',
-                    'buildTransitive/OpenVisionLab.Core.targets')
+                $requiredEntries += @('buildTransitive/OpenVisionLab.Core.targets')
+                $requiredEntries += @($coreBinaryFiles.Keys)
+                $requiredEntries += @($coreThirdPartyFiles.Keys)
             }
             if ($packageId -eq 'OpenVisionLab.Vision3D') {
                 $requiredEntries += 'docs/three-d-inspection.md'
@@ -188,6 +272,117 @@ try {
                 if ($entryCount -ne 1) {
                     $failures.Add(
                         "$packageId contains $entryCount copies of $requiredEntry; expected one.")
+                }
+            }
+
+            foreach ($entryPath in $rootPackageFiles.Keys) {
+                Compare-ArchiveEntryToFile `
+                    -Archive $archive `
+                    -EntryPath $entryPath `
+                    -SourcePath $rootPackageFiles[$entryPath] `
+                    -PackageId $packageId `
+                    -Failures $failures
+            }
+            $packageReadmePath = Join-Path $repositoryRoot "src/$packageId/README.md"
+            Compare-ArchiveEntryToFile `
+                -Archive $archive `
+                -EntryPath 'README.md' `
+                -SourcePath $packageReadmePath `
+                -PackageId $packageId `
+                -Failures $failures
+
+            $vendoredFileNames = @(
+                $coreBinaryFiles.Keys |
+                    ForEach-Object { [System.IO.Path]::GetFileName($_) })
+            $vendoredHashEntries = [System.Collections.Generic.List[object]]::new()
+            foreach ($archiveEntry in $archive.Entries) {
+                if (-not $coreBinarySizes.Contains([long] $archiveEntry.Length)) {
+                    continue
+                }
+                $entryHash = Get-ArchiveEntrySha256 $archiveEntry
+                if ($coreBinaryPathsByHash.Contains($entryHash)) {
+                    $vendoredHashEntries.Add([ordered] @{
+                        path = $archiveEntry.FullName
+                        sha256 = $entryHash
+                    })
+                }
+            }
+            if ($packageId -eq 'OpenVisionLab.Core') {
+                $vendoredEntries = @(
+                    $archive.Entries |
+                        Where-Object {
+                            $vendoredFileNames -contains [System.IO.Path]::GetFileName($_.FullName)
+                        })
+                if ($vendoredEntries.Count -ne $coreBinaryFiles.Count) {
+                    $failures.Add(
+                        "$packageId contains $($vendoredEntries.Count) vendored OpenCvSharp DLL entries; expected $($coreBinaryFiles.Count).")
+                }
+                foreach ($vendoredEntry in $vendoredEntries) {
+                    if ($coreBinaryFiles.Keys -cnotcontains $vendoredEntry.FullName) {
+                        $failures.Add("$packageId contains vendored DLL at unexpected path '$($vendoredEntry.FullName)'.")
+                    }
+                }
+                if ($vendoredHashEntries.Count -ne $coreBinaryFiles.Count) {
+                    $failures.Add(
+                        "$packageId contains $($vendoredHashEntries.Count) exact vendored binary byte copies; expected $($coreBinaryFiles.Count).")
+                }
+                foreach ($vendoredHashEntry in $vendoredHashEntries) {
+                    $expectedPath = $coreBinaryPathsByHash[[string] $vendoredHashEntry.sha256]
+                    if (-not [string]::Equals(
+                            [string] $vendoredHashEntry.path,
+                            $expectedPath,
+                            [StringComparison]::Ordinal)) {
+                        $failures.Add(
+                            "$packageId contains vendored binary bytes at unexpected path '$($vendoredHashEntry.path)'.")
+                    }
+                }
+
+                $thirdPartyEntries = @(
+                    $archive.Entries |
+                        Where-Object {
+                            -not $_.FullName.EndsWith('/', [StringComparison]::Ordinal) -and
+                            $_.FullName.StartsWith('third-party/', [StringComparison]::OrdinalIgnoreCase)
+                        })
+                if ($thirdPartyEntries.Count -ne $coreThirdPartyFiles.Count) {
+                    $failures.Add(
+                        "$packageId contains $($thirdPartyEntries.Count) third-party evidence entries; expected $($coreThirdPartyFiles.Count).")
+                }
+                foreach ($thirdPartyEntry in $thirdPartyEntries) {
+                    if ($coreThirdPartyFiles.Keys -cnotcontains $thirdPartyEntry.FullName) {
+                        $failures.Add("$packageId contains unexpected third-party entry '$($thirdPartyEntry.FullName)'.")
+                    }
+                }
+
+                foreach ($entryPath in $coreBinaryFiles.Keys) {
+                    Compare-ArchiveEntryToFile `
+                        -Archive $archive `
+                        -EntryPath $entryPath `
+                        -SourcePath $coreBinaryFiles[$entryPath] `
+                        -PackageId $packageId `
+                        -Failures $failures
+                }
+                foreach ($entryPath in $coreThirdPartyFiles.Keys) {
+                    Compare-ArchiveEntryToFile `
+                        -Archive $archive `
+                        -EntryPath $entryPath `
+                        -SourcePath $coreThirdPartyFiles[$entryPath] `
+                        -PackageId $packageId `
+                        -Failures $failures
+                }
+            }
+            else {
+                foreach ($vendoredHashEntry in $vendoredHashEntries) {
+                    $failures.Add(
+                        "$packageId must not contain vendored Core binary bytes at '$($vendoredHashEntry.path)'.")
+                }
+                $forbiddenEntries = @(
+                    $archive.Entries |
+                        Where-Object {
+                            $_.FullName.StartsWith('third-party/', [StringComparison]::OrdinalIgnoreCase) -or
+                            $vendoredFileNames -contains [System.IO.Path]::GetFileName($_.FullName)
+                        })
+                foreach ($forbiddenEntry in $forbiddenEntries) {
+                    $failures.Add("$packageId must not contain third-party Core entry '$($forbiddenEntry.FullName)'.")
                 }
             }
 

@@ -4,6 +4,14 @@ OpenVisionLab Vision SDK includes software developed by 최노아(Noah-Choi).
 
 Copyright (c) 2026 최노아(Noah-Choi).
 
-Commercial use, modification, and redistribution are permitted under the MIT
-License. When redistributing copies or substantial portions of this software,
-preserve the copyright notice, license text, and this attribution notice.
+The OpenVisionLab-authored portions are provided under the MIT License. When
+redistributing copies or substantial portions of those portions, preserve the
+copyright notice, license text, and this attribution notice.
+
+OpenVisionLab.Core also packages three vendored OpenCvSharp/OpenCV binaries.
+Their exact mixed-version provenance, preserved upstream license evidence, and
+unresolved redistribution blockers are recorded in
+src/OpenVisionLab.Core/ThirdParty/NOTICE.md and provenance.json; the Core NuGet
+package carries the same files under third-party/. The repository MIT license
+does not replace third-party terms. This provisional evidence is not legal advice
+or approval to publish or commercially redistribute those bundled binaries.

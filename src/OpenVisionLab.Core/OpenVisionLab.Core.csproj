@@ -28,6 +28,12 @@
     <None Include="DLL\OpenCvSharp.Blob.dll" Pack="true" PackagePath="lib\netstandard2.0\" />
     <None Include="DLL\OpenCvSharpExtern.dll" Pack="true" PackagePath="runtimes\win-x64\native\" />
     <None Include="build\OpenVisionLab.Core.targets" Pack="true" PackagePath="buildTransitive\" />
+    <None Include="ThirdParty\provenance.json" Pack="true" PackagePath="third-party\" />
+    <None Include="ThirdParty\NOTICE.md" Pack="true" PackagePath="third-party\" />
+    <None Include="ThirdParty\licenses\OpenCvSharp-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-4.3-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-Contrib-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\evidence\OpenCvSharp.Blob-ReadMe.txt" Pack="true" PackagePath="third-party\evidence\" />
   </ItemGroup>
 
 </Project>

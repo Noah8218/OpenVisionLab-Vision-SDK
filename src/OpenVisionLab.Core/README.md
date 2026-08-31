@@ -18,6 +18,8 @@ The package contains:
 - UI-independent numeric, coordinate, ROI, and 2D geometry utilities;
 - managed OpenCvSharp assemblies used by the SDK;
 - `runtimes/win-x64/native/OpenCvSharpExtern.dll`;
+- `third-party/provenance.json` plus the provisional notice and preserved official
+  license/conflict evidence under `third-party/`;
 - a `.NET Framework`-only `buildTransitive` fallback that copies the native DLL to
   the consumer output.
 
@@ -25,6 +27,15 @@ The package contains:
 Modern SDK-style `win-x64` consumers resolve the runtime asset directly; the
 `.NET Framework` fallback has been reviewed from source but has not been executed in
 a runtime consumer. Keep all OpenVisionLab packages on the same version.
+
+The managed DLLs match official `OpenCvSharp4 4.4.0.20200915`; the native DLL
+matches the official OpenCvSharp `4.3.0.20200708` release ZIP. Do not collapse this
+mixed provenance into one upstream version. The exact bytes are locked, but
+redistribution clearance remains blocked because official OpenCvSharp evidence
+conflicts between BSD-3-Clause and an unspecified LGPL statement for Blob, and the
+native IPPICV/ittnotify terms are incomplete. Read `third-party/NOTICE.md` in this
+package before any redistribution decision; it is technical evidence, not legal
+advice or publication approval.
 
 This package deliberately does not provide WinForms/WPF image conversion, serial-port,
 system-time, drive-management, or other application-platform helpers. Consumers that
