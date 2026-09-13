@@ -105,9 +105,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 if (options.DistributionBinCount <= 0)
                 {
                     throw new ArgumentOutOfRangeException(
-                        nameof(options.DistributionBinCount),
+                        nameof(options),
                         options.DistributionBinCount,
-                        "Height-grid distribution bin count must be positive.");
+                        "DistributionBinCount must be positive.");
                 }
 
                 int validCount = 0;
@@ -355,9 +355,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 if (options.BinCount <= 0)
                 {
                     throw new ArgumentOutOfRangeException(
-                        nameof(options.BinCount),
+                        nameof(options),
                         options.BinCount,
-                        "Height-distribution bin count must be positive.");
+                        "BinCount must be positive.");
                 }
 
                 int validCount = 0;

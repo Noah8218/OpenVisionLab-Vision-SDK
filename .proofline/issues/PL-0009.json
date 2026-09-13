@@ -1,0 +1,173 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0009",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "정확성 관련 analyzer 계약 정리",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "user-approved analyzer follow-up",
+    "summary": "PL-0008 이후 남은 진단 중 예외 매개변수, IDisposable 종료자 억제, 의도적 생성자 거부 14건을 소유자와 소비자 계약별로 검토하고 안전한 최소 수정으로 정리한다.",
+    "refs": [
+      "PL-0008"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "14건 최소 수정과 로컬 통합 검증이 완료됐다. Release build 0/0, direct와 coverage smoke 233/233, coverage floors, API 3295 exact, analyzer 499/12코드, Markdown 80/80이 통과했다. 정확한 구현 커밋의 패키지·소비자·원격 CI가 남았다.",
+    "next_action": "수정 전 공개 오류 계약 회귀를 추가한 뒤 각 기존 소유자에서 14건을 최소 수정한다."
+  },
+  "objective": {
+    "summary": "공개 실패 정보와 자원 수명 계약을 명확히 유지하면서 CA2208, CA1816, CA1806을 0으로 낮추고 analyzer 총계를 513에서 499로 줄인다.",
+    "constraints": [
+      "C:\\Git\\OpenVisionLab-Vision-SDK의 main만 수정하고 C:\\Git\\Vision-SDK의 과거 worktree는 변경하지 않는다.",
+      "공개 API 3295개, 기존 실패 결과 형태, 예외 종류와 자원 소유권을 유지한다.",
+      "공개 이름 호환성 186건, 측정 없는 성능 제안 272건, 가독성 제안 41건은 이번 범위에 포함하지 않는다.",
+      "새 추상화나 소유자 이동 없이 기존 구현과 smoke에 최소 수정한다.",
+      "패키지를 게시하지 않고 센서·교정·현장 성능·재배포 승인을 완료로 주장하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "14개 진단을 소유자, 호출 경로, 공개 관찰 계약과 수정 결정으로 전수 분류한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "3D 옵션 오류는 잘못된 속성을 메시지에 식별하면서 실제 공개 메서드 매개변수 options를 보고하고, Pipeline factory는 parameters 계약을 유지한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "세 IDisposable 공개 결과/컨텍스트 소유자는 보유 자원을 해제한 후 파생 종료자를 억제하며 기존 반복 Dispose와 수명 동작을 유지한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "여섯 의도적 생성자 거부 smoke는 객체 결과를 명시적으로 버리고 같은 예외 계약을 계속 검증한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "CA2208, CA1816, CA1806이 모두 0이고 analyzer 총계가 499이며 다른 코드 수, 공개 API 3295개, build/smoke/coverage/package/consumer/remote CI가 통과한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "14건 소유자·계약 분류와 수정 전 회귀",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "예외·Dispose·의도적 생성자 계약 최소 수정",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "analyzer/API/focused/full 통합 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "고정 커밋 패키지·소비자·원격 CI와 durable closure",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0008"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "392617a8b8befbbfd8bfa2458df266d71064e732"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "diagnostic inventory",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0009/planning/diagnostics.log"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0009",
+      "summary": "14건 진단 분류, 회귀, analyzer/API, package consumer와 CI 증거."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "diagnostic inventory and failing contract regression",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0009\\planning\\diagnostics.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0009\\red",
+      "observation": "현재 진단은 CA2208 5, CA1816 3, CA1806 6이다. 네 3D 옵션 검증은 속성명을 ParamName으로 사용했고, Pipeline은 외부 parameters 계약을 내부 문자열로 전달했으며, 세 공개 IDisposable은 보유 자원을 해제하지만 종료자를 억제하지 않았다. 여섯 smoke 생성은 예외 거부를 검증하지만 결과 폐기를 표현하지 않았다. 신규 3D 공개 options 매개변수 회귀 4건은 수정 전 모두 0/1로 실패했다.",
+      "observed_at": "2026-09-14T08:45:29.3082673+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused implementation and analyzer verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0009\\analyzer-fixed",
+      "observation": "네 3D 옵션 오류는 메시지에 속성명을 유지하고 실제 public options를 ArgumentException ParamName으로 보고한다. Pipeline은 parameters를 명시 전달하며 기존 ParamName을 유지한다. 세 Dispose는 기존 owned resource release 뒤 GC.SuppressFinalize(this)를 호출하고, 여섯 rejection assertion은 결과를 명시적으로 버린다. 관련 focused smoke 8/8 통과; analyzer는 CA2208, CA1816, CA1806을 방출하지 않고 다른 코드 수 불변으로 499건/12코드다.",
+      "observed_at": "2026-09-14T08:45:29.3082673+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "working-tree integrated verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0009\\precommit",
+      "observation": "Release solution build 0 warnings/0 errors, direct full smoke 233/233, instrumented coverage smoke 233/233, exact public API 3295, analyzer 499 in 12 emitted codes, local Markdown links 80/80가 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, Vision3D 90.97%로 모두 기준 이상이다.",
+      "observed_at": "2026-09-14T08:49:46.4211521+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-09-14T08:38:57.8835653+09:00",
+  "updated_at": "2026-09-14T08:49:46.4211521+09:00"
+}

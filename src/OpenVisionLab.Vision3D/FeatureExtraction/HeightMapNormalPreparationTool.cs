@@ -470,7 +470,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 || options.MinimumAlignmentCosine > 1.0)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(options.MinimumAlignmentCosine));
+                    nameof(options),
+                    options.MinimumAlignmentCosine,
+                    "MinimumAlignmentCosine must be finite and within [-1, 1].");
             }
             if (options.ExpectedNormal != null)
             {

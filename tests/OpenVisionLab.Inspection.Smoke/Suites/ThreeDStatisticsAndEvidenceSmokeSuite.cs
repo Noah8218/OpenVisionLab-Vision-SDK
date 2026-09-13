@@ -95,6 +95,14 @@ namespace OpenVisionLab.Inspection.Smoke
                 "Height-grid distribution or exact-tie order changed.");
             RequireApproximately(result.PeakLowerBound, 1.0, 0.0, "Unexpected peak lower bound.");
             RequireApproximately(result.PeakUpperBound, 2.5, 0.0, "Unexpected peak upper bound.");
+
+            HeightGridSummaryResult invalid = new HeightGridSummaryTool().Execute(
+                Array.Empty<float>(),
+                new HeightGridSummaryOptions { DistributionBinCount = 0 });
+            Require(!invalid.Success
+                    && invalid.Message.Contains("DistributionBinCount", StringComparison.Ordinal)
+                    && invalid.Message.Contains("Parameter 'options'", StringComparison.Ordinal),
+                "Invalid height-grid options must identify the property and public options parameter.");
         }
 
         private static void TestHeightDistributionStatistics()
@@ -118,6 +126,15 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.Minimum, 1.0, 0.0, "Unexpected distribution minimum.");
             RequireApproximately(result.Maximum, 4.0, 0.0, "Unexpected distribution maximum.");
             RequireApproximately(result.Mean, 2.5, 0.0, "Unexpected distribution mean.");
+
+            HeightDistributionStatisticsResult invalid =
+                new HeightDistributionStatisticsTool().Execute(
+                    Array.Empty<double>(),
+                    new HeightDistributionStatisticsOptions { BinCount = 0 });
+            Require(!invalid.Success
+                    && invalid.Message.Contains("BinCount", StringComparison.Ordinal)
+                    && invalid.Message.Contains("Parameter 'options'", StringComparison.Ordinal),
+                "Invalid height-distribution options must identify the property and public options parameter.");
         }
 
         private static void TestHeightDistributionStatisticsOverflow()
@@ -1220,6 +1237,9 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(!invalidExpected.Success && !invalidCosine.Success,
                 "Invalid normal-validation options must fail closed.");
+            Require(invalidCosine.Message.Contains("MinimumAlignmentCosine", StringComparison.Ordinal)
+                    && invalidCosine.Message.Contains("Parameter 'options'", StringComparison.Ordinal),
+                "Invalid normal options must identify the property and public options parameter.");
         }
 
         private static void TestHeightMapNormalPreparationCancellation()

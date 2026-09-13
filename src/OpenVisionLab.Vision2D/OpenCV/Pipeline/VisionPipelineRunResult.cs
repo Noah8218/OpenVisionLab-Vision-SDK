@@ -23,6 +23,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
             {
                 stepResult?.ToolResult?.Dispose();
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

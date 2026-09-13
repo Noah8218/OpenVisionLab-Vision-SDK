@@ -256,6 +256,7 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             ResultImage?.Dispose();
             ResultImage = null;
+            GC.SuppressFinalize(this);
         }
     }
 }

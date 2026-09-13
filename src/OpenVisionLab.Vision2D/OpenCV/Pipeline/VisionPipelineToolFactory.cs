@@ -256,7 +256,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
 
             if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
             {
-                throw InvalidParameter(key, value, "an integer");
+                throw InvalidParameter(key, value, "an integer", nameof(parameters));
             }
 
             return result;
@@ -273,7 +273,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 || double.IsNaN(result)
                 || double.IsInfinity(result))
             {
-                throw InvalidParameter(key, value, "a finite number");
+                throw InvalidParameter(key, value, "a finite number", nameof(parameters));
             }
 
             return result;
@@ -288,7 +288,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
 
             if (!bool.TryParse(value, out bool result))
             {
-                throw InvalidParameter(key, value, "true or false");
+                throw InvalidParameter(key, value, "true or false", nameof(parameters));
             }
 
             return result;
@@ -304,7 +304,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
 
             if (!Enum.TryParse(value, true, out TEnum result) || !IsSupportedEnumValue(result))
             {
-                throw InvalidParameter(key, value, typeof(TEnum).Name);
+                throw InvalidParameter(key, value, typeof(TEnum).Name, nameof(parameters));
             }
 
             return result;
@@ -341,11 +341,11 @@ namespace OpenVisionLab.Vision2D.Pipeline
             }
         }
 
-        private static ArgumentException InvalidParameter(string key, string value, string expected)
+        private static ArgumentException InvalidParameter(string key, string value, string expected, string parameterName)
         {
             return new ArgumentException(
                 $"Vision pipeline parameter '{key}' must be {expected}. Value='{value ?? "<null>"}'.",
-                "parameters");
+                parameterName);
         }
     }
 }

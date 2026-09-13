@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0008`
-Overall state: `resolved`
+Project work item: `PL-0009`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0008.json` records the latest completed analyzer follow-up.
-`.proofline/issues/PL-0007.json` preserves the latest completed culture-conversion
+`.proofline/issues/PL-0009.json` records the active correctness-focused analyzer
+follow-up. `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
+and `.proofline/issues/PL-0007.json` preserves the preceding culture-conversion
 closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
 API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
 reopened after a missed success path was found, then corrected and revalidated by
@@ -52,7 +53,14 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-`PL-0008` has reviewed all 31 CA1305 sites remaining after PL-0007. The current
+`PL-0009` has reviewed the 14 remaining exception-parameter, Dispose/finalizer, and
+intentional-construction diagnostics. The implementation candidate reports the
+public `options` argument while retaining the invalid 3D option-property name,
+preserves Pipeline `parameters`, suppresses finalization after owned-resource
+release, and makes constructor-rejection test intent explicit. Focused smoke and the
+analyzer pass; local build/smoke/coverage/API/documentation verification also passes.
+Exact-commit package and remote verification remain in progress.
+`PL-0008` reviewed all 31 CA1305 sites remaining after PL-0007. The current
 implementation makes 3D numeric failure messages and generated test evidence
 culture invariant, aligns legacy `CVMean` standard-deviation rounding with the
 modern owner, and makes the numeric reflection provider explicit. Focused tests and
@@ -65,6 +73,63 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0009 work contract
+
+Status: `In progress` from source commit
+`392617a8b8befbbfd8bfa2458df266d71064e732` on `origin/main`.
+
+Implement now: review all five CA2208, three CA1816, and six CA1806 diagnostics by
+owner and observable contract; correct only the public error/lifetime clarity that
+can be preserved without an API change; make intentional constructor rejection
+explicit; lower the three measured analyzer ceilings to zero; then run focused,
+integrated, package-consumer, and remote verification.
+
+Review later: public naming compatibility remains a separately versioned migration;
+allocation/static/dispatch suggestions require a measured bottleneck; the existing
+readability diagnostics require a separate owner review. Sensor-backed accuracy and
+redistribution clearance still require the external prerequisites listed below.
+
+Out of scope: sealing or restructuring public result types, new abstractions,
+changing public signatures or result shapes, bulk analyzer cleanup, package
+publication, consumer-repository mutation, sensor/calibration qualification, UI, or
+native binary changes.
+
+The four 3D Tool owners retain `Execute -> validation -> controlled failure`; their
+option objects and results hold no mutable shared state or disposable lifetime. The
+invalid property remains in the diagnostic message, while `options` is the actual
+public argument name. `VisionPipelineToolFactory.Create -> Get* -> InvalidParameter`
+retains the observable `parameters` name. `VisionToolResult`,
+`VisionPipelineContext`, and `VisionPipelineRunResult` remain the write and release
+owners of their existing Mats/tool results; `Dispose` releases those objects before
+calling `GC.SuppressFinalize(this)`. The two smoke suites remain the owners of the
+six rejection assertions and now discard constructed values explicitly. No module,
+dependency direction, public binding, or owner moved.
+
+Shortest review order: the four CA2208 3D validation sites, the Pipeline factory
+helper, the three Dispose bodies, the two rejection-test methods, their focused
+smoke assertions, then `eng/analyzer-baseline.json` and this section.
+
+Acceptance: the four new 3D option-message assertions fail before correction and
+pass afterward; Pipeline parameter naming and existing resource ownership/rejection
+tests pass; CA2208, CA1816, and CA1806 are zero with no other analyzer increase;
+public API remains exactly 3,295 entries; all local/package/remote gates pass.
+Evidence is retained under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0009`.
+
+### PL-0009 current verification
+
+- Before the product change, all four updated 3D option-contract cases built and
+  failed at the new public-parameter assertion.
+- After the change, eight focused 2D/3D option, factory, rejection, and resource
+  ownership cases pass. The analyzer reports **499 diagnostics in 12 emitted
+  codes**, omits CA2208, CA1816, and CA1806, and leaves every other count unchanged.
+- The Release solution build reports 0 warnings/errors. Direct and instrumented full
+  smoke each pass **233/233** cases. Coverage is Core 37.35%, Inspection 69.92%,
+  Vision2D 74.35%, Vision2D.Blob 69.17%, and Vision3D 90.97%; all floors pass. The
+  public API matches all **3,295** entries and all 80 local Markdown links resolve.
+- Exact-commit package provenance/negative probes, isolated consumer/native-copy,
+  and remote CI remain to be run.
 
 ## PL-0008 work contract
 
@@ -281,12 +346,12 @@ runtimes and redistribution clearance remain outside this completed scope.
 ### Current analyzer triage boundary
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
-PL-0007 removed 52 Core converter CA1305 diagnostics. PL-0008 reviewed and removed
-the remaining 31 CA1305 diagnostics. The exact implementation commit reports **513
-diagnostics in 15 emitted codes**, with every non-CA1305 code count unchanged.
-Current counts are recorded in `PL-0008/final-fac71d5/integrated-verification-summary.json`
-under the D-drive evidence root and in remote Build run 34786623362. This remains a
-no-regression gate and categorized debt review, not a zero-warning claim.
+PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. The PL-0009 implementation
+candidate removes the 14 CA1806, CA1816, and CA2208 diagnostics and reports **499
+diagnostics in 12 emitted codes**, with every other code count unchanged. Current
+candidate counts are recorded in `PL-0009/analyzer-fixed/analyzer.log` under the
+D-drive evidence root. This remains a no-regression gate and categorized debt
+review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
@@ -294,9 +359,9 @@ no-regression gate and categorized debt review, not a zero-warning claim.
 | Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
 | Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
 | Readability | CA1507, CA2249 / 41 | Defer unrelated nameof/Contains rewrites. |
-| Ignored constructed result | CA1806 / 6 | All six sites intentionally expect constructor rejection: five TriangleMeshDistance invalid-contract cases and one Pipeline duplicate-parameter case. Removing construction would remove the assertion. |
-| Dispose/finalizer extensibility | CA1816 / 3 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release owned Mats/results; these classes have no finalizer. Derived-finalizer suppression remains an extensibility concern, distinct from the corrected preprocessing exception leaks. |
-| Exception parameter naming | CA2208 / 5 | Four 3D sites name a member of the options object instead of the method parameter (bin counts, alignment cosine, display sample limit); the Pipeline helper reports its caller's `parameters` name. Preserve this observable exception detail in this batch; any cleanup must review consumer expectations. |
+| Ignored constructed result | CA1806 / 0 | Five TriangleMeshDistance and one Pipeline rejection assertion explicitly discard the constructed value without changing the expected exception. The ceiling is zero. |
+| Dispose/finalizer extensibility | CA1816 / 0 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release their existing owned Mats/results, then suppress finalization for derived instances. The ceiling is zero. |
+| Exception parameter naming | CA2208 / 0 | Four 3D messages retain the invalid option-property name while reporting the actual public `options` argument; the Pipeline helper still reports `parameters`. The ceiling is zero. |
 
 The CA1305 review covered every prior location:
 
@@ -309,11 +374,12 @@ The CA1305 review covered every prior location:
 | `OpenCvAlgorithmBase` | 3 | Keep reflection over the existing strongly typed numeric result members and pass `InvariantCulture` to `Convert`. |
 | `Vision2DSmokeSuite` evidence writers | 15 | Use invariant decimal text for Auto MPoint and unique-match reproducibility files. |
 
-The six CA1806 sites, all three Dispose bodies, and all five CA2208 call sites were
-inspected under PL-0006. The other remaining groups are still classified by
-diagnostics; this is not an individual correctness certification of all 513 current
-locations. The CA1305 ceiling is now zero; no other ceiling or coverage minimum was
-relaxed.
+PL-0009 re-reviewed and corrected the six CA1806 sites, all three Dispose bodies,
+and all five CA2208 call sites after the user requested the next analyzer priority.
+The other remaining groups are still classified by diagnostics; this is not an
+individual correctness certification of all 499 current locations. The CA1305,
+CA1806, CA1816, and CA2208 ceilings are now zero; no other ceiling or coverage
+minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

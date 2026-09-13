@@ -1471,7 +1471,7 @@ namespace OpenVisionLab.Inspection.Smoke
             bool serializedDuplicateRejected = false;
             try
             {
-                new VisionPipelineStep
+                _ = new VisionPipelineStep
                 {
                     XmlParameters = new[]
                     {
@@ -1677,7 +1677,8 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                rejected = exception.Message.IndexOf(expectedMessage, StringComparison.OrdinalIgnoreCase) >= 0;
+                rejected = exception.ParamName == "parameters"
+                    && exception.Message.IndexOf(expectedMessage, StringComparison.OrdinalIgnoreCase) >= 0;
             }
 
             Require(rejected, $"Invalid pipeline parameter '{expectedMessage}' was not rejected.");

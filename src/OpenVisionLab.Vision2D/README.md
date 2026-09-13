@@ -128,6 +128,11 @@ template loading and direct helpers can throw; the built-in `Execute` boundary
 captures execution exceptions in `VisionToolResult`. Custom `IVisionTool`
 implementations may throw and need a host boundary.
 
+`VisionPipelineToolFactory.Create` throws `ArgumentException` for malformed,
+unknown, or duplicate step parameters. Its `ParamName` is `parameters`, while the
+message identifies the invalid key and expected value type. Use `ParamName` to find
+the public input and the message to correct the individual recipe value.
+
 ```csharp
 // After using VisionToolResult result = tool.Execute(source):
 if (!result.Success)
@@ -160,6 +165,9 @@ a native call. Running a call inside `Task.Run` or stopping the await does not c
 that work. Keep inputs/tools alive until it finishes. Hard stop/restart requirements
 belong to host process orchestration.
 
-The caller owns the input `Mat`. Dispose the Tool and `VisionToolResult`; the result owns its output image snapshot. Windows x64 is the supported native runtime.
+The caller owns the input `Mat`. Dispose the Tool and `VisionToolResult`; the result
+owns its output image snapshot. `VisionToolResult`, `VisionPipelineContext`, and
+`VisionPipelineRunResult` release their owned images/results and suppress
+finalization after successful disposal. Windows x64 is the supported native runtime.
 
 [2D and 3D SDK documentation](https://github.com/Noah8218/OpenVisionLab-Vision-SDK#2d-quick-start)

@@ -211,12 +211,13 @@ namespace OpenVisionLab.Inspection.Smoke
                     new[] { point },
                     new NominalActualMeshComparisonOptions(1, 0.0, 1.0, 1)),
                 "zero-centred");
-            RequireCanonicalFailure(
-                tool.Execute(
-                    mesh,
-                    new[] { point },
-                    new NominalActualMeshComparisonOptions(1, -1.0, 1.0, -1)),
-                "MaximumDisplaySamples");
+            NominalActualMeshComparisonResult invalidDisplaySamples = tool.Execute(
+                mesh,
+                new[] { point },
+                new NominalActualMeshComparisonOptions(1, -1.0, 1.0, -1));
+            RequireCanonicalFailure(invalidDisplaySamples, "MaximumDisplaySamples");
+            Require(invalidDisplaySamples.Message.Contains("Parameter 'options'", StringComparison.Ordinal),
+                "Invalid display options must identify the public options parameter.");
         }
 
         private static void TestProgressAndCancellation()

@@ -434,7 +434,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             if (options.MaximumDisplaySamples < 0)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(options.MaximumDisplaySamples));
+                    nameof(options),
+                    options.MaximumDisplaySamples,
+                    "MaximumDisplaySamples must be non-negative.");
             }
         }
 

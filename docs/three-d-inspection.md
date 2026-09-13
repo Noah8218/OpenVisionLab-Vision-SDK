@@ -187,6 +187,10 @@ frames, sampling area and calibrated acceptance limits.
 Numeric values embedded in failure `Message` text from `LineIntersectionTool`,
 `FullXyzAffineSolveTool`, and `NominalActualMeshComparisonTool` use invariant decimal
 and grouping separators so logs and evidence stay comparable across host cultures.
+When a typed Tool validates a member of its `options` object, the message identifies
+the invalid property and the argument metadata identifies the public `options`
+parameter. This keeps the correction target visible without presenting a property as
+a method parameter.
 Use typed status and numeric properties for control flow; localize operator-facing
 text in the host rather than parsing or rewriting these diagnostic messages.
 

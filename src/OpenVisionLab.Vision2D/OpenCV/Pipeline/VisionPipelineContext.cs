@@ -41,6 +41,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
             }
 
             layers.Clear();
+            GC.SuppressFinalize(this);
         }
     }
 }

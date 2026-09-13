@@ -241,15 +241,15 @@ namespace OpenVisionLab.Inspection.Smoke
         private static void TestInvalidContracts()
         {
             ArgumentNullException nullSource = CaptureException<ArgumentNullException>(
-                () => new TriangleMeshDistanceTool(null));
+                () => _ = new TriangleMeshDistanceTool(null));
             ArgumentException emptySource = CaptureException<ArgumentException>(
-                () => new TriangleMeshDistanceTool(Array.Empty<MeshTriangle>()));
+                () => _ = new TriangleMeshDistanceTool(Array.Empty<MeshTriangle>()));
             ArgumentNullException nullTriangle =
                 CaptureException<ArgumentNullException>(
-                    () => new TriangleMeshDistanceTool(
+                    () => _ = new TriangleMeshDistanceTool(
                         new MeshTriangle[] { null }));
             ArgumentException degenerate = CaptureException<ArgumentException>(
-                () => new TriangleMeshDistanceTool(
+                () => _ = new TriangleMeshDistanceTool(
                     new[]
                     {
                         new MeshTriangle(
@@ -260,7 +260,7 @@ namespace OpenVisionLab.Inspection.Smoke
                     }));
             ArgumentException nonFiniteTriangle =
                 CaptureException<ArgumentException>(
-                    () => new TriangleMeshDistanceTool(
+                    () => _ = new TriangleMeshDistanceTool(
                         new[]
                         {
                             new MeshTriangle(
