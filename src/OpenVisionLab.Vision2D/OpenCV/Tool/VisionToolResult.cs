@@ -100,10 +100,14 @@ namespace OpenVisionLab.Vision2D.Tool
     /// </summary>
     public class VisionToolResult : IDisposable
     {
+        /// <summary>Tool success; application or pipeline acceptance may impose additional limits.</summary>
         public bool Success { get; set; }
+        /// <summary>Diagnostic text for people. Use ErrorCode for programmatic classification.</summary>
         public string Message { get; set; } = string.Empty;
+        /// <summary>Owned image snapshot, possibly null on failure. Clone before retaining it beyond this result's lifetime.</summary>
         public Mat ResultImage { get; set; }
         public TimeSpan Elapsed { get; set; }
+        /// <summary>Captured execution exception when present; ordinary validation or no-result failures need not have one.</summary>
         public Exception Exception { get; set; }
         public VisionToolErrorCode ErrorCode { get; set; } = VisionToolErrorCode.None;
         public VisionToolResultStatus ResultStatus { get; set; } = VisionToolResultStatus.Passed;
@@ -111,6 +115,7 @@ namespace OpenVisionLab.Vision2D.Tool
         public int ErrorCodeValue => (int)ErrorCode;
         public string ErrorName => ErrorCode.ToString();
         public bool HasError => ErrorCode != VisionToolErrorCode.None;
+        /// <summary>Case-insensitive, tool-specific measurements. Missing keys are not zero; use TryGetValue.</summary>
         public Dictionary<string, double> Metrics { get; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         public List<VisionToolOverlay> Overlays { get; } = new List<VisionToolOverlay>();
         public EdgeBasedMatchingDiagnosticEvidence EdgeBasedMatchingDiagnostics { get; set; }

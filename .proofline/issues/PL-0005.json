@@ -14,8 +14,9 @@
     "refs": []
   },
   "state": {
-    "status": "resolved",
-    "current_summary": "PL-0005 is resolved. Implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b was pushed to origin/main; clean local and GitHub Actions quality, package provenance, and isolated consumer evidence passed."
+    "status": "doing",
+    "current_summary": "F7의 성공 경로에서 ResetFeatureFailure가 검출기 정보를 Unknown으로 지우므로 C4 완료 판단을 재개한다. 다른 F1-F6/F8/F9의 기존 증거는 유지하고 PL-0006에서 C4를 보완 검증한다.",
+    "next_action": "PL-0006에서 SIFT 성공/실패/재실행 회귀로 F7 수정과 C4 재검증을 완료한다."
   },
   "objective": {
     "summary": "재현된 acceptance/numerical/filter/threshold/error-classification 결함을 고치고 SIFT fallback과 direct-source native setup을 문서화한다.",
@@ -29,42 +30,102 @@
     {
       "id": "C1",
       "text": "Acceptance metrics and active limits fail closed on non-finite values, and direct regression evidence passes.",
-      "evidence_refs": ["E1"]
+      "evidence_refs": [
+        "E1"
+      ]
     },
     {
       "id": "C2",
       "text": "Modern Core line fitting/angle and 3D plane/volume calculations preserve finite, translation-stable results and reject degenerate or overflowing calculations.",
-      "evidence_refs": ["E1"]
+      "evidence_refs": [
+        "E1"
+      ]
     },
     {
       "id": "C3",
       "text": "Bilateral filtering and threshold validation execute or reject through explicit typed contracts; OpenCV exceptions are classified by type without substring false positives.",
-      "evidence_refs": ["E1"]
+      "evidence_refs": [
+        "E1"
+      ]
     },
     {
       "id": "C4",
       "text": "SIFT fallback diagnostics and direct-source managed/native setup are documented, and the current status records scope and boundaries.",
-      "evidence_refs": ["E2"]
+      "evidence_refs": [
+        "E2",
+        "E4"
+      ]
     },
     {
       "id": "C5",
       "text": "Release build, smoke, coverage, exact public API, analyzer, package provenance, isolated package consumer, and remote main delivery pass for one exact commit.",
-      "evidence_refs": ["E3"]
+      "evidence_refs": [
+        "E3"
+      ]
     }
   ],
   "milestones": [
-    {"id": "M1", "summary": "Fix F1-F3 and F9 numerical/acceptance contracts with direct regressions.", "status": "done", "required": true, "criteria_refs": ["C1", "C2"], "issue_refs": []},
-    {"id": "M2", "summary": "Fix F4-F6 execution and error classification with direct regressions.", "status": "done", "required": true, "criteria_refs": ["C3"], "issue_refs": []},
-    {"id": "M3", "summary": "Document F7/F8 behavior and align current status with the remediation scope.", "status": "done", "required": true, "criteria_refs": ["C4"], "issue_refs": []},
-    {"id": "M4", "summary": "Run the clean-commit quality/package gates and record delivery evidence.", "status": "done", "required": true, "criteria_refs": ["C5"], "issue_refs": []}
+    {
+      "id": "M1",
+      "summary": "Fix F1-F3 and F9 numerical/acceptance contracts with direct regressions.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "Fix F4-F6 execution and error classification with direct regressions.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "Document F7/F8 behavior and align current status with the remediation scope.",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "Run the clean-commit quality/package gates and record delivery evidence.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
   ],
   "relations": [
-    {"type": "follow_up_to", "target": "PL-0004"}
+    {
+      "type": "follow_up_to",
+      "target": "PL-0004"
+    }
   ],
   "context": [
-    {"kind": "repository", "location": "C:\\Git\\OpenVisionLab-Vision-SDK"},
-    {"kind": "audit evidence", "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\audit-20260913-c55fa4f"},
-    {"kind": "current authority", "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"}
+    {
+      "kind": "repository",
+      "location": "C:\\Git\\OpenVisionLab-Vision-SDK"
+    },
+    {
+      "kind": "audit evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\audit-20260913-c55fa4f"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    }
   ],
   "artifacts": [
     {
@@ -104,12 +165,45 @@
       "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34747318509",
       "observation": "origin/main implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b passed the GitHub Actions Build workflow in 1m55s, including build, smoke/coverage, exact public API, analyzer, pack, provenance fail-closed guards, isolated package consumer, and native runtime copy checks. A Node.js 20 deprecation annotation was non-blocking.",
       "observed_at": "2026-09-13T17:19:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "source review",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Tool/SiftTool.cs:279; tests/OpenVisionLab.Inspection.Smoke/Suites/LegacyApiCompatibilitySmokeSuite.cs:532",
+      "observation": "15e3cf5의 성공 분기는 ResetFeatureFailure를 호출하여 lastFeatureDetector를 Unknown으로 초기화한다. 기존 검출기 metric 회귀는 blank 이미지 실패 분기만 검증하므로 성공 diagnostic 완료를 입증하지 않는다.",
+      "observed_at": "2026-09-13T23:26:16.8101523+09:00"
     }
   ],
   "events": [
-    {"id": "D1", "kind": "decision", "at": "2026-09-13T00:00:00+09:00", "summary": "사용자가 감사 결과의 우선순위에 따라 F1-F9 수정을 진행하도록 승인했다.", "evidence_refs": []},
-    {"id": "T1", "kind": "transition", "at": "2026-09-13T17:19:00+09:00", "from": "doing", "to": "resolved", "summary": "C1-C5가 직접 회귀 테스트, clean-commit quality gates, package provenance, isolated package consumer, durable documentation, implementation commit push, and remote Build success로 충족됐다. 상용 재배포, stable release, 추가 RID/.NET Framework, 실제 센서·교정 검증은 별도 경계로 유지한다.", "evidence_refs": ["E1", "E2", "E3"]}
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-13T00:00:00+09:00",
+      "summary": "사용자가 감사 결과의 우선순위에 따라 F1-F9 수정을 진행하도록 승인했다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-13T17:19:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "C1-C5가 직접 회귀 테스트, clean-commit quality gates, package provenance, isolated package consumer, durable documentation, implementation commit push, and remote Build success로 충족됐다. 상용 재배포, stable release, 추가 RID/.NET Framework, 실제 센서·교정 검증은 별도 경계로 유지한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-09-13T23:26:16.8101523+09:00",
+      "from": "resolved",
+      "to": "doing",
+      "summary": "F7의 성공 경로에서 ResetFeatureFailure가 검출기 정보를 Unknown으로 지우므로 C4 완료 판단을 재개한다. 다른 F1-F6/F8/F9의 기존 증거는 유지하고 PL-0006에서 C4를 보완 검증한다."
+    }
   ],
   "created_at": "2026-09-13T00:00:00+09:00",
-  "updated_at": "2026-09-13T17:19:00+09:00"
+  "updated_at": "2026-09-13T23:26:16.8101523+09:00"
 }

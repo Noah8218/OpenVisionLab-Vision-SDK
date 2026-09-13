@@ -356,9 +356,29 @@ namespace OpenVisionLab.Vision2D.Property
 
         protected Mat CreatePreprocessedImage(Rect roi, bool useRoi, IOpenCVPropertyBase property)
         {
-            Mat image = useRoi ? imageSource.SubMat(roi).Clone() : imageSource.Clone();
-            ApplyCommonPreprocessing(image, property);
-            return image;
+            Mat image;
+            if (useRoi)
+            {
+                using (Mat region = imageSource.SubMat(roi))
+                {
+                    image = region.Clone();
+                }
+            }
+            else
+            {
+                image = imageSource.Clone();
+            }
+
+            try
+            {
+                ApplyCommonPreprocessing(image, property);
+                return image;
+            }
+            catch
+            {
+                image.Dispose();
+                throw;
+            }
         }
 
         protected static void ApplyCommonPreprocessing(Mat image, IOpenCVPropertyBase property)

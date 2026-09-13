@@ -9,7 +9,7 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Current PL-0005 audit-finding remediation, completed PL-0004 technical provenance/notice evidence, blocked redistribution-clearance prerequisite, and prior PL-0002/PL-0003 evidence |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0006 SDK diagnostics/lifetime/API-contract follow-up, PL-0005 audit remediation, provenance evidence and blocked redistribution-clearance prerequisite |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
@@ -54,22 +54,49 @@ separately recorded immutable version.
   manifest, commit, or checksum record for those six captures. Treat them as
   illustrations, not reproducible test or release evidence.
 
+## Start Here
+
+Open `OpenVisionLab.VisionSdk.sln`. This is a library solution; no application host
+or repository-defined startup/launch profile exists. Choose
+`OpenVisionLab.Inspection.Smoke` as the console startup project for contract checks.
+`OpenVisionLab.Vision3D.Benchmark` is a separate console benchmark, not the SDK entry
+point. The package-only consumer is outside the solution.
+
+Read the root consumer quick start, the selected package README's input/result
+contract, and then the matching Tool's `Execute`/`Run` plus its smoke case. Search
+for the Tool name in `tests/OpenVisionLab.Inspection.Smoke/Suites` to reach both
+normal and failure examples. This is the single developer onboarding route.
+
+Project references (arrow means depends on): `Vision2D -> Core`;
+`Vision2D.Blob -> Vision2D + Core`; `Inspection -> Vision2D + Vision3D`;
+`Inspection.Smoke -> Inspection + Vision2D.Blob`; `Vision3D.Benchmark -> Vision3D`.
+Core and Vision3D have no project references; Core supplies the native OpenCV
+dependency. Library projects target `netstandard2.0`; console checks target `net8.0`.
+
 ## Current verification entry points
 
 Run from the repository root. Do not infer success from a historical case count.
 
 ```powershell
 dotnet tool restore
-dotnet restore OpenVisionLab.VisionSdk.sln
-dotnet build OpenVisionLab.VisionSdk.sln -c Release --no-restore
+$testRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\local-check"
+New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
+$env:TEMP = $testRoot
+$env:TMP = $testRoot
+dotnet build OpenVisionLab.VisionSdk.sln -c Release --artifacts-path "$testRoot\build"
+$assemblyDirectory = "$testRoot\build\bin\OpenVisionLab.Inspection.Smoke\release"
+$smokeAssembly = "$assemblyDirectory\OpenVisionLab.Inspection.Smoke.dll"
+dotnet $smokeAssembly --list
+dotnet $smokeAssembly --filter "SIFT" # Case-insensitive name substring; no match fails.
+# For a full regression run: dotnet $smokeAssembly
 ./eng/Verify-Coverage.ps1 `
-  -SmokeAssembly tests\OpenVisionLab.Inspection.Smoke\bin\Release\net8.0\OpenVisionLab.Inspection.Smoke.dll `
-  -OutputPath D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\coverage.cobertura.xml
+  -SmokeAssembly $smokeAssembly `
+  -OutputPath "$testRoot\coverage.cobertura.xml"
 ./eng/Verify-PublicApi.ps1 `
-  -AssemblyDirectory tests\OpenVisionLab.Inspection.Smoke\bin\Release\net8.0
+  -AssemblyDirectory $assemblyDirectory
 ./eng/Verify-AnalyzerBaseline.ps1 `
   -SolutionPath OpenVisionLab.VisionSdk.sln `
-  -ArtifactsPath D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\analyzer
+  -ArtifactsPath "$testRoot\analyzer"
 ```
 
 `Verify-Coverage.ps1` executes the full smoke assembly while collecting coverage.

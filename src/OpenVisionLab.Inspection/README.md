@@ -12,6 +12,7 @@ dotnet add package OpenVisionLab.Inspection --version $packageVersion
 ```
 
 ```csharp
+using System;
 using OpenCvSharp;
 using OpenVisionLab.Inspection;
 using OpenVisionLab.Vision2D.Property;
@@ -43,5 +44,27 @@ Console.WriteLine($"success={result.Success}, steps={result.Steps.Count}");
 ```
 
 Every configured step runs even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image, height map, or supplied tools. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
+
+All 2D steps execute in list order, followed by all 3D steps in list order. They
+receive the same original input for their domain; one result is not fed into the
+next step. Use `VisionPipelineRuntime` for 2D image-layer routing. A missing/null
+Tool, thrown Tool exception, or null Tool result becomes a failed step. An empty
+configuration returns `Success=false`. Exceptions from a user-supplied enumerable
+itself are outside the per-Tool execution boundary; pass stable materialized lists.
+
+`CombinedInspectionRunResult.Success` is true only when every step passes. Inspect
+`step.VisionResult.ErrorCode/Exception` for 2D evidence. For height maps, inspect
+`step.ThreeDResult.MeasurementOutcome`: `OutOfTolerance` retains a valid measurement,
+while `NotMeasured` requires correction of input, ROI, units, coverage or execution.
+The runner does not retry failed steps or cancel an executing native call.
+
+Run synchronously on a host-selected worker, with no concurrent mutations of its
+inputs, properties, lists or Tools. Keep them alive until `Run` finishes even when
+the host stops awaiting it. Dispose the combined result only after all consumers
+finish reading its snapshots. A processing deadline is an observation after the
+call unless the particular lower-level Tool explicitly supports cancellation.
+
+See the [2D result/lifetime contract](../OpenVisionLab.Vision2D/README.md#results-errors-and-recovery)
+and [3D outcome contract](../../docs/three-d-inspection.md#result-units-and-status).
 
 [Repository and full documentation](https://github.com/Noah8218/OpenVisionLab-Vision-SDK)

@@ -61,6 +61,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Surface-edge coverage reuses unique nearest matching", TestDeterministicSurfaceEdgeCoverage);
             yield return new SmokeCase("Surface-edge coverage accepts an empty scene as zero coverage", TestDeterministicSurfaceEdgeCoverageEmptyScene);
             yield return new SmokeCase("Least-squares height-field plane fit preserves analytic coefficients", TestLeastSquaresHeightFieldPlaneFit);
+            yield return new SmokeCase("Height-field plane fit preserves inclined translated distances and rejects overflow", TestPlaneFitNumericalBoundaries);
             yield return new SmokeCase("Plane flatness measures independent reference and surface samples", TestPlaneFlatnessInspection);
             yield return new SmokeCase("Plane flatness rejects degenerate reference geometry", TestPlaneFlatnessDegenerateReference);
             yield return new SmokeCase("Point pair measures dimensions relative to the height axis", TestPointPairDimensions);
@@ -73,6 +74,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Volume preserves below-plane sign and tolerance failure", TestVolumeBelowPlane);
             yield return new SmokeCase("Volume rejects an empty measurement ROI", TestVolumeEmptyMeasurement);
             yield return new SmokeCase("Volume rejects finite inputs whose accumulation overflows", TestVolumeOverflow);
+            yield return new SmokeCase("Volume distinguishes accumulation overflow and inclusive tolerance", TestVolumeNumericalBoundaries);
             yield return new SmokeCase("Cross-section measures axis width and scalar-height range", TestCrossSectionDimensions);
             yield return new SmokeCase("Cross-section reports independent width and height failures", TestCrossSectionDimensionsFailure);
             yield return new SmokeCase("Cross-section rejects non-finite samples", TestCrossSectionDimensionsInvalidSample);
@@ -1859,6 +1861,54 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.RootMeanSquareDistance, 0.0, 1e-7, "Analytic plane fit RMS must be zero within float-compatible distance precision.");
         }
 
+        private static void TestPlaneFitNumericalBoundaries()
+        {
+            const double originX = 1000000.0, originY = -2000000.0, originZ = 3000000.0;
+            double normalLength = Math.Sqrt(1.3125);
+            List<HeightFieldPlaneFitSample> samples = new List<HeightFieldPlaneFitSample>();
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int z = -1; z <= 1; z++)
+                {
+                    double residual = 0.1 * x * z;
+                    samples.Add(new HeightFieldPlaneFitSample(
+                        new ThreeDPoint(originX + x, originY + 2.0 + (0.5 * x) - (0.25 * z) + (normalLength * residual), originZ + z),
+                        100.0 + (2.0 * x) + (3.0 * z) + (5.0 * x * z)));
+                }
+            }
+            LeastSquaresHeightFieldPlaneFitTool tool = new LeastSquaresHeightFieldPlaneFitTool();
+            LeastSquaresHeightFieldPlaneFitResult result = tool.Execute(samples);
+            RequireApproximately(result.SlopeX, 0.5, 1e-9, "Translated inclined plane lost its X slope.");
+            RequireApproximately(result.SlopeZ, -0.25, 1e-9, "Translated inclined plane lost its Z slope.");
+            RequireApproximately(result.EvaluateY(originX, originZ), originY + 2.0, 1e-8, "Translated plane evaluation lost its center.");
+            RequireApproximately(result.Normal.X, -0.5 / normalLength, 1e-9, "Plane normal X changed.");
+            RequireApproximately(result.Normal.Y, 1.0 / normalLength, 1e-9, "Plane normal Y changed.");
+            RequireApproximately(result.Normal.Z, 0.25 / normalLength, 1e-9, "Plane normal Z changed.");
+            RequireApproximately(result.RootMeanSquareDistance, 1.0 / 15.0, 1e-8, "Orthogonal RMS changed after translation on all axes.");
+            RequireApproximately(result.TargetAbsoluteDistance, 0.1, 1e-8, "Largest residual magnitude changed.");
+            RequireApproximately(result.TargetProjection.Y, result.EvaluateY(result.TargetProjection.X, result.TargetProjection.Z),
+                1e-8, "Projected target does not lie on the fitted plane.");
+            RequireApproximately(Math.Abs(result.TargetRawHeightDelta), 5.0, 1e-8, "Raw-height fit must remain independent of display coordinates.");
+
+            RequireThrows<ArgumentNullException>(() => tool.Execute(null));
+            RequireThrows<ArgumentException>(() => tool.Execute(Array.Empty<HeightFieldPlaneFitSample>()));
+            foreach (double magnitude in new[] { 1e200, 1e100 })
+            {
+                RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+                {
+                    new HeightFieldPlaneFitSample(new ThreeDPoint(-magnitude, 0, -magnitude), 0),
+                    new HeightFieldPlaneFitSample(new ThreeDPoint(magnitude, 0, -magnitude), 0),
+                    new HeightFieldPlaneFitSample(new ThreeDPoint(0, 0, magnitude), 0)
+                }));
+            }
+            RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+            {
+                new HeightFieldPlaneFitSample(new ThreeDPoint(0, 1e308, 0), 0),
+                new HeightFieldPlaneFitSample(new ThreeDPoint(1, 1e308, 0), 0),
+                new HeightFieldPlaneFitSample(new ThreeDPoint(0, 1e308, 1), 0)
+            }));
+        }
+
         private static void TestPlaneFlatnessInspection()
         {
             HeightFieldPlaneFitSample[] reference = CreateAnalyticPlaneSamples(0.5, -0.25, 2.0, new double[9]);
@@ -2090,6 +2140,26 @@ namespace OpenVisionLab.Inspection.Smoke
                 Require(exception.Message.Contains("non-finite", StringComparison.OrdinalIgnoreCase),
                     "Volume overflow rejection must identify the non-finite calculation.");
             }
+        }
+
+        private static void TestVolumeNumericalBoundaries()
+        {
+            HeightFieldPlaneFitSample[] reference = CreateAnalyticPlaneSamples(0.0, 0.0, 0.0, new double[9]);
+            VolumeInspectionTool tool = new VolumeInspectionTool();
+            foreach (double height in new[] { 1e308, -1e308 })
+            {
+                HeightFieldPlaneFitSample sample = new HeightFieldPlaneFitSample(new ThreeDPoint(0, height, 0), height);
+                InvalidOperationException overflow = RequireThrows<InvalidOperationException>(
+                    () => tool.Execute(reference, new[] { sample, sample }, VolumeOptions(1.0, 0.0, 0.0)));
+                Require(overflow.Message.Contains("accumulation", StringComparison.Ordinal), "Finite sample volumes must reject overflowing accumulation.");
+                InvalidOperationException difference = RequireThrows<InvalidOperationException>(
+                    () => tool.Execute(reference, new[] { sample }, VolumeOptions(1.0, -height, 0.0)));
+                Require(difference.Message.Contains("acceptance difference", StringComparison.Ordinal), "Acceptance subtraction overflow must not become a tolerance failure.");
+            }
+            HeightFieldPlaneFitSample[] measurement = { new HeightFieldPlaneFitSample(new ThreeDPoint(0, 2, 0), 2) };
+            Require(tool.Execute(reference, measurement, VolumeOptions(1.0, 1.0, 1.0)).Passed, "Exact volume tolerance boundary must pass.");
+            VolumeInspectionResult outside = tool.Execute(reference, measurement, VolumeOptions(1.0, 1.0, 0.999));
+            Require(!outside.Passed && outside.NetVolume == 2.0, "Valid out-of-tolerance volume must retain the measurement without throwing.");
         }
 
         private static VolumeInspectionOptions VolumeOptions(double sampleArea, double expectedNetVolume, double tolerance) =>

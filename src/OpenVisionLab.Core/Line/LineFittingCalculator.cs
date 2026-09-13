@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 
 namespace OpenVisionLab.Core.Geometry2D
 {
+    /// <summary>Fits y=f(x), or x=f(y) with LineFitY, from finite points with a non-degenerate independent axis.</summary>
+    /// <remarks>Coefficients use double arithmetic; PointF inputs/endpoints retain float precision and integer endpoints are truncated.</remarks>
     public class LineFittingCalculator
     {
         public double Slope { get; private set; }
@@ -97,8 +99,8 @@ namespace OpenVisionLab.Core.Geometry2D
 
         private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
-        // Find the least squares linear fit.
-        // Return the total error.
+        /// <summary>Returns the square root of the sum of squared vertical residuals, not root mean square error.</summary>
+        /// <exception cref="ArgumentException">Fewer than two finite points or no distinct X coordinates.</exception>
         public static double FindLinearLeastSquaresFit(IEnumerable<System.Drawing.PointF> points, out double m, out double b)
         {
             List<PointF> pointList = points.ToList();

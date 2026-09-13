@@ -1,15 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-13
-Project work item: `PL-0005`
-Overall state: `resolved`
+Project work item: `PL-0006`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0005.json` ledger records the current remediation, while
+`.proofline/issues/PL-0006.json` records the current follow-up. `PL-0005` reopens
+only its SIFT diagnostic criterion after a source review found a missed success
+path. The other prior verification remains historical evidence, while
 `.proofline/issues/PL-0004.json` preserves the preceding closure and
 `.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
 preceding closures. No ledger is a second design or release authority.
@@ -47,8 +49,65 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-The current `PL-0005` remediation closes the reproduced F1-F9 correctness,
-diagnostics, and first-use documentation findings from the 2026-09-13 SDK audit.
+`PL-0006` addresses the missed SIFT success diagnostic, preprocessing Mat release,
+consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
+F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0006 work contract
+
+Status: `Incomplete` while the following approved criteria are being verified.
+
+Implement now: preserve SIFT/ORB diagnostics through success, failure, and repeated
+single/multi-ROI execution; release cloned preprocessing images on exceptions in
+the common helper and both template paths; document per-tool input/options/ROI and
+failure/recovery contracts plus concurrency, cancellation, timing, and lifetime;
+strengthen numeric assertions and Core/3D/acceptance boundary tests; review the
+existing analyzer diagnostics by their actual cause.
+
+Review later: sensor-backed accuracy, false accept/reject, throughput, and long-run
+production workloads require the dataset, calibration, tolerances, and operational
+targets. Redistribution clearance still requires the written evidence below.
+
+Out of scope: new UI/acquisition/PLC services, native binary replacement, new public
+interfaces, legacy behavior changes, package publication, or a claim that every
+algorithm/parameter combination has been certified.
+
+Owners remain `SiftTool` (detector state), `OpenCvAlgorithmBase` (source clone and
+preprocessing), and the existing SIFT/Edge template preparation methods (template
+clones). `Execute -> Run -> preprocessing -> CollectMetrics` is the normal call
+path. The callee releases a clone if preprocessing throws; the caller releases a
+successfully returned clone. `SmokeAssert` owns numerical test comparisons. No
+module, public binding, or dependency boundary is moved.
+
+Acceptance: each of the four scopes above has focused executable evidence; the
+shared numeric assertion rejects non-finite inputs; Release, full smoke/coverage,
+exact public API, analyzer, clean package/consumer, and remote main gates pass.
+Evidence will be retained under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0006` and in the ledger.
+
+### Analyzer triage boundary
+
+The PL-0006 analyzer run retained **596 diagnostics in 16 codes**, at or below
+the unchanged baseline. Complete diagnostic locations are in
+`PL-0006/analyzer/diagnostics.log` under the D-drive evidence root. This is a
+no-regression gate and categorized debt review, not a zero-warning claim.
+
+| Category | Codes / count | Review decision |
+| --- | --- | --- |
+| Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | Preserve 3.x public names and fields; broad renaming is a separate compatibility migration. |
+| Culture-sensitive formatting | CA1305 / 83 | Review with the affected persistence/display contract. Pipeline factory input parsing already has invariant-culture regression coverage; that does not validate every Core formatter. |
+| Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
+| Readability | CA1507, CA2249 / 41 | Defer unrelated nameof/Contains rewrites. |
+| Ignored constructed result | CA1806 / 6 | All six sites intentionally expect constructor rejection: five TriangleMeshDistance invalid-contract cases and one Pipeline duplicate-parameter case. Removing construction would remove the assertion. |
+| Dispose/finalizer extensibility | CA1816 / 3 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release owned Mats/results; these classes have no finalizer. Derived-finalizer suppression remains an extensibility concern, distinct from the corrected preprocessing exception leaks. |
+| Exception parameter naming | CA2208 / 5 | Four 3D sites name a member of the options object instead of the method parameter (bin counts, alignment cosine, display sample limit); the Pipeline helper reports its caller's `parameters` name. Preserve this observable exception detail in this batch; any cleanup must review consumer expectations. |
+
+The six CA1806 sites, all three Dispose bodies, and all five CA2208 call sites
+were inspected. The other groups were classified by diagnostics; this is not an
+individual correctness certification of all 596 locations. No baseline ceiling
+or coverage minimum was relaxed.
+
+### Historical PL-0002 milestone snapshot
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
@@ -271,7 +330,10 @@ approval.
 
 ## PL-0005 — audit finding remediation
 
-Status: `Complete`. Implementation commit
+Status: `Incomplete` for F7 since the 2026-09-13 follow-up review. On a successful
+match, `ResetFeatureFailure` also resets `lastFeatureDetector` to `Unknown`, making
+both detector metrics zero. The original blank-image test does not exercise this
+branch. PL-0006 owns the correction and C4 revalidation. Original implementation commit
 `a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b` is on `origin/main`; the package
 provenance and consumer evidence below is fixed to that same commit.
 

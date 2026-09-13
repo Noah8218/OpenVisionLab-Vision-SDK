@@ -30,6 +30,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Legacy Core conversion and formula results match modern APIs", TestCoreConversionAndFormulaParity);
             yield return new SmokeCase("Legacy Core fitting and vertical geometry match modern APIs", TestCoreFittingAndVerticalParity);
             yield return new SmokeCase("Modern Core fitting remains stable for large coordinates and angles", TestModernCoreNumericalStability);
+            yield return new SmokeCase("Modern Core fitting covers overloads and invalid geometry", TestModernCoreFittingBoundaries);
             yield return new SmokeCase("Legacy OpenCV helper and base preserve supported state parity", TestOpenCvHelperAndBaseParity);
             yield return new SmokeCase("Legacy OpenCV null handling divergence remains explicit", TestOpenCvHelperNullDivergence);
             yield return new SmokeCase("Legacy result DTOs preserve modern shared fields", TestResultDtoParity);
@@ -162,6 +163,59 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(degenerateRejected,
                 "A vertical y=f(x) fit must reject its zero-variance X coordinates explicitly.");
+        }
+
+        private static void TestModernCoreFittingBoundaries()
+        {
+            LineFittingCalculator calculator = new LineFittingCalculator();
+            DrawingPointF[] noisy = { new DrawingPointF(0, 1), new DrawingPointF(1, 1), new DrawingPointF(2, 3) };
+            double error = LineFittingCalculator.FindLinearLeastSquaresFit(noisy, out double slope, out double intercept);
+            RequireApproximately(slope, 1.0, 1e-12, "Noisy fit slope changed.");
+            RequireApproximately(intercept, 2.0 / 3.0, 1e-12, "Noisy fit intercept changed.");
+            RequireApproximately(error, Math.Sqrt(2.0 / 3.0), 1e-12, "Fit error must be root sum of squared vertical residuals, not RMS.");
+            RequireApproximately(LineFittingCalculator.ErrorSquared(noisy, slope, intercept), error * error, 1e-12, "Squared error disagrees with the returned norm.");
+
+            var floatFit = calculator.LineFit(new[] { new DrawingPointF(2, 7), new DrawingPointF(0, 3) });
+            var integerFit = calculator.LineFit(new[] { new DrawingPoint(2, 7), new DrawingPoint(0, 3) });
+            Require(floatFit == integerFit && floatFit.Item1 == new DrawingPointF(0, 3) && floatFit.Item2 == new DrawingPointF(2, 7),
+                "Drawing-point overloads must return endpoints in increasing X order.");
+
+            int enumerationCount = 0;
+            IEnumerable<Point> EnumerateOnce()
+            {
+                Require(++enumerationCount == 1, "Line fitting enumerated the input more than once.");
+                yield return new Point(1000000000, 1000000003);
+                yield return new Point(1000000001, 1000000004);
+                yield return new Point(1000000002, 1000000005);
+            }
+            var largeFit = calculator.LineFitX(EnumerateOnce());
+            Require(largeFit.Item1 == new DrawingPoint(1000000000, 1000000003)
+                && largeFit.Item2 == new DrawingPoint(1000000002, 1000000005), "Integer fit lost adjacent coordinates at a large origin.");
+            var verticalFit = calculator.LineFitY(new[] { new Point(7, 2), new Point(7, -2) });
+            Require(verticalFit.Item1 == new DrawingPoint(7, -2) && verticalFit.Item2 == new DrawingPoint(7, 2),
+                "LineFitY must fit x=f(y), including a vertical line.");
+            var extended = calculator.LinearLeastSquaresFit(new List<Point> { new Point(0, 3), new Point(2, 7) }, new System.Drawing.Size(10, 20));
+            Require(extended.Item1 == new DrawingPoint(0, 3) && extended.Item2 == new DrawingPoint(10, 23),
+                "Compatibility extent overload must extrapolate to Width without clipping to Height.");
+
+            RequireThrows<ArgumentNullException>(() => calculator.LineFit((IEnumerable<DrawingPointF>)null));
+            RequireThrows<ArgumentException>(() => calculator.LineFit(Array.Empty<DrawingPointF>()));
+            RequireThrows<ArgumentException>(() => calculator.LineFit(new[] { new DrawingPointF(1, 2) }));
+            RequireThrows<ArgumentException>(() => calculator.LineFitX(new[] { new Point(1, 0), new Point(1, 2) }));
+            RequireThrows<ArgumentException>(() => calculator.LineFitY(new[] { new Point(0, 1), new Point(2, 1) }));
+            foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
+            {
+                RequireThrows<ArgumentException>(() => calculator.LineFit(new[] { new DrawingPointF(invalid, 0), new DrawingPointF(1, 2) }));
+                RequireThrows<ArgumentException>(() => calculator.LineFit(new[] { new DrawingPointF(0, invalid), new DrawingPointF(1, 2) }));
+            }
+
+            Point extremeBase = new Point(int.MinValue, int.MinValue);
+            RequireApproximately(FormulaUtil.threePointAngle(extremeBase, new Point(int.MaxValue, int.MinValue), new Point(int.MinValue, int.MaxValue)),
+                90.0, 1e-12, "Angle differences must not overflow integer coordinates.");
+            RequireApproximately(FormulaUtil.threePointAngle(new Point(10, 10), new Point(0, 10), new Point(20, 10)),
+                180.0, 1e-12, "Opposite vectors must produce 180 degrees.");
+            Require(double.IsNaN(FormulaUtil.threePointAngle(extremeBase, extremeBase, new Point(0, 0))),
+                "A zero-length angle vector must remain explicitly undefined.");
         }
 
         private static void TestOpenCvHelperAndBaseParity()

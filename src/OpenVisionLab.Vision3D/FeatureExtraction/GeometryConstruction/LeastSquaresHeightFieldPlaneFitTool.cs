@@ -73,8 +73,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
     /// <summary>
     /// Fits Y = slopeX * X + slopeZ * Z + intercept by least squares.
-    /// The finite/degenerate contracts and double-precision distance arithmetic
-    /// are deterministic so translated coordinate frames preserve their output.
+    /// Uses centered sums and double-precision distances, with explicit finite/degenerate guards.
+    /// Coordinate magnitude and conditioning still limit representable precision.
     /// </summary>
     public sealed class LeastSquaresHeightFieldPlaneFitTool
     {

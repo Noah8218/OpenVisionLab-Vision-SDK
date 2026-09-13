@@ -1,0 +1,158 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0006",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "SDK 성공 경로·자원 수명·API 계약과 경계 검증 보완",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user request",
+    "summary": "사용자가 SIFT 성공 진단, 전처리 자원 해제, Tool별 사용 계약 문서, 성공·수치 경계 테스트와 분석기 부채 검토의 네 우선순위를 승인했다.",
+    "refs": []
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "SIFT 성공 진단과 수치 assertion의 수정 전 실패/수정 후 통과를 확인했다. Core/3D/acceptance 경계 검사, 5개 README 예제 실행과 analyzer 596건 분류를 마쳤다. 전처리 해제 coverage 및 고정 커밋 전체 검증은 진행 중이다.",
+    "next_action": "변경을 커밋으로 고정한 뒤 전체 smoke/coverage, public API, package provenance/consumer 및 원격 main CI를 확인하고 PL-0005 C4와 PL-0006을 증거로 종료한다."
+  },
+  "objective": {
+    "summary": "실제 성공/실패/재실행을 신뢰할 수 있는 진단과 자원 해제, 예측 가능한 API 사용 문서, 실패를 놓치지 않는 경계 검증을 제공한다.",
+    "constraints": [
+      "기존 public API와 vendored DLL, legacy 계약 및 모듈 소유자를 유지한다.",
+      "SDK는 UI 독립 계산 라이브러리이며 센서·교정·레시피·제품 판정은 호스트 책임이다.",
+      "테스트 산출물은 D:에 보존한다. 패키지 게시는 하지 않으며 현장 정확도/재배포 승인을 주장하지 않는다.",
+      "검증 기준을 낮추지 않고 기존 analyzer 진단은 영향과 소유자별로 검토한다. 596건 일괄 수정이나 100% coverage 달성을 완료 기준으로 삼지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "SIFT 단일/다중 ROI 성공과 실패 후 재실행에서 결과 좌표·검출기 지표가 일치하고 실패 결과가 이전 성공 지표를 오인시키지 않는다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "공통 ROI/전체 영상과 SIFT/Edge 템플릿 전처리에서 생성한 Mat은 성공 시 호출자에게 전달되고 실패 시 해제된다. 실패 후 회복·입력 소유권 검사와 실행 coverage로 예외 해제를 확인한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "기존 package/루트/3D 안내에 Tool별 입력·옵션·ROI·복구, 결과/예외/불합격, thread/cancel/time/lifetime 계약과 실행 예제를 제공하고 대표 예제를 실행한다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "수치 assertion이 비유한값을 거부하고 Core/3D/Acceptance의 정상·극한·퇴화 경계를 검사한다. 현재 analyzer 진단 분류와 남는 한계를 문서에 기록한다.",
+      "evidence_refs": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Release, focused/full smoke, coverage floors, exact public API, analyzer, package provenance/consumer와 remote main CI가 통과하고 정확한 소스/증거를 기록한다.",
+      "evidence_refs": []
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "SIFT 진단 성공/재실행 보완",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "전처리 Mat 수명 보완",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "API 사용 계약과 예제 보완",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "수치/성공 경계 및 analyzer 검토",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M5",
+      "summary": "통합 증거와 전달",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0005"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "15e3cf5ae529a9d0c625e3b5101a2cd4e0c4dd8f"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0006",
+      "summary": "Focused/full logs, coverage and analyzer triage, package and consumer evidence."
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "focused regressions",
+      "id": "E1",
+      "observation": "수정 전 SIFT 성공 diagnostic 및 NaN assertion 회귀는 실패했고 수정 후 통과했다. SIFT 2/2, assertion 1/1, preprocessing 1/1, Modern Core 2/2, plane fit 2/2, Volume 6/6, Pipeline acceptance 2/2 통과. 전처리 회복 검사는 실제 native 메모리 누수 부재 자체의 증거로 사용하지 않는다.",
+      "observed_at": "2026-09-13T23:44:04.1957501+09:00",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\red; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\green; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\boundaries"
+    },
+    {
+      "kind": "documentation and analyzer review",
+      "id": "E2",
+      "observation": "Core/Vision2D/Blob/Inspection/Vision3D README에서 첫 C# 블록을 그대로 추출하여 각각 빌드/실행했다. 기존 analyzer 596건/16코드 불변; CA1806 6, CA1816 3, CA2208 5개 위치를 읽고 나머지 분류와 검증 한계를 기록했다. Tool별 입력/ROI/옵션/오류, thread/cancel/lifetime, 3D 결과 계약을 기존 문서에 보완했다.",
+      "observed_at": "2026-09-13T23:44:04.1957501+09:00",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\readme-examples; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\analyzer\\diagnostics.log; docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-09-13T14:22:48Z",
+  "updated_at": "2026-09-13T23:44:04.1957501+09:00"
+}

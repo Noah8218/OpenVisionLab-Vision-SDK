@@ -5,6 +5,11 @@
 > continuing project work. Use the [documentation index](docs/README.md) to
 > distinguish current contracts from dated historical records.
 
+Developers opening the source can follow [Start Here](docs/README.md#start-here)
+for the solution, executable checks and code-reading order. Consumers can use the
+[2D input/error/lifetime contracts](src/OpenVisionLab.Vision2D/README.md#input-and-option-contracts)
+and [3D execution/outcome contracts](docs/three-d-inspection.md#execution-failure-and-lifetime-boundaries).
+
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
 > `OpenVisionLab.* 3.0` packages, DLLs, and namespaces. Before migrating an
@@ -460,8 +465,9 @@ Multi-ROI execution in `MeanTool` measures each region in `CvROIS` order and ret
 
 `SiftTool` first creates an OpenCV SIFT detector. The currently bundled native
 runtime does not export that entry point, so the tool uses ORB as a documented
-compatibility fallback. Inspect `VisionToolResult.Metrics["FeatureDetector.Sift"]` and
-`Metrics["FeatureDetector.OrbFallback"]` to record which detector actually ran.
+compatibility fallback. Read `FeatureDetector.Sift` and `FeatureDetector.OrbFallback`
+with `VisionToolResult.Metrics.TryGetValue` to record which detector actually ran.
+Early validation/exception results may omit these keys; absence is not a SIFT selection.
 
 ## Supported 3D Features
 

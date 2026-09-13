@@ -156,12 +156,58 @@ recipes, overlays, or UI lifecycle.
 | Multi-input dimensional inspection | `PlaneFlatnessInspectionTool`, `PointPairDimensionsInspectionTool`, `GapFlushInspectionTool`, `VolumeInspectionTool`, `CrossSectionDimensionsInspectionTool` |
 
 `LeastSquaresHeightFieldPlaneFitTool` and `PlaneFlatnessInspectionTool` use
-double-precision orthogonal distances, so translating the same geometry to a
-large coordinate origin does not change the flatness decision. `VolumeInspectionTool`
+double-precision orthogonal distances. Synthetic checks cover inclined planes
+translated by coordinate components up to 3,000,000 with 0.1 orthogonal residuals,
+and a horizontal plane at Y=1,000,000 with a 0.02 deviation. These are tested
+scales, not a guarantee for arbitrary origins: floating-point resolution,
+conditioning and tolerance still limit the result. `VolumeInspectionTool`
 returns a typed result for finite, representable calculations; it throws
 `InvalidOperationException` when an intermediate or accumulated volume becomes
 non-finite. Treat that exception as a calculation failure, separate from a
 finite result whose `Passed` value is `false`.
+
+For height-field plane fitting, positions represent **Y=f(X,Z)**; they must span
+both horizontal axes and contain at least three finite samples. Vertical planes
+cannot be represented by this model. `RawHeight` is fitted independently of the
+display Y coordinate. `RootMeanSquareDistance` and flatness use orthogonal distance;
+volume uses vertical Y residual multiplied by the caller's positive `SampleArea`.
+Do not substitute orthogonal distance in that volume calculation. Flatness needs
+independent reference and measurement regions; the host supplies compatible units,
+frames, sampling area and calibrated acceptance limits.
+
+## Execution, failure and lifetime boundaries
+
+| Call family | Failure / normal result | Recovery and lifetime |
+| --- | --- | --- |
+| `IThreeDInspectionTool.Execute(HeightMap3D)` | `MeasurementOutcome` distinguishes `Passed`, `OutOfTolerance`, `NotMeasured` | Preserve measured values on tolerance failure. For `NotMeasured`, inspect error code and correct units, ROI, missing coverage or configuration. |
+| Geometry/construction Tools | Typed result; invalid/degenerate input may throw `ArgumentException`; arithmetic overflow may throw `InvalidOperationException` | Catch at the host operation boundary; discard this measurement. Do not reuse coefficients/results from an earlier call. |
+| Typed dimensional inspections | `Passed=false` is a valid measurement outside tolerance; invalid inputs/calculations may throw | Retain finite metrics and the applied tolerance separately from execution failure. |
+| Overloads with `CancellationToken` | Only the declared overload offers cooperative cancellation | Keep input alive until completion and handle `OperationCanceledException` where propagated; other Tools have no general abort contract. |
+
+These APIs are synchronous. The height-map interface and combined runner have no
+cancellation or hard-timeout parameter. `Task.Run` does not add cancellation to an
+algorithm. Pass stable inputs and options throughout a call; per-worker Tool
+instances avoid relying on unspecified thread safety. `HeightMap3D` is immutable;
+caller-supplied arrays/lists/options for other Tools must not change while in use.
+Pure 3D result DTOs need no `Mat` disposal. Hosts own sensor/file handles and any
+rendering buffers they create from results.
+
+Example outcome handling after an existing height-map call:
+
+```csharp
+switch (result.MeasurementOutcome)
+{
+    case ThreeDMeasurementOutcome.Passed:
+        Console.WriteLine("Measurement passed the configured limits.");
+        break;
+    case ThreeDMeasurementOutcome.OutOfTolerance:
+        Console.WriteLine("Valid measurement outside tolerance; retain metrics.");
+        break;
+    case ThreeDMeasurementOutcome.NotMeasured:
+        Console.Error.WriteLine($"{result.ErrorName}: {result.Message}");
+        break;
+}
+```
 
 ## Height-map contract
 
@@ -373,11 +419,9 @@ construct the source-neutral typed input used by the selected Tool.
 
 ## Verification commands
 
-```powershell
-dotnet build OpenVisionLab.VisionSdk.sln -c Debug
-dotnet run --project tests/OpenVisionLab.Inspection.Smoke/OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build
-dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build
-```
+Use the [shared build and focused-test route](README.md#current-verification-entry-points).
+`--filter "plane fit"` selects plane-fit scenarios; `--filter "Volume"` selects
+volume scenarios. Packaging has a separate clean-commit provenance gate linked there.
 
 The smoke executable uses only deterministic synthetic height maps. It verifies
 legacy constructor compatibility, strict unit/frame rejection, missing-sample coverage,

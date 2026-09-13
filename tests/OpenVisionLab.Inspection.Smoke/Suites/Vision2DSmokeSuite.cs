@@ -20,6 +20,9 @@ namespace OpenVisionLab.Inspection.Smoke
     {
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("Smoke numerical assertions reject non-finite comparisons", TestNumericalAssertionBoundary);
+            yield return new SmokeCase("SIFT diagnostics survive success failure and repeated ROI execution", TestSiftExecutionDiagnostics);
+            yield return new SmokeCase("Preprocessing releases failed clones and preserves caller images", TestPreprocessingFailureRecovery);
             yield return new SmokeCase("2D affine transform recovers a known matrix and drawings", TestAffineTransformKnownMatrix);
             yield return new SmokeCase("2D affine transform rejects collinear source teaching", TestAffineTransformDegenerateSource);
             yield return new SmokeCase("2D affine transform retains evidence on coverage failure", TestAffineTransformCoverageFailure);
@@ -49,6 +52,148 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Pipeline factory rejects malformed, unknown, and duplicate parameters", TestVisionPipelineFactoryRejectsInvalidParameters);
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
             yield return new SmokeCase("Pipeline acceptance supports only a terminal expected failure", TestVisionPipelineExpectedFailureAcceptance);
+            yield return new SmokeCase("Pipeline acceptance checks finite inclusive metric and elapsed boundaries", TestAcceptanceBoundaries);
+        }
+
+        private static void TestNumericalAssertionBoundary()
+        {
+            foreach (double invalid in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+            {
+                RequireThrows<InvalidOperationException>(() => RequireApproximately(invalid, 1.0, 0.01, "actual"));
+                RequireThrows<InvalidOperationException>(() => RequireApproximately(1.0, invalid, 0.01, "expected"));
+                RequireThrows<InvalidOperationException>(() => RequireApproximately(1.0, 1.0, invalid, "tolerance"));
+            }
+
+            RequireThrows<InvalidOperationException>(() => RequireApproximately(1.0, 1.0, -1.0, "negative tolerance"));
+            RequireApproximately(2.0, 1.0, 1.0, "The finite tolerance boundary must remain inclusive.");
+        }
+
+        private static void TestSiftExecutionDiagnostics()
+        {
+            using (Mat template = new Mat(180, 180, MatType.CV_8UC1))
+            using (Mat source = new Mat(230, 260, MatType.CV_8UC1, Scalar.All(0)))
+            using (Mat blank = new Mat(source.Size(), MatType.CV_8UC1, Scalar.All(0)))
+            using (SiftTool tool = new SiftTool())
+            {
+                Random random = new Random(173);
+                for (int y = 0; y < template.Height; y++)
+                {
+                    for (int x = 0; x < template.Width; x++)
+                    {
+                        template.Set(y, x, (byte)random.Next(256));
+                    }
+                }
+
+                Rect roi = new Rect(37, 21, template.Width, template.Height);
+                using (Mat target = source.SubMat(roi))
+                {
+                    template.CopyTo(target);
+                }
+
+                SiftToolProperty property = new SiftToolProperty { USE_ROI = true, CvROI = roi };
+                tool.SetProperty(property);
+                tool.SetTemplateImage(template);
+                for (int run = 0; run < 3; run++)
+                {
+                    bool expectSuccess = run != 1;
+                    using (VisionToolResult result = tool.Execute(expectSuccess ? source : blank))
+                    {
+                        Require(result.Success == expectSuccess, "SIFT execution outcome changed: " + result.Message);
+                        Require(result.Metrics.TryGetValue("FeatureDetector.Sift", out double sift)
+                            && result.Metrics.TryGetValue("FeatureDetector.OrbFallback", out double orb)
+                            && sift + orb == 1.0, "SIFT must retain exactly one selected detector after every attempted match.");
+                        Require(tool.results.Count == (expectSuccess ? 1 : 0), "SIFT retained results from a previous execution.");
+                        if (expectSuccess)
+                        {
+                            RequireApproximately(tool.results[0].Center.X, roi.X + 89.5, 1.0, "SIFT center must be in source coordinates.");
+                            RequireApproximately(tool.results[0].Center.Y, roi.Y + 89.5, 1.0, "SIFT center must retain the ROI offset.");
+                        }
+                        else
+                        {
+                            Require(result.ErrorCode == VisionToolErrorCode.FeatureNoKeypoints, "Blank SIFT input must have an explicit no-keypoint result.");
+                        }
+                    }
+                }
+
+                property.USE_MULTI_ROI = true;
+                property.CvROIS.Add(roi);
+                property.CvROIS.Add(roi);
+                using (VisionToolResult multiple = tool.Execute(source))
+                {
+                    Require(multiple.Success && tool.results.Count == 2, "SIFT multi ROI must retain each match.");
+                    Require(multiple.Metrics["FeatureDetector.Sift"] + multiple.Metrics["FeatureDetector.OrbFallback"] == 1.0,
+                        "The last successful ROI must not clear the selected detector.");
+                }
+
+                tool.SetTemplateImage(null);
+                using (VisionToolResult invalid = tool.Execute(source))
+                {
+                    Require(!invalid.Success && invalid.ErrorCode == VisionToolErrorCode.FeatureTemplateMissing,
+                        "Missing template must fail validation before detection.");
+                    Require(!invalid.Metrics.ContainsKey("FeatureDetector.OrbFallback"), "Validation failure must not publish stale detector evidence.");
+                }
+            }
+        }
+
+        private static void TestPreprocessingFailureRecovery()
+        {
+            using (Mat source = new Mat(48, 64, MatType.CV_8UC1, Scalar.All(37)))
+            using (PreprocessingProbe tool = new PreprocessingProbe())
+            {
+                tool.SetSourceImage(source);
+                foreach (bool useRoi in new[] { false, true })
+                {
+                    OpenCvToolPropertyBase property = new MeanToolProperty
+                    {
+                        USE_ADAPTIVE_THRESHOLD = true,
+                        BlockSize = 3,
+                        ADAPTIVE_THRESHOLD_TYPES = ThresholdTypes.Trunc
+                    };
+                    RequireThrows<OpenCVException>(() => { using (tool.Prepare(useRoi, property)) { } });
+                    property.USE_ADAPTIVE_THRESHOLD = false;
+                    using (Mat prepared = tool.Prepare(useRoi, property))
+                    {
+                        Require(prepared.Width == (useRoi ? 20 : 64), "Preprocessing recovery lost the requested dimensions.");
+                        prepared.SetTo(Scalar.All(0));
+                        Require(source.At<byte>(4, 4) == 37 && tool.imageSource.At<byte>(4, 4) == 37,
+                            "A prepared clone must not mutate the caller or tool source.");
+                    }
+                }
+
+                using (SiftTool sift = new SiftTool())
+                using (EdgeBasedTemplateMatchingTool edge = new EdgeBasedTemplateMatchingTool())
+                {
+                    SiftToolProperty siftProperty = new SiftToolProperty
+                    {
+                        USE_ADAPTIVE_THRESHOLD = true, BlockSize = 3, ADAPTIVE_THRESHOLD_TYPES = ThresholdTypes.Trunc
+                    };
+                    EdgeBasedTemplateMatchingToolProperty edgeProperty = new EdgeBasedTemplateMatchingToolProperty
+                    {
+                        USE_ADAPTIVE_THRESHOLD = true, BlockSize = 3, ADAPTIVE_THRESHOLD_TYPES = ThresholdTypes.Trunc
+                    };
+                    sift.SetProperty(siftProperty);
+                    sift.SetTemplateImage(source);
+                    edge.SetProperty(edgeProperty);
+                    edge.SetTemplateImage(source);
+                    foreach (IVisionTool matcher in new IVisionTool[] { sift, edge })
+                    {
+                        using (VisionToolResult failed = matcher.Execute(source))
+                        {
+                            Require(!failed.Success && failed.Exception is OpenCVException,
+                                "Invalid template preprocessing must preserve the native failure.");
+                        }
+                    }
+                    siftProperty.USE_ADAPTIVE_THRESHOLD = false;
+                    edgeProperty.USE_ADAPTIVE_THRESHOLD = false;
+                    foreach (IVisionTool matcher in new IVisionTool[] { sift, edge })
+                    {
+                        using (VisionToolResult recovered = matcher.Execute(source))
+                        {
+                            Require(recovered.Exception == null, "Template preprocessing failed to recover after corrected options.");
+                        }
+                    }
+                }
+            }
         }
 
         private static void TestAffineTransformKnownMatrix()
@@ -870,22 +1015,20 @@ namespace OpenVisionLab.Inspection.Smoke
             using (Mat source = new Mat(new Size(4, 4), MatType.CV_8UC1, Scalar.All(10)))
             using (ThresholdTool tool = new ThresholdTool())
             {
-                tool.SetProperty(new ThresholdToolProperty { Threshold = double.NaN });
-                using (VisionToolResult thresholdResult = tool.Execute(source))
+                foreach (double invalid in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
                 {
-                    Require(!thresholdResult.Success
-                        && thresholdResult.ErrorCode == VisionToolErrorCode.InvalidParameter
-                        && thresholdResult.Message.Contains("finite", StringComparison.OrdinalIgnoreCase),
-                        "ThresholdTool must reject a non-finite Threshold value before OpenCV execution.");
-                }
-
-                tool.SetProperty(new ThresholdToolProperty { Threshold = 5, MaxValue = double.PositiveInfinity });
-                using (VisionToolResult maxValueResult = tool.Execute(source))
-                {
-                    Require(!maxValueResult.Success
-                        && maxValueResult.ErrorCode == VisionToolErrorCode.ThresholdInvalidMaxValue
-                        && maxValueResult.Message.Contains("MaxValue", StringComparison.OrdinalIgnoreCase),
-                        "ThresholdTool must reject a non-finite MaxValue before OpenCV execution.");
+                    tool.SetProperty(new ThresholdToolProperty { Threshold = invalid });
+                    using (VisionToolResult thresholdResult = tool.Execute(source))
+                    {
+                        Require(!thresholdResult.Success && thresholdResult.ErrorCode == VisionToolErrorCode.InvalidParameter
+                            && thresholdResult.Exception == null, "ThresholdTool must reject non-finite Threshold before OpenCV execution.");
+                    }
+                    tool.SetProperty(new ThresholdToolProperty { Threshold = 5, MaxValue = invalid });
+                    using (VisionToolResult maxValueResult = tool.Execute(source))
+                    {
+                        Require(!maxValueResult.Success && maxValueResult.ErrorCode == VisionToolErrorCode.ThresholdInvalidMaxValue
+                            && maxValueResult.Exception == null, "ThresholdTool must reject non-finite MaxValue before OpenCV execution.");
+                    }
                 }
             }
         }
@@ -1381,6 +1524,54 @@ namespace OpenVisionLab.Inspection.Smoke
             }
         }
 
+        private static void TestAcceptanceBoundaries()
+        {
+            VisionPipelineStep step = new VisionPipelineStep
+            {
+                UseAcceptance = true, ExpectedSuccess = true, AcceptanceMetricName = "Score",
+                UseAcceptanceMetricMinimum = true, AcceptanceMetricMinimum = 1.0,
+                UseAcceptanceMetricMaximum = true, AcceptanceMetricMaximum = 2.0, MaxElapsedMilliseconds = 10.0
+            };
+            using (VisionToolResult result = new VisionToolResult { Success = true, Elapsed = TimeSpan.FromMilliseconds(10) })
+            {
+                foreach (double boundary in new[] { 1.0, 2.0 })
+                {
+                    result.Metrics["Score"] = boundary;
+                    Require(VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Metric and elapsed limits must be inclusive.");
+                }
+                foreach (double outside in new[] { 0.999, 2.001, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+                {
+                    result.Metrics["Score"] = outside;
+                    Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Out-of-range or non-finite metrics must fail.");
+                }
+                result.Metrics["Score"] = 1.5;
+                foreach (double invalid in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+                {
+                    step.AcceptanceMetricMinimum = invalid;
+                    Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Enabled minimum must be finite.");
+                    step.AcceptanceMetricMinimum = 1.0;
+                    step.AcceptanceMetricMaximum = invalid;
+                    Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Enabled maximum must be finite.");
+                    step.AcceptanceMetricMaximum = 2.0;
+                    step.MaxElapsedMilliseconds = invalid;
+                    Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Elapsed limit must be finite.");
+                    step.MaxElapsedMilliseconds = 10.0;
+                }
+                result.Elapsed = TimeSpan.FromMilliseconds(10.001);
+                Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Elapsed above the limit must fail.");
+                result.Elapsed = TimeSpan.Zero;
+                step.AcceptanceMetricName = "Missing";
+                Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Missing metrics must fail.");
+                step.AcceptanceMetricName = " ";
+                Require(!VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "An empty enabled metric name must fail.");
+                step.UseAcceptanceMetricMinimum = false;
+                step.UseAcceptanceMetricMaximum = false;
+                step.AcceptanceMetricMinimum = double.NaN;
+                step.AcceptanceMetricMaximum = double.PositiveInfinity;
+                Require(VisionPipelineAcceptanceEvaluator.Evaluate(step, result).Passed, "Disabled metric limits must not affect acceptance.");
+            }
+        }
+
         private static void TestVisionPipelineExpectedFailureAcceptance()
         {
             VisionPipeline expectedFailure = new VisionPipeline();
@@ -1489,6 +1680,12 @@ namespace OpenVisionLab.Inspection.Smoke
             }
 
             Require(rejected, $"Invalid pipeline parameter '{expectedMessage}' was not rejected.");
+        }
+
+        private sealed class PreprocessingProbe : OpenCvAlgorithmBase
+        {
+            internal Mat Prepare(bool useRoi, IOpenCVPropertyBase property) => CreatePreprocessedImage(new Rect(4, 4, 20, 20), useRoi, property);
+            public override void Run() { }
         }
 
         private sealed class ThrowingOpenCvTool : OpenCvAlgorithmBase

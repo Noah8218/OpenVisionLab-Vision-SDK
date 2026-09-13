@@ -121,6 +121,7 @@ namespace OpenVisionLab.Vision2D.Tool
             swTaktTimems.Restart();
             results.Clear();
             ResetFeatureFailure();
+            lastFeatureDetector = "Unknown";
 
             if (OpenCvHelper.IsImageEmpty(imageSource)) { return false; }
 
@@ -142,6 +143,7 @@ namespace OpenVisionLab.Vision2D.Tool
             swTaktTimems.Restart();
             results.Clear();
             ResetFeatureFailure();
+            lastFeatureDetector = "Unknown";
 
             if (OpenCvHelper.IsImageEmpty(imageSource)) { return false; }
 
@@ -158,8 +160,16 @@ namespace OpenVisionLab.Vision2D.Tool
         private Mat CreatePreparedFeatureTemplate()
         {
             Mat preparedTemplate = imageTemplate.Clone();
-            ApplyCommonPreprocessing(preparedTemplate, property);
-            return preparedTemplate;
+            try
+            {
+                ApplyCommonPreprocessing(preparedTemplate, property);
+                return preparedTemplate;
+            }
+            catch
+            {
+                preparedTemplate.Dispose();
+                throw;
+            }
         }
 
         private Rect NormalizeFeatureRoi(Rect roi)
@@ -287,7 +297,6 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             lastFeatureErrorCode = VisionToolErrorCode.FeatureNoResult;
             lastFeatureMessage = "Feature matching found no result.";
-            lastFeatureDetector = "Unknown";
         }
 
         private void SetFeatureFailure(VisionToolErrorCode errorCode, string message)
@@ -416,4 +425,3 @@ namespace OpenVisionLab.Vision2D.Tool
         }
     }
 }
-

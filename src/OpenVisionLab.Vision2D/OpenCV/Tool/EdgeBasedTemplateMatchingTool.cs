@@ -2881,8 +2881,16 @@ namespace OpenVisionLab.Vision2D.Tool
         private Mat CreatePreparedGrayImage(Mat source)
         {
             Mat image = source.Clone();
-            ApplyCommonPreprocessing(image, property);
-            return image;
+            try
+            {
+                ApplyCommonPreprocessing(image, property);
+                return image;
+            }
+            catch
+            {
+                image.Dispose();
+                throw;
+            }
         }
 
         private sealed class EdgeTemplateModelStore : IDisposable

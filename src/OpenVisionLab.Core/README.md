@@ -41,4 +41,38 @@ This package deliberately does not provide WinForms/WPF image conversion, serial
 system-time, drive-management, or other application-platform helpers. Consumers that
 display a `Mat` should keep framework-specific conversion in their own UI adapter.
 
+## Numerical geometry contracts
+
+`Geometry2D.LineFittingCalculator` fits `y = Slope*x + Intercept`. Use `LineFitY`
+for `x = Slope*y + Intercept` when fitting a near-vertical line. At least two finite
+points with distinct independent-axis coordinates are required; empty, singleton,
+non-finite and degenerate inputs throw `ArgumentException` (null sequences throw
+`ArgumentNullException`). Inputs are enumerated once and then materialized. A
+calculator stores its last successful coefficients; do not read them as a new
+measurement after a failed fit or share the instance between concurrent calls.
+
+`FindLinearLeastSquaresFit` returns `sqrt(sum(residualY²))`, not RMS. `ErrorSquared`
+is a raw arithmetic helper; it does not validate inputs or promise finite output.
+Coefficients use double arithmetic, but `PointF` has float precision, `LineFit`
+returns float endpoints, and `LineFitX/Y` return truncated integer endpoints.
+`LinearLeastSquaresFit(points, size)` extrapolates to X=0 and X=`size.Width`; it
+does not clip Y to `size.Height` and converts through `PointF`. Choose the overload
+according to coordinate magnitude and required resolution.
+
+```csharp
+using System;
+using System.Drawing;
+using OpenVisionLab.Core.Geometry2D;
+
+PointF[] points = { new PointF(0, 3), new PointF(1, 5), new PointF(2, 7) };
+double error = LineFittingCalculator.FindLinearLeastSquaresFit(points, out double slope, out double intercept);
+Console.WriteLine($"y={slope}*x+{intercept}; residual norm={error}"); // 2, 3, 0
+```
+
+`FormulaUtil.threePointAngle` returns degrees in [0, 180]; a coincident vector
+endpoint produces `double.NaN`, which callers must reject before applying a limit.
+Finite arithmetic and synthetic tests do not certify arbitrary coordinate scales
+or calibrated measurement accuracy. Legacy `C*` types retain the separately
+documented [migration differences](../../docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md).
+
 [Repository and full documentation](https://github.com/Noah8218/OpenVisionLab-Vision-SDK)
