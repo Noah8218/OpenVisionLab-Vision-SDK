@@ -2,16 +2,16 @@
 
 Updated: 2026-09-13
 Project work item: `PL-0006`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0006.json` records the current follow-up. `PL-0005` reopens
-only its SIFT diagnostic criterion after a source review found a missed success
-path. The other prior verification remains historical evidence, while
+`.proofline/issues/PL-0006.json` records the completed follow-up. `PL-0005`'s SIFT
+diagnostic criterion was reopened after a missed success path was found, then
+corrected and revalidated by PL-0006. The other prior verification remains historical evidence, while
 `.proofline/issues/PL-0004.json` preserves the preceding closure and
 `.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
 preceding closures. No ledger is a second design or release authority.
@@ -49,15 +49,16 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-`PL-0006` addresses the missed SIFT success diagnostic, preprocessing Mat release,
+`PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
 
 ## PL-0006 work contract
 
-Status: `Incomplete` while the following approved criteria are being verified.
+Status: `Complete` for the four approved scopes below, verified at implementation
+commit `34d99f8909c04dc28cd90e3d085c5d655a787aa2` on `origin/main`.
 
-Implement now: preserve SIFT/ORB diagnostics through success, failure, and repeated
+Completed scope: preserve SIFT/ORB diagnostics through success, failure, and repeated
 single/multi-ROI execution; release cloned preprocessing images on exceptions in
 the common helper and both template paths; document per-tool input/options/ROI and
 failure/recovery contracts plus concurrency, cancellation, timing, and lifetime;
@@ -82,8 +83,65 @@ module, public binding, or dependency boundary is moved.
 Acceptance: each of the four scopes above has focused executable evidence; the
 shared numeric assertion rejects non-finite inputs; Release, full smoke/coverage,
 exact public API, analyzer, clean package/consumer, and remote main gates pass.
-Evidence will be retained under
+Evidence is retained under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0006` and in the ledger.
+
+### PL-0006 verification and closure
+
+- **C1 — Pass:** the new SIFT success diagnostic test failed before correction and
+  passed afterward. Single ROI success/failure/recovery, multiple ROI success,
+  source-coordinate center, and missing-template evidence are covered. The bundled
+  runtime executed ORB fallback; native SIFT execution remains unverified.
+- **C2 — Pass:** common full-image/ROI preprocessing and both template preparation
+  paths preserve input ownership and recover after an invalid native threshold
+  option. Coverage records execution of all three exception `Dispose`/rethrow paths
+  and the ROI view's `using` scope. This proves those cleanup paths were exercised;
+  it is not a long-running native memory-leak qualification.
+- **C3 — Pass:** all 14 modern 2D Tools plus the separate Blob Tool have an input,
+  ROI, option/default reference and failure/recovery route. Existing Core, 3D and
+  Inspection guides explain result/exception/tolerance, precision and lifetime.
+  Five package README examples were extracted unchanged, built and executed;
+  72 local documentation link targets passed. `docs/README.md#start-here` is the
+  single solution/project-reference and developer reading route.
+- **C4 — Pass:** the former numerical assertion accepted NaN; its new regression
+  failed before the fix. Finite/inclusive acceptance, translated/noisy/degenerate
+  line and plane fits, coordinate overflow, independent raw-height fit, and volume
+  sample/accumulation/acceptance-subtraction boundaries pass. Analyzer triage is
+  recorded below with explicit remaining debt.
+- **C5 — Pass:** .NET SDK 8.0.423 Release build and isolated consumer build each
+  reported 0 warnings/0 errors. Full smoke and the instrumented coverage run each
+  passed **231/231**. Public API matched **3,295** entries exactly. The fixed-commit
+  analyzer run retained **596** diagnostics without changing the baseline.
+
+| Assembly | Observed line coverage | Required minimum |
+| --- | ---: | ---: |
+| Core | 27.87% | 20.00% |
+| Inspection | 69.92% | 68.00% |
+| Vision2D | 74.10% | 68.00% |
+| Vision2D.Blob | 69.17% | 68.00% |
+| Vision3D | 90.67% | 89.00% |
+
+Local immutable verification packages use `3.0.1-dev.1789310781178` and embed
+`34d99f8909c04dc28cd90e3d085c5d655a787aa2`. Five-package provenance, three negative
+provenance probes, the isolated `net8.0/win-x64` package consumer and exactly one
+native DLL at the consumer output root passed. Package hashes are recorded in
+`final-34d99f8/package-provenance.json`. The same source passed all 18 remote Build
+steps in [run 34763703160](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34763703160)
+(1m59s); the actions Node.js 20 deprecation annotation was non-blocking.
+
+Reusable evidence: `PL-0006/final-34d99f8/verification-summary.json`, build/smoke/API
+and coverage logs, `preprocessing-lifetime-coverage.csv`, package manifest, negative
+probe summary, consumer logs/native hash and `remote-ci.json`. The preceding
+`red`, `green`, `boundaries`, `readme-examples`, `precommit` and
+`analyzer-34d99f8` directories retain focused proof. CLI verification listed 231
+cases; an unmatched filter exits 1 and invalid arguments exit 2. Test artifacts,
+TEMP and TMP remained on D:. Only console DLLs were executed; no UI was reviewed.
+
+The final closure commit changes documentation/ledger evidence only. These packages
+remain tied to the implementation commit above. No package was published and no
+consumer repository was changed. Real sensor accuracy, calibration, false accept/
+reject rates, representative workloads, long-running memory/latency, other native
+runtimes and redistribution clearance remain outside this completed scope.
 
 ### Analyzer triage boundary
 
@@ -330,10 +388,10 @@ approval.
 
 ## PL-0005 — audit finding remediation
 
-Status: `Incomplete` for F7 since the 2026-09-13 follow-up review. On a successful
-match, `ResetFeatureFailure` also resets `lastFeatureDetector` to `Unknown`, making
-both detector metrics zero. The original blank-image test does not exercise this
-branch. PL-0006 owns the correction and C4 revalidation. Original implementation commit
+Status: `Complete` after PL-0006 corrected and revalidated F7/C4. The original
+success branch reset `lastFeatureDetector` to `Unknown`; the blank-image test had
+missed that branch. PL-0006's failing-before/passing-after success regression and
+full verification above replace the earlier F7 completion inference. Original implementation commit
 `a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b` is on `origin/main`; the package
 provenance and consumer evidence below is fixed to that same commit.
 
@@ -421,7 +479,7 @@ holders and the project's distribution/legal owner. Until those materials exist,
 another implementation or model run cannot establish redistribution clearance, so
 no model-token recommendation is made.
 
-## Priority 1 — 2D result-contract correctness
+## Historical PL-0002 priority 1 — 2D result-contract correctness
 
 Cause: the audited Contour path exposes `CvMASKS` but does not apply the mask to
 accepted Contour results, while the Pipeline output condition can attempt to write an
@@ -460,7 +518,7 @@ smoke suite passed.
 
 Recommended model: `gpt-5.6-terra` | Reasoning effort: `medium`
 
-## Priority 2 — numerical and input-boundary reliability
+## Historical PL-0002 priority 2 — numerical and input-boundary reliability
 
 Cause: the audit identified large-coordinate landmark/affine sensitivity,
 non-finite or overflowing statistics, region-bound arithmetic overflow, and an
@@ -497,7 +555,7 @@ useful precision near `double.MaxValue` or for geometry already lost to input UL
 
 Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
 
-## Priority 3 — current documentation authority and API discovery
+## Historical PL-0002 priority 3 — current documentation authority and API discovery
 
 Cause: dated completion ledgers had become de facto status documents, public 2D/3D
 catalogs lagged source, `3.0.0` API baseline text was used as an install version,
@@ -539,7 +597,7 @@ and active native-owner examples dispose Tools/results.
 
 Recommended model: `gpt-5.6-luna` | Reasoning effort: `low`
 
-## Priority 4 — reproducible quality gates
+## Historical PL-0002 priority 4 — reproducible quality gates
 
 Cause: not every public non-legacy 2D Tool had a direct execution check, existing
 coverage was not a reproducible release gate, and CI did not prevent accidental
@@ -571,7 +629,7 @@ analyzer gates above pass and are invoked by `.github/workflows/build.yml`.
 
 Recommended model: `gpt-5.6-terra` | Reasoning effort: `medium`
 
-## Priority 5 — native/RID package closure
+## Historical PL-0002 priority 5 — native/RID package closure
 
 Cause: the Windows x64 native runtime is packaged through Core and transitive build
 targets, but the support boundary and the necessary consumer output location were

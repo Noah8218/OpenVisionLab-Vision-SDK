@@ -14,9 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "SIFT 성공 진단과 수치 assertion의 수정 전 실패/수정 후 통과를 확인했다. Core/3D/acceptance 경계 검사, 5개 README 예제 실행과 analyzer 596건 분류를 마쳤다. 전처리 해제 coverage 및 고정 커밋 전체 검증은 진행 중이다.",
-    "next_action": "변경을 커밋으로 고정한 뒤 전체 smoke/coverage, public API, package provenance/consumer 및 원격 main CI를 확인하고 PL-0005 C4와 PL-0006을 증거로 종료한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 34d99f8909c04dc28cd90e3d085c5d655a787aa2를 main에 반영했다. 승인한 진단/수명/문서/경계 검사 네 범위가 focused, 231/231 full/coverage, API 3295, analyzer 596, 5개 패키지/격리 consumer 및 원격 CI 34763703160으로 충족됐다. 센서/교정/장기 운용 및 재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "실제 성공/실패/재실행을 신뢰할 수 있는 진단과 자원 해제, 예측 가능한 API 사용 문서, 실패를 놓치지 않는 경계 검증을 제공한다.",
@@ -32,19 +31,23 @@
       "id": "C1",
       "text": "SIFT 단일/다중 ROI 성공과 실패 후 재실행에서 결과 좌표·검출기 지표가 일치하고 실패 결과가 이전 성공 지표를 오인시키지 않는다.",
       "evidence_refs": [
-        "E1"
+        "E1",
+        "E3"
       ]
     },
     {
       "id": "C2",
       "text": "공통 ROI/전체 영상과 SIFT/Edge 템플릿 전처리에서 생성한 Mat은 성공 시 호출자에게 전달되고 실패 시 해제된다. 실패 후 회복·입력 소유권 검사와 실행 coverage로 예외 해제를 확인한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     },
     {
       "id": "C3",
       "text": "기존 package/루트/3D 안내에 Tool별 입력·옵션·ROI·복구, 결과/예외/불합격, thread/cancel/time/lifetime 계약과 실행 예제를 제공하고 대표 예제를 실행한다.",
       "evidence_refs": [
-        "E2"
+        "E2",
+        "E3"
       ]
     },
     {
@@ -52,13 +55,17 @@
       "text": "수치 assertion이 비유한값을 거부하고 Core/3D/Acceptance의 정상·극한·퇴화 경계를 검사한다. 현재 analyzer 진단 분류와 남는 한계를 문서에 기록한다.",
       "evidence_refs": [
         "E1",
-        "E2"
+        "E2",
+        "E3"
       ]
     },
     {
       "id": "C5",
       "text": "Release, focused/full smoke, coverage floors, exact public API, analyzer, package provenance/consumer와 remote main CI가 통과하고 정확한 소스/증거를 기록한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
     }
   ],
   "milestones": [
@@ -75,7 +82,7 @@
     {
       "id": "M2",
       "summary": "전처리 Mat 수명 보완",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C2"
@@ -105,7 +112,7 @@
     {
       "id": "M5",
       "summary": "통합 증거와 전달",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C5"
@@ -150,9 +157,32 @@
       "observation": "Core/Vision2D/Blob/Inspection/Vision3D README에서 첫 C# 블록을 그대로 추출하여 각각 빌드/실행했다. 기존 analyzer 596건/16코드 불변; CA1806 6, CA1816 3, CA2208 5개 위치를 읽고 나머지 분류와 검증 한계를 기록했다. Tool별 입력/ROI/옵션/오류, thread/cancel/lifetime, 3D 결과 계약을 기존 문서에 보완했다.",
       "observed_at": "2026-09-13T23:44:04.1957501+09:00",
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\readme-examples; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\analyzer\\diagnostics.log; docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "fixed commit integrated verification",
+      "id": "E3",
+      "observation": "34d99f8 clean source: Release/consumer build 0 warning/error; full smoke와 coverage 각231/231; API3295 exact; analyzer596 불변; coverage Core27.87/Inspection69.92/Vision2D74.10/Blob69.17/Vision3D90.67%. 세 예외 Mat.Dispose/rethrow와 ROI using scope가 coverage에서 실행됐다. 5 packages 3.0.1-dev.1789310781178 provenance, negative probes3, isolated net8.0/win-x64 consumer와 nativecopy1 통과. Summary SHA256 24FCA802485300ECA96BFF15E8F1A3E58AACE019AA57049D8874D5306CBECFD1.",
+      "observed_at": "2026-09-13T23:52:50.5073499+09:00",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\final-34d99f8\\verification-summary.json"
+    },
+    {
+      "kind": "remote CI",
+      "id": "E4",
+      "observation": "main의 정확한 구현 커밋34d99f8 Build 18단계가 1m59s에 success. 전체 smoke/coverage/API/analyzer/package/provenance/consumer/native-copy gates 통과; Node.js20 annotation은 non-blocking.",
+      "observed_at": "2026-09-13T23:52:50.5073499+09:00",
+      "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34763703160"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-13T23:52:50.5073499+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 구현 커밋 34d99f8909c04dc28cd90e3d085c5d655a787aa2를 main에 반영했다. 승인한 진단/수명/문서/경계 검사 네 범위가 focused, 231/231 full/coverage, API 3295, analyzer 596, 5개 패키지/격리 consumer 및 원격 CI 34763703160으로 충족됐다. 센서/교정/장기 운용 및 재배포 승인은 별도 경계다."
+    }
+  ],
   "created_at": "2026-09-13T14:22:48Z",
-  "updated_at": "2026-09-13T23:44:04.1957501+09:00"
+  "updated_at": "2026-09-13T23:52:50.5073499+09:00"
 }

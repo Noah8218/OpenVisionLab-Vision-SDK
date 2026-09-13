@@ -14,9 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "F7의 성공 경로에서 ResetFeatureFailure가 검출기 정보를 Unknown으로 지우므로 C4 완료 판단을 재개한다. 다른 F1-F6/F8/F9의 기존 증거는 유지하고 PL-0006에서 C4를 보완 검증한다.",
-    "next_action": "PL-0006에서 SIFT 성공/실패/재실행 회귀로 F7 수정과 C4 재검증을 완료한다."
+    "status": "resolved",
+    "current_summary": "Complete: PL-0006에서 F7의 성공 diagnostic 초기화를 수정하고 C4를 재검증했다. 34d99f8의 SIFT 성공/실패/재실행 검사와 README 실행, 전체231/231 및 CI34763703160이 통과했다. 나머지 F1-F6/F8/F9의 기존 증거는 유지한다."
   },
   "objective": {
     "summary": "재현된 acceptance/numerical/filter/threshold/error-classification 결함을 고치고 SIFT fallback과 direct-source native setup을 문서화한다.",
@@ -53,14 +52,16 @@
       "text": "SIFT fallback diagnostics and direct-source managed/native setup are documented, and the current status records scope and boundaries.",
       "evidence_refs": [
         "E2",
-        "E4"
+        "E4",
+        "E5"
       ]
     },
     {
       "id": "C5",
       "text": "Release build, smoke, coverage, exact public API, analyzer, package provenance, isolated package consumer, and remote main delivery pass for one exact commit.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E5"
       ]
     }
   ],
@@ -89,7 +90,7 @@
     {
       "id": "M3",
       "summary": "Document F7/F8 behavior and align current status with the remediation scope.",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4"
@@ -172,6 +173,13 @@
       "location": "src/OpenVisionLab.Vision2D/OpenCV/Tool/SiftTool.cs:279; tests/OpenVisionLab.Inspection.Smoke/Suites/LegacyApiCompatibilitySmokeSuite.cs:532",
       "observation": "15e3cf5의 성공 분기는 ResetFeatureFailure를 호출하여 lastFeatureDetector를 Unknown으로 초기화한다. 기존 검출기 metric 회귀는 blank 이미지 실패 분기만 검증하므로 성공 diagnostic 완료를 입증하지 않는다.",
       "observed_at": "2026-09-13T23:26:16.8101523+09:00"
+    },
+    {
+      "kind": "corrected F7 validation",
+      "id": "E5",
+      "observation": "34d99f8은 detector 초기화를 실행 시작으로 이동해 성공 뒤 선택을 보존한다. 수정 전 실패한 success regression과 실패 후 재실행/다중ROI/조기실패 검사가 통과했다. 5개 README 대표 예제 실행 및 full231/231, coverage/API/analyzer/package/consumer/remoteCI가 통과해 C4의 부족한 성공 증거를 보완했다.",
+      "observed_at": "2026-09-13T23:52:50.5073499+09:00",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0006\\final-34d99f8\\verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34763703160"
     }
   ],
   "events": [
@@ -202,8 +210,16 @@
       "from": "resolved",
       "to": "doing",
       "summary": "F7의 성공 경로에서 ResetFeatureFailure가 검출기 정보를 Unknown으로 지우므로 C4 완료 판단을 재개한다. 다른 F1-F6/F8/F9의 기존 증거는 유지하고 PL-0006에서 C4를 보완 검증한다."
+    },
+    {
+      "id": "T3",
+      "kind": "transition",
+      "at": "2026-09-13T23:52:50.5073499+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: PL-0006에서 F7의 성공 diagnostic 초기화를 수정하고 C4를 재검증했다. 34d99f8의 SIFT 성공/실패/재실행 검사와 README 실행, 전체231/231 및 CI34763703160이 통과했다. 나머지 F1-F6/F8/F9의 기존 증거는 유지한다."
     }
   ],
   "created_at": "2026-09-13T00:00:00+09:00",
-  "updated_at": "2026-09-13T23:26:16.8101523+09:00"
+  "updated_at": "2026-09-13T23:52:50.5073499+09:00"
 }
