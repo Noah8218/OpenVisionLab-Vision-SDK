@@ -9,16 +9,34 @@ using OpenCvSharp.Features2D;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
+    /// <summary>
+    /// Performs feature matching with SIFT and falls back to ORB when the native
+    /// runtime does not expose SIFT. The selected detector is reported in the
+    /// result metrics.
+    /// </summary>
     public partial class SiftTool : OpenCvAlgorithmBase
     {
         public IOpenCVPropertyFeatureSIFT property;
         public List<MatchingResult> results = new List<MatchingResult>();
         private VisionToolErrorCode lastFeatureErrorCode = VisionToolErrorCode.FeatureNoResult;
         private string lastFeatureMessage = "Feature matching found no result.";
+        private string lastFeatureDetector = "Unknown";
 
         public SiftTool() { }
 
         public void SetProperty(IOpenCVPropertyFeatureSIFT propertyBase) => property = propertyBase;
+
+        protected override IDictionary<string, double> CollectMetrics()
+        {
+            IDictionary<string, double> metrics = base.CollectMetrics();
+            metrics["FeatureDetector.Sift"] = string.Equals(lastFeatureDetector, "SIFT", StringComparison.Ordinal)
+                ? 1.0
+                : 0.0;
+            metrics["FeatureDetector.OrbFallback"] = string.Equals(lastFeatureDetector, "ORB fallback", StringComparison.Ordinal)
+                ? 1.0
+                : 0.0;
+            return metrics;
+        }
 
         public void SetTemplateImage(Mat Image)
         {
@@ -171,6 +189,7 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat descriptorsTemplate = new Mat())
             using (Mat descriptorsSource = new Mat())
             {
+                lastFeatureDetector = detector.Name;
                 detector.Detector.DetectAndCompute(imageTemplate, null, out KeyPoint[] keypointsTemplate, descriptorsTemplate);
                 detector.Detector.DetectAndCompute(imageSift, null, out KeyPoint[] keypointsSource, descriptorsSource);
 
@@ -268,6 +287,7 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             lastFeatureErrorCode = VisionToolErrorCode.FeatureNoResult;
             lastFeatureMessage = "Feature matching found no result.";
+            lastFeatureDetector = "Unknown";
         }
 
         private void SetFeatureFailure(VisionToolErrorCode errorCode, string message)
@@ -333,11 +353,11 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             try
             {
-                return new FeatureDetectorRuntime(SIFT.Create(), NormTypes.L2);
+                return new FeatureDetectorRuntime(SIFT.Create(), NormTypes.L2, "SIFT");
             }
             catch (Exception ex) when (IsSiftUnavailable(ex))
             {
-                return new FeatureDetectorRuntime(ORB.Create(1000), NormTypes.Hamming);
+                return new FeatureDetectorRuntime(ORB.Create(1000), NormTypes.Hamming, "ORB fallback");
             }
         }
 
@@ -350,14 +370,16 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private sealed class FeatureDetectorRuntime : IDisposable
         {
-            public FeatureDetectorRuntime(Feature2D detector, NormTypes normType)
+            public FeatureDetectorRuntime(Feature2D detector, NormTypes normType, string name)
             {
                 Detector = detector;
                 NormType = normType;
+                Name = name;
             }
 
             public Feature2D Detector { get; }
             public NormTypes NormType { get; }
+            public string Name { get; }
 
             public void Dispose()
             {

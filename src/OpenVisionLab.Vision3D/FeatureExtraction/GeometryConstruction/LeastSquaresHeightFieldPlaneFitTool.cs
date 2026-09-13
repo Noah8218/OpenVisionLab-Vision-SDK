@@ -73,8 +73,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
     /// <summary>
     /// Fits Y = slopeX * X + slopeZ * Z + intercept by least squares.
-    /// The finite/degenerate contracts and float-compatible distance arithmetic
-    /// are deterministic so existing desktop adapters can preserve their output.
+    /// The finite/degenerate contracts and double-precision distance arithmetic
+    /// are deterministic so translated coordinate frames preserve their output.
     /// </summary>
     public sealed class LeastSquaresHeightFieldPlaneFitTool
     {
@@ -111,6 +111,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             meanY /= samples.Count;
             meanZ /= samples.Count;
             meanRaw /= samples.Count;
+            if (!IsFinite(meanX) || !IsFinite(meanY) || !IsFinite(meanZ) || !IsFinite(meanRaw))
+            {
+                throw new InvalidOperationException("Plane fitting produced a non-finite sample mean.");
+            }
 
             double sumXX = 0.0;
             double sumXZ = 0.0;
@@ -134,8 +138,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 sumZRaw += z * raw;
             }
 
+            if (!IsFinite(sumXX) || !IsFinite(sumXZ) || !IsFinite(sumZZ)
+                || !IsFinite(sumXY) || !IsFinite(sumZY)
+                || !IsFinite(sumXRaw) || !IsFinite(sumZRaw))
+            {
+                throw new InvalidOperationException("Plane fitting overflowed its centered sums.");
+            }
+
             double determinant = (sumXX * sumZZ) - (sumXZ * sumXZ);
             double determinantScale = Math.Max(1.0, Math.Abs(sumXX * sumZZ));
+            if (!IsFinite(determinant) || !IsFinite(determinantScale))
+            {
+                throw new InvalidOperationException("Plane fitting produced a non-finite determinant.");
+            }
+
             if (Math.Abs(determinant) <= determinantScale * 1e-12)
             {
                 throw new ArgumentException("Plane fitting samples must span two horizontal axes.", nameof(samples));
@@ -147,21 +163,47 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double rawSlopeX = ((sumXRaw * sumZZ) - (sumZRaw * sumXZ)) / determinant;
             double rawSlopeZ = ((sumZRaw * sumXX) - (sumXRaw * sumXZ)) / determinant;
             double rawIntercept = meanRaw - (rawSlopeX * meanX) - (rawSlopeZ * meanZ);
+            if (!IsFinite(slopeX) || !IsFinite(slopeZ) || !IsFinite(intercept)
+                || !IsFinite(rawSlopeX) || !IsFinite(rawSlopeZ) || !IsFinite(rawIntercept))
+            {
+                throw new InvalidOperationException("Plane fitting produced a non-finite coefficient.");
+            }
 
             double normalLength = Math.Sqrt((slopeX * slopeX) + 1.0 + (slopeZ * slopeZ));
+            if (!IsFinite(normalLength) || normalLength <= 0.0)
+            {
+                throw new InvalidOperationException("Plane fitting produced a non-finite normal.");
+            }
+
             ThreeDPoint normal = new ThreeDPoint(
-                (float)(-slopeX / normalLength),
-                (float)(1.0 / normalLength),
-                (float)(-slopeZ / normalLength));
+                -slopeX / normalLength,
+                1.0 / normalLength,
+                -slopeZ / normalLength);
             double offset = -intercept / normalLength;
 
             HeightFieldPlaneFitSample target = samples[0];
             double targetSignedDistance = SignedDistance(target.Position, normal, offset);
             double squaredDistanceSum = targetSignedDistance * targetSignedDistance;
+            if (!IsFinite(targetSignedDistance) || !IsFinite(squaredDistanceSum))
+            {
+                throw new InvalidOperationException("Plane fitting produced a non-finite distance.");
+            }
+
             for (int index = 1; index < samples.Count; index++)
             {
                 double signedDistance = SignedDistance(samples[index].Position, normal, offset);
-                squaredDistanceSum += signedDistance * signedDistance;
+                double squaredDistance = signedDistance * signedDistance;
+                if (!IsFinite(signedDistance) || !IsFinite(squaredDistance))
+                {
+                    throw new InvalidOperationException("Plane fitting produced a non-finite distance.");
+                }
+
+                squaredDistanceSum += squaredDistance;
+                if (!IsFinite(squaredDistanceSum))
+                {
+                    throw new InvalidOperationException("Plane fitting overflowed its distance accumulation range.");
+                }
+
                 if (Math.Abs(signedDistance) > Math.Abs(targetSignedDistance))
                 {
                     target = samples[index];
@@ -188,19 +230,18 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         internal static double SignedDistance(ThreeDPoint point, ThreeDPoint normal, double offset)
         {
-            float dot = ((float)normal.X * (float)point.X)
-                + ((float)normal.Y * (float)point.Y)
-                + ((float)normal.Z * (float)point.Z);
+            double dot = (normal.X * point.X)
+                + (normal.Y * point.Y)
+                + (normal.Z * point.Z);
             return dot + offset;
         }
 
         internal static ThreeDPoint Project(ThreeDPoint point, ThreeDPoint normal, double signedDistance)
         {
-            float distance = (float)signedDistance;
             return new ThreeDPoint(
-                (float)point.X - ((float)normal.X * distance),
-                (float)point.Y - ((float)normal.Y * distance),
-                (float)point.Z - ((float)normal.Z * distance));
+                point.X - (normal.X * signedDistance),
+                point.Y - (normal.Y * signedDistance),
+                point.Z - (normal.Z * signedDistance));
         }
 
         private static bool IsFinite(HeightFieldPlaneFitSample sample)

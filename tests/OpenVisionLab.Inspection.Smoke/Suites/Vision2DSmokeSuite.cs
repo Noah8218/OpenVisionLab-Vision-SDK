@@ -37,6 +37,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Edge matcher global polarity is opt-in and reports the selected state", TestEdgeMatcherGlobalPolarity);
             yield return new SmokeCase("MorphologyTool direct Execute transforms a synthetic image", TestMorphologyDirectExecution);
             yield return new SmokeCase("FilterTool direct Execute transforms a synthetic image", TestFilterDirectExecution);
+            yield return new SmokeCase("ThresholdTool rejects non-finite numeric parameters", TestThresholdRejectsNonFiniteValues);
+            yield return new SmokeCase("OpenCV execution errors retain type-based classification", TestExecutionErrorClassification);
             yield return new SmokeCase("EdgeDetectionTool direct Execute finds synthetic edges", TestEdgeDetectionDirectExecution);
             yield return new SmokeCase("RotateScaleTool direct Execute applies the requested output size", TestRotateScaleDirectExecution);
             yield return new SmokeCase("LineGaugeTool rejects unsupported image depth explicitly", TestLineGaugeUnsupportedDepth);
@@ -843,6 +845,65 @@ namespace OpenVisionLab.Inspection.Smoke
                         && Cv2.Norm(source, result.ResultImage, NormTypes.L1) > 0d,
                         "FilterTool direct Execute did not apply the 3x3 blur.");
                 }
+
+                tool.SetProperty(new FilterToolProperty
+                {
+                    FilterType = FilterToolType.BilateralFilter,
+                    Diameter = 5,
+                    SigmaColor = 15,
+                    SigmaSpace = 15
+                });
+
+                using (VisionToolResult result = tool.Execute(source))
+                {
+                    Require(result.Success,
+                        "FilterTool bilateral Execute failed: " + result.ErrorName + ": " + result.Message);
+                    Require(result.ResultImage != null
+                        && result.ResultImage.Size() == source.Size(),
+                        "FilterTool bilateral Execute did not publish a result image.");
+                }
+            }
+        }
+
+        private static void TestThresholdRejectsNonFiniteValues()
+        {
+            using (Mat source = new Mat(new Size(4, 4), MatType.CV_8UC1, Scalar.All(10)))
+            using (ThresholdTool tool = new ThresholdTool())
+            {
+                tool.SetProperty(new ThresholdToolProperty { Threshold = double.NaN });
+                using (VisionToolResult thresholdResult = tool.Execute(source))
+                {
+                    Require(!thresholdResult.Success
+                        && thresholdResult.ErrorCode == VisionToolErrorCode.InvalidParameter
+                        && thresholdResult.Message.Contains("finite", StringComparison.OrdinalIgnoreCase),
+                        "ThresholdTool must reject a non-finite Threshold value before OpenCV execution.");
+                }
+
+                tool.SetProperty(new ThresholdToolProperty { Threshold = 5, MaxValue = double.PositiveInfinity });
+                using (VisionToolResult maxValueResult = tool.Execute(source))
+                {
+                    Require(!maxValueResult.Success
+                        && maxValueResult.ErrorCode == VisionToolErrorCode.ThresholdInvalidMaxValue
+                        && maxValueResult.Message.Contains("MaxValue", StringComparison.OrdinalIgnoreCase),
+                        "ThresholdTool must reject a non-finite MaxValue before OpenCV execution.");
+                }
+            }
+        }
+
+        private static void TestExecutionErrorClassification()
+        {
+            using (Mat source = new Mat(new Size(4, 4), MatType.CV_8UC1, Scalar.All(10)))
+            using (ThrowingOpenCvTool directionFailure = new ThrowingOpenCvTool(
+                new InvalidOperationException("Direction calculation failed.")))
+            using (ThrowingOpenCvTool openCvFailure = new ThrowingOpenCvTool(
+                new OpenCVException("native execution failed")))
+            using (VisionToolResult directionResult = directionFailure.Execute(source))
+            using (VisionToolResult openCvResult = openCvFailure.Execute(source))
+            {
+                Require(directionResult.ErrorCode == VisionToolErrorCode.ToolExecutionException,
+                    "A generic exception containing 'direction' must not be classified as InvalidRoi.");
+                Require(openCvResult.ErrorCode == VisionToolErrorCode.OpenCvExecutionFailed,
+                    "An OpenCV exception must be classified as OpenCvExecutionFailed.");
             }
         }
 
@@ -1357,6 +1418,27 @@ namespace OpenVisionLab.Inspection.Smoke
                         "A successful tool must not satisfy ExpectedSuccess=false.");
                 }
 
+                VisionPipelineStep metricStep = new VisionPipelineStep
+                {
+                    UseAcceptance = true,
+                    AcceptanceMetricName = "Score",
+                    UseAcceptanceMetricMinimum = true,
+                    AcceptanceMetricMinimum = 1.0,
+                    UseAcceptanceMetricMaximum = true,
+                    AcceptanceMetricMaximum = 2.0
+                };
+                VisionToolResult nonFiniteMetric = new VisionToolResult { Success = true };
+                nonFiniteMetric.Metrics["Score"] = double.NaN;
+                Require(!VisionPipelineAcceptanceEvaluator.Evaluate(metricStep, nonFiniteMetric).Passed,
+                    "A non-finite acceptance metric must fail closed.");
+
+                metricStep.UseAcceptanceMetricMinimum = false;
+                metricStep.AcceptanceMetricMaximum = double.NaN;
+                VisionToolResult finiteMetric = new VisionToolResult { Success = true };
+                finiteMetric.Metrics["Score"] = 1.5;
+                Require(!VisionPipelineAcceptanceEvaluator.Evaluate(metricStep, finiteMetric).Passed,
+                    "A non-finite acceptance limit must fail closed.");
+
                 VisionPipeline nonTerminal = new VisionPipeline();
                 nonTerminal.Steps.Add(expectedFailure.Steps[0]);
                 nonTerminal.Steps.Add(CreatePipelineStep("threshold"));
@@ -1407,6 +1489,22 @@ namespace OpenVisionLab.Inspection.Smoke
             }
 
             Require(rejected, $"Invalid pipeline parameter '{expectedMessage}' was not rejected.");
+        }
+
+        private sealed class ThrowingOpenCvTool : OpenCvAlgorithmBase
+        {
+            public object property = new object();
+            private readonly Exception exception;
+
+            internal ThrowingOpenCvTool(Exception exception)
+            {
+                this.exception = exception;
+            }
+
+            public override void Run()
+            {
+                throw exception;
+            }
         }
 
     }

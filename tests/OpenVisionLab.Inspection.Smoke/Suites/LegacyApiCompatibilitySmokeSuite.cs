@@ -29,6 +29,7 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             yield return new SmokeCase("Legacy Core conversion and formula results match modern APIs", TestCoreConversionAndFormulaParity);
             yield return new SmokeCase("Legacy Core fitting and vertical geometry match modern APIs", TestCoreFittingAndVerticalParity);
+            yield return new SmokeCase("Modern Core fitting remains stable for large coordinates and angles", TestModernCoreNumericalStability);
             yield return new SmokeCase("Legacy OpenCV helper and base preserve supported state parity", TestOpenCvHelperAndBaseParity);
             yield return new SmokeCase("Legacy OpenCV null handling divergence remains explicit", TestOpenCvHelperNullDivergence);
             yield return new SmokeCase("Legacy result DTOs preserve modern shared fields", TestResultDtoParity);
@@ -118,6 +119,49 @@ namespace OpenVisionLab.Inspection.Smoke
             VerticalLineCalculator.GetLineCoef(horizontalStart, horizontalEnd, basePoint, imageSize, out List<Point> modernCandidates);
             Require(legacyCandidates.SequenceEqual(modernCandidates),
                 "Vertical line candidates changed during the Core rename.");
+        }
+
+        private static void TestModernCoreNumericalStability()
+        {
+            DrawingPointF[] translated =
+            {
+                new DrawingPointF(100000f, 200003f),
+                new DrawingPointF(100001f, 200005f),
+                new DrawingPointF(100002f, 200007f)
+            };
+            double error = LineFittingCalculator.FindLinearLeastSquaresFit(translated, out double slope, out double intercept);
+
+            RequireApproximately(slope, 2.0, 1e-9, "Large-coordinate line fitting lost the expected slope.");
+            RequireApproximately(intercept, 3.0, 1e-6, "Large-coordinate line fitting lost the expected intercept.");
+            RequireApproximately(error, 0.0, 1e-6, "Large-coordinate line fitting produced residual error for an exact line.");
+
+            double angle = FormulaUtil.threePointAngle(
+                new Point(0, 0),
+                new Point(50000, 0),
+                new Point(50000, 0));
+            RequireApproximately(angle, 0.0, 1e-12,
+                "Same-direction vectors must produce a zero three-point angle.");
+
+            bool degenerateRejected = false;
+            try
+            {
+                LineFittingCalculator.FindLinearLeastSquaresFit(
+                    new[]
+                    {
+                        new DrawingPointF(1f, 0f),
+                        new DrawingPointF(1f, 1f),
+                        new DrawingPointF(1f, 2f)
+                    },
+                    out _,
+                    out _);
+            }
+            catch (ArgumentException exception)
+            {
+                degenerateRejected = exception.Message.Contains("distinct", StringComparison.OrdinalIgnoreCase);
+            }
+
+            Require(degenerateRejected,
+                "A vertical y=f(x) fit must reject its zero-variance X coordinates explicitly.");
         }
 
         private static void TestOpenCvHelperAndBaseParity()
@@ -491,6 +535,11 @@ namespace OpenVisionLab.Inspection.Smoke
                         Require(!modernOutcome.Success
                             && modernOutcome.ErrorCode == VisionToolErrorCode.FeatureNoKeypoints,
                             "SiftTool must fall back and report FeatureNoKeypoints for a blank image.");
+                        Require(modernOutcome.Metrics.ContainsKey("FeatureDetector.Sift")
+                            && modernOutcome.Metrics.ContainsKey("FeatureDetector.OrbFallback")
+                            && (modernOutcome.Metrics["FeatureDetector.Sift"] == 1.0
+                                || modernOutcome.Metrics["FeatureDetector.OrbFallback"] == 1.0),
+                            "SiftTool must report the detector selected by the native runtime.");
                     }
                     finally
                     {

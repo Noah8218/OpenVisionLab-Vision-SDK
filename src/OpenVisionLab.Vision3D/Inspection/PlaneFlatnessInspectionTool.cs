@@ -96,7 +96,22 @@ namespace OpenVisionLab.Vision3D.Inspection
                     sample.Position,
                     referencePlane.Normal,
                     referencePlane.Offset);
-                squaredDistanceSum += distance * distance;
+                if (!IsFinite(distance))
+                {
+                    throw new InvalidOperationException("Plane flatness calculation produced a non-finite distance.");
+                }
+
+                double squaredDistance = distance * distance;
+                if (!IsFinite(squaredDistance))
+                {
+                    throw new InvalidOperationException("Plane flatness calculation overflowed its distance range.");
+                }
+
+                squaredDistanceSum += squaredDistance;
+                if (!IsFinite(squaredDistanceSum))
+                {
+                    throw new InvalidOperationException("Plane flatness calculation overflowed its RMS accumulation range.");
+                }
                 if (distance < minimumDistance)
                 {
                     minimumDistance = distance;
@@ -135,5 +150,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 && !double.IsNaN(sample.RawHeight)
                 && !double.IsInfinity(sample.RawHeight);
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

@@ -18,10 +18,17 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            if (property.MaxValue <= 0)
+            if (!IsFinite(property.MaxValue) || property.MaxValue <= 0)
             {
                 errorCode = VisionToolErrorCode.ThresholdInvalidMaxValue;
                 message = $"Threshold MaxValue must be greater than 0. MaxValue={property.MaxValue}.";
+                return false;
+            }
+
+            if (property.Mode == ThresholdToolMode.Threshold && !IsFinite(property.Threshold))
+            {
+                errorCode = VisionToolErrorCode.InvalidParameter;
+                message = $"Threshold value must be finite. Threshold={property.Threshold}.";
                 return false;
             }
 
@@ -122,5 +129,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     property.Weight);
             }
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

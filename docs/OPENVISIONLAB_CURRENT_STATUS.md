@@ -1,15 +1,16 @@
 # OpenVisionLab Vision SDK Current Status
 
-Updated: 2026-08-31
-Project work item: `PL-0004`
-Overall state: `resolved`
+Updated: 2026-09-13
+Project work item: `PL-0005`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0004.json` ledger records the current closure, while
+`.proofline/issues/PL-0005.json` ledger records the current remediation, while
+`.proofline/issues/PL-0004.json` preserves the preceding closure and
 `.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
 preceding closures. No ledger is a second design or release authority.
 
@@ -46,6 +47,8 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
+The current `PL-0005` remediation closes the reproduced F1-F9 correctness,
+diagnostics, and first-use documentation findings from the 2026-09-13 SDK audit.
 
 | Priority / milestone | State on 2026-08-31 | Immediate outcome |
 | --- | --- | --- |
@@ -265,6 +268,49 @@ Redistribution clearance remains blocked by the Blob BSD/LGPL conflict and missi
 LGPL version/full text, authoritative redistribution terms for the exact IPPICV 2020
 archive, the ittnotify license selection, and final project distribution/legal-owner
 approval.
+
+## PL-0005 — audit finding remediation
+
+Status: `doing` until the changed worktree has passed the current quality gates and
+has one exact source commit on `origin/main`.
+
+Scope: fix the reproduced acceptance, numerical, filter, threshold, and error-code
+failures; document the actual SIFT/ORB runtime choice; and make the source-reference
+quick start include the managed and native OpenCvSharp assets required by a direct
+checkout consumer. The public API signatures, package version defaults, native DLL
+bytes, legacy compatibility types, host-owned calibration/recipe/UI boundaries, and
+redistribution-clearance decision remain unchanged.
+
+Implementation decisions:
+
+- Acceptance metrics, active metric limits, and elapsed limits are finite-only and
+  fail closed. A configured metric limit also requires a metric name.
+- Modern Core line fitting uses centered double-precision sums and rejects fewer
+  than two points, non-finite coordinates, or zero X variance with an explicit
+  `ArgumentException`. Legacy `C*` fitting remains a compatibility path.
+- Modern 3D height-field plane distances and projections use double precision. The
+  change deliberately removes the prior translation-dependent float rounding from
+  the modern result contract; legacy 3.x type names and signatures are unchanged.
+- Volume and plane-distance accumulation throw `InvalidOperationException` when a
+  finite input would produce a non-finite intermediate or output, keeping numerical
+  calculation failure separate from an ordinary `Passed == false` tolerance result.
+- `SiftTool` still attempts SIFT, falls back to ORB when the bundled native entry
+  point is unavailable, and reports the selected detector through result metrics.
+  Replacing the bundled binary or claiming SIFT-equivalent behavior remains out of
+  scope.
+
+Completion criteria:
+
+- F1-F6 and F9 have direct smoke regressions for the reproduced failure and its
+  controlled result or exception contract.
+- F2's large-origin flatness case and F3's translated line/angle cases preserve the
+  expected numeric result; the full smoke runner passes.
+- Root and package documentation describe the SIFT fallback, finite acceptance
+  contract, volume overflow behavior, and working direct-source reference route.
+- Release build, coverage, exact public API, analyzer no-regression, package
+  provenance, and isolated package-only consumer checks pass for one clean commit.
+
+Verification and evidence are recorded below after the final clean-commit run.
 
 ## Next priority — external redistribution-clearance evidence
 

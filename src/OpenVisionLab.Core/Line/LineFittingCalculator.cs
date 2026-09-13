@@ -15,96 +15,95 @@ namespace OpenVisionLab.Core.Geometry2D
 
         private void Fit(IEnumerable<OpenCvSharp.Point2f> points)
         {
-            int n = points.Count();
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-
-            foreach (var point in points)
-            {
-                sumX += point.X;
-                sumY += point.Y;
-                sumXY += point.X * point.Y;
-                sumX2 += point.X * point.X;
-            }
-
-            Slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-            Intercept = (sumY - Slope * sumX) / n;
+            CalculateFit(points, point => point.X, point => point.Y, out double slope, out double intercept);
+            Slope = slope;
+            Intercept = intercept;
         }
 
         private void Fit(IEnumerable<OpenCvSharp.Point> points)
         {
-            int n = points.Count();
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-
-            foreach (var point in points)
-            {
-                sumX += point.X;
-                sumY += point.Y;
-                sumXY += point.X * point.Y;
-                sumX2 += point.X * point.X;
-            }
-
-            Slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-            Intercept = (sumY - Slope * sumX) / n;
+            CalculateFit(points, point => point.X, point => point.Y, out double slope, out double intercept);
+            Slope = slope;
+            Intercept = intercept;
         }
 
         private void Fit(IEnumerable<System.Drawing.Point> points)
         {
-            int n = points.Count();
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-
-            foreach (var point in points)
-            {
-                sumX += point.X;
-                sumY += point.Y;
-                sumXY += point.X * point.Y;
-                sumX2 += point.X * point.X;
-            }
-
-            Slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-            Intercept = (sumY - Slope * sumX) / n;
+            CalculateFit(points, point => point.X, point => point.Y, out double slope, out double intercept);
+            Slope = slope;
+            Intercept = intercept;
         }
 
         private void Fit(IEnumerable<System.Drawing.PointF> points)
         {
-            int n = points.Count();
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            CalculateFit(points, point => point.X, point => point.Y, out double slope, out double intercept);
+            Slope = slope;
+            Intercept = intercept;
+        }
 
-            foreach (var point in points)
+        private static void CalculateFit<T>(
+            IEnumerable<T> source,
+            Func<T, double> getX,
+            Func<T, double> getY,
+            out double slope,
+            out double intercept)
+        {
+            List<T> points = source.ToList();
+            if (points.Count < 2)
             {
-                sumX += point.X;
-                sumY += point.Y;
-                sumXY += point.X * point.Y;
-                sumX2 += point.X * point.X;
+                throw new ArgumentException("Line fitting requires at least two points.", nameof(source));
             }
 
-            Slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-            Intercept = (sumY - Slope * sumX) / n;
+            double meanX = 0.0;
+            double meanY = 0.0;
+            foreach (T point in points)
+            {
+                double x = getX(point);
+                double y = getY(point);
+                if (!IsFinite(x) || !IsFinite(y))
+                {
+                    throw new ArgumentException("Line fitting points must contain finite coordinates.", nameof(source));
+                }
+
+                meanX += x;
+                meanY += y;
+            }
+
+            meanX /= points.Count;
+            meanY /= points.Count;
+
+            double sumXX = 0.0;
+            double sumXY = 0.0;
+            foreach (T point in points)
+            {
+                double centeredX = getX(point) - meanX;
+                double centeredY = getY(point) - meanY;
+                sumXX += centeredX * centeredX;
+                sumXY += centeredX * centeredY;
+            }
+
+            if (!(sumXX > 0.0) || !IsFinite(sumXX))
+            {
+                throw new ArgumentException("Line fitting requires at least two distinct X coordinates.", nameof(source));
+            }
+
+            slope = sumXY / sumXX;
+            intercept = meanY - (slope * meanX);
+            if (!IsFinite(slope) || !IsFinite(intercept))
+            {
+                throw new InvalidOperationException("Line fitting produced a non-finite result.");
+            }
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
         // Find the least squares linear fit.
         // Return the total error.
         public static double FindLinearLeastSquaresFit(IEnumerable<System.Drawing.PointF> points, out double m, out double b)
         {
-            // Perform the calculation.
-            // Find the values S1, Sx, Sy, Sxx, and Sxy.
-            double S1 = points.Count();
-            double Sx = 0;
-            double Sy = 0;
-            double Sxx = 0;
-            double Sxy = 0;
-            foreach (PointF pt in points)
-            {
-                Sx += pt.X;
-                Sy += pt.Y;
-                Sxx += pt.X * pt.X;
-                Sxy += pt.X * pt.Y;
-            }
-
-            // Solve for m and b.
-            m = (Sxy * S1 - Sx * Sy) / (Sxx * S1 - Sx * Sx);
-            b = (Sxy * Sx - Sy * Sxx) / (Sx * Sx - S1 * Sxx);
-
-            return Math.Sqrt(ErrorSquared(points, m, b));
+            List<PointF> pointList = points.ToList();
+            CalculateFit(pointList, point => point.X, point => point.Y, out m, out b);
+            return Math.Sqrt(ErrorSquared(pointList, m, b));
         }
 
         // Return the error squared.
@@ -121,12 +120,14 @@ namespace OpenVisionLab.Core.Geometry2D
 
         public (System.Drawing.PointF, System.Drawing.PointF) LineFit(IEnumerable<System.Drawing.PointF> points)
         {
+            List<PointF> pointList = points.ToList();
+
             // 직선에 맞추기            
-            Fit(points);
+            Fit(pointList);
 
             // 시작점과 끝점을 찾기 위해 X 좌표의 최소값과 최대값을 사용합니다.
-            double minX = points.Min(p => p.X);
-            double maxX = points.Max(p => p.X);
+            double minX = pointList.Min(p => p.X);
+            double maxX = pointList.Max(p => p.X);
 
             // 시작점 (x, y) = (minX, lineFitting.Slope * minX + lineFitting.Intercept)
             System.Drawing.PointF startPoint = new System.Drawing.PointF((float)minX, (float)(Slope * minX + Intercept));
@@ -139,12 +140,14 @@ namespace OpenVisionLab.Core.Geometry2D
 
         public (System.Drawing.PointF, System.Drawing.PointF) LineFit(IEnumerable<System.Drawing.Point> points)
         {
+            List<System.Drawing.Point> pointList = points.ToList();
+
             // 직선에 맞추기            
-            Fit(points);
+            Fit(pointList);
 
             // 시작점과 끝점을 찾기 위해 X 좌표의 최소값과 최대값을 사용합니다.
-            double minX = points.Min(p => p.X);
-            double maxX = points.Max(p => p.X);
+            double minX = pointList.Min(p => p.X);
+            double maxX = pointList.Max(p => p.X);
 
             // 시작점 (x, y) = (minX, lineFitting.Slope * minX + lineFitting.Intercept)
             System.Drawing.PointF startPoint = new System.Drawing.PointF((float)minX, (float)(Slope * minX + Intercept));
@@ -183,12 +186,14 @@ namespace OpenVisionLab.Core.Geometry2D
 
         public (System.Drawing.Point, System.Drawing.Point) LineFitX(IEnumerable<OpenCvSharp.Point> points)
         {
+            List<OpenCvSharp.Point> pointList = points.ToList();
+
             // 직선에 맞추기            
-            Fit(points);
+            Fit(pointList);
 
             // 시작점과 끝점을 찾기 위해 X 좌표의 최소값과 최대값을 사용합니다.
-            double minX = points.Min(p => p.X);
-            double maxX = points.Max(p => p.X);
+            double minX = pointList.Min(p => p.X);
+            double maxX = pointList.Max(p => p.X);
 
             // 시작점 (x, y) = (minX, lineFitting.Slope * minX + lineFitting.Intercept)
             System.Drawing.Point startPoint = new System.Drawing.Point((int)minX, (int)(Slope * minX + Intercept));
@@ -201,12 +206,14 @@ namespace OpenVisionLab.Core.Geometry2D
 
         public (System.Drawing.Point, System.Drawing.Point) LineFitY(IEnumerable<OpenCvSharp.Point> points)
         {
+            List<OpenCvSharp.Point> pointList = points.ToList();
+
             // 직선에 맞추기            
-            Fit(points.Select(p => new System.Drawing.Point(p.Y, p.X)));
+            Fit(pointList.Select(p => new System.Drawing.Point(p.Y, p.X)));
 
             // 시작점과 끝점을 찾기 위해 X 좌표의 최소값과 최대값을 사용합니다.
-            double minY = points.Min(p => p.Y);
-            double maxY = points.Max(p => p.Y);
+            double minY = pointList.Min(p => p.Y);
+            double maxY = pointList.Max(p => p.Y);
 
             System.Drawing.Point startPointYX = new System.Drawing.Point((int)(Slope * minY + Intercept), (int)minY);
             System.Drawing.Point endPointYX = new System.Drawing.Point((int)(Slope * maxY + Intercept), (int)maxY);

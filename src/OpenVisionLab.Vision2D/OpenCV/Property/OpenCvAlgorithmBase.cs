@@ -173,9 +173,14 @@ namespace OpenVisionLab.Vision2D.Property
                 return VisionToolErrorCode.InputImageInvalid;
             }
 
-            if (message.IndexOf("ROI", StringComparison.OrdinalIgnoreCase) >= 0
-                || message.IndexOf("SubMat", StringComparison.OrdinalIgnoreCase) >= 0
-                || message.IndexOf("Rect", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (baseException is OpenCVException || baseException is OpenCvSharpException)
+            {
+                return VisionToolErrorCode.OpenCvExecutionFailed;
+            }
+
+            if (ContainsMessageToken(message, "ROI")
+                || ContainsMessageToken(message, "SubMat")
+                || ContainsMessageToken(message, "Rect"))
             {
                 return VisionToolErrorCode.InvalidRoi;
             }
@@ -188,6 +193,38 @@ namespace OpenVisionLab.Vision2D.Property
             }
 
             return VisionToolErrorCode.ToolExecutionException;
+        }
+
+        private static bool ContainsMessageToken(string message, string token)
+        {
+            if (string.IsNullOrEmpty(message) || string.IsNullOrEmpty(token))
+            {
+                return false;
+            }
+
+            int start = 0;
+#pragma warning disable CA2249 // The start offset is required to inspect every token boundary.
+            while (start < message.Length)
+            {
+                int index = message.IndexOf(token, start, StringComparison.OrdinalIgnoreCase);
+                if (index < 0)
+                {
+                    return false;
+                }
+
+                bool hasWordBefore = index > 0 && char.IsLetter(message[index - 1]);
+                int end = index + token.Length;
+                bool hasWordAfter = end < message.Length && char.IsLetter(message[end]);
+                if (!hasWordBefore && !hasWordAfter)
+                {
+                    return true;
+                }
+
+                start = index + token.Length;
+            }
+#pragma warning restore CA2249
+
+            return false;
         }
 
         protected bool TryValidateRoi(Rect roi, bool allowWholeImageFallback, VisionToolErrorCode invalidCode, out VisionToolErrorCode errorCode, out string message)

@@ -13,6 +13,14 @@ dotnet add package OpenVisionLab.Vision3D --version $packageVersion
 
 The caller owns unit, coordinate-frame, source identity, calibration, recipe tolerance, and product lifecycle. `NaN` is the missing height-map sample; infinity is rejected.
 
+`LeastSquaresHeightFieldPlaneFitTool` uses double-precision plane distances, so
+the measured flatness does not depend on translating the same geometry to a large
+coordinate origin. `PlaneFlatnessInspectionTool` reports the typed result with
+`Passed == false` for an out-of-tolerance surface. `VolumeInspectionTool` throws
+`InvalidOperationException` when a finite input would overflow an intermediate or
+accumulated volume; that calculation failure must not be recorded as an ordinary
+out-of-tolerance measurement.
+
 ## Manual rigid point-pair alignment quick start
 
 `RigidPointPairAlignmentTool` constructs one proper source-to-reference pose

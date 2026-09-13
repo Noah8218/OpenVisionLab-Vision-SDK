@@ -82,6 +82,11 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 double signedVolume = (sample.Position.Y - referencePlane.EvaluateY(sample.Position.X, sample.Position.Z))
                     * options.SampleArea;
+                if (!IsFinite(signedVolume))
+                {
+                    throw new InvalidOperationException("Volume calculation produced a non-finite sample volume.");
+                }
+
                 if (signedVolume >= 0.0)
                 {
                     aboveVolume += signedVolume;
@@ -90,9 +95,25 @@ namespace OpenVisionLab.Vision3D.Inspection
                 {
                     belowVolume += -signedVolume;
                 }
+
+                if (!IsFinite(aboveVolume) || !IsFinite(belowVolume))
+                {
+                    throw new InvalidOperationException("Volume calculation overflowed its finite accumulation range.");
+                }
             }
 
             double netVolume = aboveVolume - belowVolume;
+            if (!IsFinite(netVolume))
+            {
+                throw new InvalidOperationException("Volume calculation produced a non-finite net volume.");
+            }
+
+            double acceptanceDifference = netVolume - options.ExpectedNetVolume;
+            if (!IsFinite(acceptanceDifference))
+            {
+                throw new InvalidOperationException("Volume calculation produced a non-finite acceptance difference.");
+            }
+
             return new VolumeInspectionResult(
                 referencePlane,
                 referenceSamples.Count,
@@ -102,7 +123,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 netVolume,
                 options.ExpectedNetVolume,
                 options.Tolerance,
-                Math.Abs(netVolume - options.ExpectedNetVolume) <= options.Tolerance);
+                Math.Abs(acceptanceDifference) <= options.Tolerance);
         }
 
         private static void Validate(VolumeInspectionOptions options)

@@ -9,7 +9,7 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Completed PL-0004 technical provenance/notice evidence, blocked redistribution-clearance prerequisite, and prior PL-0002/PL-0003 evidence |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Current PL-0005 audit-finding remediation, completed PL-0004 technical provenance/notice evidence, blocked redistribution-clearance prerequisite, and prior PL-0002/PL-0003 evidence |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |

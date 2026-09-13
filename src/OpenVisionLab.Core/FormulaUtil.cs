@@ -57,25 +57,32 @@ namespace OpenVisionLab.Core
         /// <returns></returns>
         public static double threePointAngle(OpenCvSharp.Point ptBase/*ROI와 수직점이 교차한 포인트*/, OpenCvSharp.Point pt1/*하판점*/, OpenCvSharp.Point pt2/*ROI점*/)
         {
-            OpenCvSharp.Point ptVectorVerticalToBottom = new OpenCvSharp.Point();
-            OpenCvSharp.Point ptVectorVerticalToRoi = new OpenCvSharp.Point();
+            double vectorBottomX = (double)pt1.X - ptBase.X;
+            double vectorBottomY = (double)pt1.Y - ptBase.Y;
+            double vectorRoiX = (double)pt2.X - ptBase.X;
+            double vectorRoiY = (double)pt2.Y - ptBase.Y;
             // B(PtBase) -> A(하판) 방향으로 가는 벡터1 생성
-            ptVectorVerticalToBottom.X = pt1.X - ptBase.X;
-            ptVectorVerticalToBottom.Y = pt1.Y - ptBase.Y;
             // B(PtBase) -> C(ROI) 방향으로 가는 벡터2 생성
-            ptVectorVerticalToRoi.X = pt2.X - ptBase.X;
-            ptVectorVerticalToRoi.Y = pt2.Y - ptBase.Y;
 
             // 벡터1과 벡터2의 내적
-            int nMoleculatr = (ptVectorVerticalToBottom.X * ptVectorVerticalToRoi.X) + (ptVectorVerticalToBottom.Y * ptVectorVerticalToRoi.Y);
+            double nMoleculatr = (vectorBottomX * vectorRoiX) + (vectorBottomY * vectorRoiY);
 
             // 벡터1과 벡터2의 Scalr값
-            double dDistanceVerticalToBottom = Math.Sqrt(Math.Pow(ptVectorVerticalToBottom.X, 2) + Math.Pow(ptVectorVerticalToBottom.Y, 2));
-            double dDistanceVerticalToRoi = Math.Sqrt(Math.Pow(ptVectorVerticalToRoi.X, 2) + Math.Pow(ptVectorVerticalToRoi.Y, 2));
+            double dDistanceVerticalToBottom = Math.Sqrt(
+                (vectorBottomX * vectorBottomX) + (vectorBottomY * vectorBottomY));
+            double dDistanceVerticalToRoi = Math.Sqrt(
+                (vectorRoiX * vectorRoiX) + (vectorRoiY * vectorRoiY));
 
             double nDenominator = dDistanceVerticalToBottom * dDistanceVerticalToRoi;
+            if (nDenominator <= 0.0 || double.IsNaN(nDenominator) || double.IsInfinity(nDenominator))
+            {
+                return double.NaN;
+            }
+
             // 각도 구하기 (내적 / Sclar값)
-            double dAngle = Math.Acos(nMoleculatr / nDenominator) * (180 / Math.PI);
+            double cosine = nMoleculatr / nDenominator;
+            cosine = Math.Max(-1.0, Math.Min(1.0, cosine));
+            double dAngle = Math.Acos(cosine) * (180 / Math.PI);
 
             return dAngle;
         }

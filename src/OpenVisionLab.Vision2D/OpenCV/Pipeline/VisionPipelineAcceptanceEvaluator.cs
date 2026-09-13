@@ -28,7 +28,11 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 failures.Add($"ExpectedSuccess={step.ExpectedSuccess}, ActualSuccess={actualSuccess}");
             }
 
-            if (step.MaxElapsedMilliseconds > 0 && toolResult != null
+            if (!IsFinite(step.MaxElapsedMilliseconds))
+            {
+                failures.Add("MaxElapsedMilliseconds must be finite.");
+            }
+            else if (step.MaxElapsedMilliseconds > 0 && toolResult != null
                 && toolResult.Elapsed.TotalMilliseconds > step.MaxElapsedMilliseconds)
             {
                 failures.Add($"Elapsed {toolResult.Elapsed.TotalMilliseconds:0.0} ms > {step.MaxElapsedMilliseconds:0.0} ms");
@@ -43,21 +47,37 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(step.AcceptanceMetricName)
-                && (step.UseAcceptanceMetricMinimum || step.UseAcceptanceMetricMaximum))
+            if (step.UseAcceptanceMetricMinimum || step.UseAcceptanceMetricMaximum)
             {
-                if (toolResult == null || !toolResult.Metrics.TryGetValue(step.AcceptanceMetricName, out double metricValue))
+                if (string.IsNullOrWhiteSpace(step.AcceptanceMetricName))
+                {
+                    failures.Add("Acceptance metric name is required when metric limits are enabled.");
+                }
+                else if (toolResult == null || !toolResult.Metrics.TryGetValue(step.AcceptanceMetricName, out double metricValue))
                 {
                     failures.Add($"Metric '{step.AcceptanceMetricName}' was not produced");
                 }
                 else
                 {
-                    if (step.UseAcceptanceMetricMinimum && metricValue < step.AcceptanceMetricMinimum)
+                    if (!IsFinite(metricValue))
+                    {
+                        failures.Add($"Metric '{step.AcceptanceMetricName}' must be finite.");
+                    }
+
+                    if (step.UseAcceptanceMetricMinimum && !IsFinite(step.AcceptanceMetricMinimum))
+                    {
+                        failures.Add("Acceptance metric minimum must be finite.");
+                    }
+                    else if (step.UseAcceptanceMetricMinimum && metricValue < step.AcceptanceMetricMinimum)
                     {
                         failures.Add($"{step.AcceptanceMetricName} {metricValue:0.###} < {step.AcceptanceMetricMinimum:0.###}");
                     }
 
-                    if (step.UseAcceptanceMetricMaximum && metricValue > step.AcceptanceMetricMaximum)
+                    if (step.UseAcceptanceMetricMaximum && !IsFinite(step.AcceptanceMetricMaximum))
+                    {
+                        failures.Add("Acceptance metric maximum must be finite.");
+                    }
+                    else if (step.UseAcceptanceMetricMaximum && metricValue > step.AcceptanceMetricMaximum)
                     {
                         failures.Add($"{step.AcceptanceMetricName} {metricValue:0.###} > {step.AcceptanceMetricMaximum:0.###}");
                     }
@@ -79,5 +99,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 Message = string.Join("; ", failures.Distinct())
             };
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

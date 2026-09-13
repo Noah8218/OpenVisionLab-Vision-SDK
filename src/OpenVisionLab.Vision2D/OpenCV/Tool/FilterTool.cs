@@ -53,7 +53,8 @@ namespace OpenVisionLab.Vision2D.Tool
                         return false;
                     }
 
-                    if (property.SigmaColor <= 0 || property.SigmaSpace <= 0)
+                    if (!IsFinite(property.SigmaColor) || !IsFinite(property.SigmaSpace)
+                        || property.SigmaColor <= 0 || property.SigmaSpace <= 0)
                     {
                         errorCode = VisionToolErrorCode.FilterInvalidSigma;
                         message = $"Bilateral sigma values must be greater than 0. SigmaColor={property.SigmaColor}, SigmaSpace={property.SigmaSpace}.";
@@ -105,8 +106,20 @@ namespace OpenVisionLab.Vision2D.Tool
                     Cv2.BoxFilter(imageResult, imageResult, MatType.CV_8UC3, new Size(property.KernelWidth, property.KernelHeight), new Point(-1, -1));
                     break;
                 case FilterToolType.BilateralFilter:
-                    Cv2.BilateralFilter(imageResult, imageResult, property.Diameter, property.SigmaColor, property.SigmaSpace, property.BorderType);
-                    break;
+                    {
+                        Mat bilateralResult = new Mat();
+                        try
+                        {
+                            Cv2.BilateralFilter(imageResult, bilateralResult, property.Diameter, property.SigmaColor, property.SigmaSpace, property.BorderType);
+                            ReplaceResultImage(bilateralResult);
+                            bilateralResult = null;
+                        }
+                        finally
+                        {
+                            bilateralResult?.Dispose();
+                        }
+                        break;
+                    }
             }
         }
 
@@ -124,5 +137,7 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             return kernel > 0 && kernel % 2 == 1;
         }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

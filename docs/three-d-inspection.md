@@ -155,6 +155,14 @@ recipes, overlays, or UI lifecycle.
 | Statistics and inspection decisions | `CompletenessGridInspectionTool`, `DualSurfaceThicknessInspectionTool`, `HeightDeviationInspectionTool`, `RepeatabilityStatisticsTool`, `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool` |
 | Multi-input dimensional inspection | `PlaneFlatnessInspectionTool`, `PointPairDimensionsInspectionTool`, `GapFlushInspectionTool`, `VolumeInspectionTool`, `CrossSectionDimensionsInspectionTool` |
 
+`LeastSquaresHeightFieldPlaneFitTool` and `PlaneFlatnessInspectionTool` use
+double-precision orthogonal distances, so translating the same geometry to a
+large coordinate origin does not change the flatness decision. `VolumeInspectionTool`
+returns a typed result for finite, representable calculations; it throws
+`InvalidOperationException` when an intermediate or accumulated volume becomes
+non-finite. Treat that exception as a calculation failure, separate from a
+finite result whose `Passed` value is `false`.
+
 ## Height-map contract
 
 `HeightMap3D` is an immutable regular grid with:

@@ -27,16 +27,41 @@ It provides application-ready 2D image-processing tools, 3D feature extraction a
 
 ## Installation and References
 
-To reference the source projects directly, add only the projects required by your application.
+NuGet is the recommended consumer path because it carries the managed and native
+OpenCvSharp assets together. For development against a checkout, add the source
+projects you use **and** reference Core's managed OpenCvSharp assembly and copy its
+native runtime asset. A project reference alone does not make `OpenCvSharp` types
+available to the consumer or place `OpenCvSharpExtern.dll` beside the executable.
 
 ```xml
+<PropertyGroup>
+  <VisionSdkRoot>..\OpenVisionLab-Vision-SDK</VisionSdkRoot>
+</PropertyGroup>
+
 <ItemGroup>
-  <ProjectReference Include="..\OpenVisionLab-Vision-SDK\src\OpenVisionLab.Vision2D\OpenVisionLab.Vision2D.csproj" />
-  <ProjectReference Include="..\OpenVisionLab-Vision-SDK\src\OpenVisionLab.Vision2D.Blob\OpenVisionLab.Vision2D.Blob.csproj" />
-  <ProjectReference Include="..\OpenVisionLab-Vision-SDK\src\OpenVisionLab.Vision3D\OpenVisionLab.Vision3D.csproj" />
-  <ProjectReference Include="..\OpenVisionLab-Vision-SDK\src\OpenVisionLab.Inspection\OpenVisionLab.Inspection.csproj" />
+  <ProjectReference Include="$(VisionSdkRoot)\src\OpenVisionLab.Core\OpenVisionLab.Core.csproj" />
+  <ProjectReference Include="$(VisionSdkRoot)\src\OpenVisionLab.Vision2D\OpenVisionLab.Vision2D.csproj" />
+  <ProjectReference Include="$(VisionSdkRoot)\src\OpenVisionLab.Vision2D.Blob\OpenVisionLab.Vision2D.Blob.csproj" />
+  <ProjectReference Include="$(VisionSdkRoot)\src\OpenVisionLab.Vision3D\OpenVisionLab.Vision3D.csproj" />
+  <ProjectReference Include="$(VisionSdkRoot)\src\OpenVisionLab.Inspection\OpenVisionLab.Inspection.csproj" />
+</ItemGroup>
+
+<ItemGroup>
+  <Reference Include="OpenCvSharp">
+    <HintPath>$(VisionSdkRoot)\src\OpenVisionLab.Core\DLL\OpenCvSharp.dll</HintPath>
+    <Private>True</Private>
+  </Reference>
+  <None Include="$(VisionSdkRoot)\src\OpenVisionLab.Core\DLL\OpenCvSharpExtern.dll">
+    <Link>OpenCvSharpExtern.dll</Link>
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
 </ItemGroup>
 ```
+
+The example assumes the consumer project is next to the SDK checkout; adjust
+`VisionSdkRoot` for another layout. The direct-reference route is Windows x64
+only and is intended for local development. Use the package route for a clean
+consumer-output contract.
 
 To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. `3.0.0` is the API/assembly baseline, not the current install version. `3.0.1-dev.1` is only the repository-local package default. Never reuse a package version after changing package content. The short command below is suitable for local iteration; use the commit-fixed procedure in [Packaging Notes](#packaging-notes) before treating packages as reusable evidence or candidates.
 
@@ -427,11 +452,16 @@ else
 | `MatchingTool` | Template matching with scale and angle search | `MatchingToolProperty` or an `IOpenCVPropertyMatching` implementation |
 | `EdgeBasedTemplateMatchingTool` | Edge-based template matching | `EdgeBasedTemplateMatchingToolProperty` or an `IOpenCVPropertyEdgeBasedTemplateMatching` implementation |
 | `AutoMPointTool` | Automatic fixed-size match-candidate proposal with uniqueness, synthetic-transform, and performance checks | `AutoMPointToolProperty` |
-| `SiftTool` | SIFT feature-point matching | `SiftToolProperty` or an `IOpenCVPropertyFeatureSIFT` implementation |
+| `SiftTool` | SIFT feature-point matching, with an ORB fallback when the native runtime lacks SIFT | `SiftToolProperty` or an `IOpenCVPropertyFeatureSIFT` implementation |
 | `LineGaugeTool` | Edge detection and line fitting inside an ROI | `LineGaugeToolProperty` or an `IOpenCvPropertyLineGauge` implementation |
 | `MeanTool` | ROI mean and standard-deviation calculation | `MeanToolProperty` or an `IOpenCVPropertyMean` implementation |
 
 Multi-ROI execution in `MeanTool` measures each region in `CvROIS` order and returns `MeanResult.index` values in the same order. `CornerTool` returns each sub-pixel-refined point as a `CornerResult` in global image coordinates and returns `CornerNoResult` when no point is detected.
+
+`SiftTool` first creates an OpenCV SIFT detector. The currently bundled native
+runtime does not export that entry point, so the tool uses ORB as a documented
+compatibility fallback. Inspect `VisionToolResult.Metrics["FeatureDetector.Sift"]` and
+`Metrics["FeatureDetector.OrbFallback"]` to record which detector actually ran.
 
 ## Supported 3D Features
 
@@ -609,7 +639,7 @@ Pipeline configuration fails closed:
 - Omitted built-in tool parameters use documented defaults. Supplied values must be finite and valid for their declared type.
 - Unknown, empty, or case-insensitive duplicate parameter names are rejected with `ArgumentException` before tool execution.
 - Empty and disabled-only pipelines return `Success == false`; a pipeline must execute at least one enabled step to pass.
-- `UseAcceptance = true` makes the acceptance contract authoritative. `ExpectedSuccess = false` is supported only on the final enabled step and never creates a synthetic output layer.
+- `UseAcceptance = true` makes the acceptance contract authoritative. Metric values and active metric/time limits must be finite; `ExpectedSuccess = false` is supported only on the final enabled step and never creates a synthetic output layer.
 
 Example:
 

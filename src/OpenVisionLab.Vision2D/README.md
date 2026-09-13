@@ -58,6 +58,11 @@ The package provides concrete configuration models for every current non-legacy 
 
 These models inherit the common whole-image, no-preprocessing defaults from `OpenCvToolPropertyBase`. `LineGaugeTool` always requires a taught `CvROI` because its scan direction and extent are part of the measurement definition.
 
+`SiftTool` attempts SIFT first. The currently bundled native OpenCV runtime does
+not export SIFT, so it uses ORB as a compatibility fallback. The result metrics
+`FeatureDetector.Sift` and `FeatureDetector.OrbFallback` are `1` for the detector
+that ran, so a host can persist the actual algorithm with its inspection record.
+
 The caller owns the input `Mat`. Dispose the Tool and `VisionToolResult`; the result owns its output image snapshot. Windows x64 is the supported native runtime.
 
 [2D and 3D SDK documentation](https://github.com/Noah8218/OpenVisionLab-Vision-SDK#2d-quick-start)
