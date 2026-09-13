@@ -1,7 +1,7 @@
 # OpenVisionLab Vision SDK Current Status
 
-Updated: 2026-09-13
-Project work item: `PL-0006`
+Updated: 2026-09-14
+Project work item: `PL-0007`
 Overall state: `resolved`
 
 ## Authority
@@ -9,9 +9,11 @@ Overall state: `resolved`
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0006.json` records the completed follow-up. `PL-0005`'s SIFT
-diagnostic criterion was reopened after a missed success path was found, then
-corrected and revalidated by PL-0006. The other prior verification remains historical evidence, while
+`.proofline/issues/PL-0007.json` records the latest completed follow-up.
+`.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
+API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
+reopened after a missed success path was found, then corrected and revalidated by
+PL-0006. The other prior verification remains historical evidence, while
 `.proofline/issues/PL-0004.json` preserves the preceding closure and
 `.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
 preceding closures. No ledger is a second design or release authority.
@@ -49,9 +51,69 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
+`PL-0007` has corrected culture-dependent coordinate persistence in both the modern
+and 3.x compatibility converters, documented the invariant contract, and removed
+the associated 52 analyzer diagnostics. The remaining analyzer debt and its
+no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0007 work contract
+
+Status: `Complete` at implementation commit
+`00a3fb2ede8a85708ae00d3fd23be14482aa1c66` on `origin/main`.
+
+Completed scope: make `CommonConverter` and 3.x compatibility `CConverter`
+coordinate/ROI serialization and parsing independent of `CurrentCulture`; preserve
+their public signatures, token-count fallback, and numeric exception behavior; add
+an `en-US`, `de-DE`, `fr-FR`, and `ko-KR` regression; document the persistence/UI
+formatting boundary; and lower the measured CA1305 ceiling from 83 to 31.
+
+Review later: the remaining 544 analyzer diagnostics require owner-specific
+compatibility, correctness, or measured-performance evidence. Sensor-backed
+accuracy and redistribution clearance still require the external prerequisites
+listed below.
+
+Out of scope: a new serializer or public API, automatic recovery of already
+ambiguous decimal-comma strings, unrelated analyzer rewrites, package publication,
+sensor/calibration qualification, UI localization, or native binary changes.
+
+The existing Core converters remain the owners. The call path is consumer numeric
+state -> `PointFToString`/other `*ToString` -> persisted invariant text -> matching
+`StringTo*` method. The converters hold no mutable state or disposable lifetime.
+Localized display text remains a host concern. No module, dependency direction, or
+public binding moved; the shortest review route is the two Converter files, the
+`Core coordinate strings remain culture invariant` smoke case, then the Core README.
+
+### PL-0007 verification and closure
+
+- The new culture smoke failed before correction at the `de-DE` floating-point
+  serialization assertion and passed afterward for all four cultures. Malformed
+  token-count fallback, `FormatException`, `OverflowException`, modern/legacy
+  parity, and byte conversion behavior are covered.
+- .NET SDK 8.0.423 Release build reported 0 warnings and 0 errors. Full smoke and
+  the instrumented coverage run each passed **232/232**; coverage was Core 37.35%,
+  Inspection 69.92%, Vision2D 74.10%, Vision2D.Blob 69.17%, and Vision3D 90.67%.
+  The public API matched all **3,295** baseline entries exactly.
+- The fixed analyzer run reports **544 diagnostics in 16 codes**. CA1305 fell from
+  83 to 31, all other code counts stayed unchanged, and both Converter files now
+  have zero diagnostics. The baseline was tightened to the observed counts.
+- The Core README example built with 0 warnings/errors and produced
+  `1.5,-2.25`. Five commit-fixed packages at
+  `3.0.1-dev.1789315533708` passed provenance, three fail-closed mutation probes,
+  isolated `net8.0/win-x64` consumption, and the one-native-copy check. They were
+  not published.
+- GitHub Actions [Build run 34767469759](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34767469759)
+  passed all 15 verification steps for the exact implementation commit.
+
+Reusable evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0007`; the integrated
+summary is `final-00a3fb2/integrated-verification-summary.json` with SHA-256
+`7FD1169A8534E5151AAF220E9F0B213B0D2241A72A9FD6BB8A5CBE6884A86704`.
+This proves the declared Windows x64 synthetic/package contract. It does not prove
+real-sensor accuracy, calibration, Gauge R&R, long-running workloads, another RID,
+.NET Framework runtime behavior, or commercial redistribution clearance.
 
 ## PL-0006 work contract
 
@@ -143,17 +205,19 @@ consumer repository was changed. Real sensor accuracy, calibration, false accept
 reject rates, representative workloads, long-running memory/latency, other native
 runtimes and redistribution clearance remain outside this completed scope.
 
-### Analyzer triage boundary
+### Current analyzer triage boundary
 
-The PL-0006 analyzer run retained **596 diagnostics in 16 codes**, at or below
-the unchanged baseline. Complete diagnostic locations are in
-`PL-0006/analyzer/diagnostics.log` under the D-drive evidence root. This is a
-no-regression gate and categorized debt review, not a zero-warning claim.
+The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
+PL-0007 removed the 52 culture diagnostics owned by the two Core converters and
+lowered the CA1305 ceiling. The exact implementation commit now reports **544
+diagnostics in the same 16 codes**. Current locations and counts are in
+`PL-0007/final-00a3fb2/analyzer-diagnostics` under the D-drive evidence root. This
+remains a no-regression gate and categorized debt review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
 | Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | Preserve 3.x public names and fields; broad renaming is a separate compatibility migration. |
-| Culture-sensitive formatting | CA1305 / 83 | Review with the affected persistence/display contract. Pipeline factory input parsing already has invariant-culture regression coverage; that does not validate every Core formatter. |
+| Culture-sensitive formatting | CA1305 / 31 | The modern and legacy Core converters are fixed and have zero diagnostics. The 31 remaining sites are outside those owners and need their own persistence, diagnostic-text, or compatibility review before editing. |
 | Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
 | Readability | CA1507, CA2249 / 41 | Defer unrelated nameof/Contains rewrites. |
 | Ignored constructed result | CA1806 / 6 | All six sites intentionally expect constructor rejection: five TriangleMeshDistance invalid-contract cases and one Pipeline duplicate-parameter case. Removing construction would remove the assertion. |
@@ -161,9 +225,9 @@ no-regression gate and categorized debt review, not a zero-warning claim.
 | Exception parameter naming | CA2208 / 5 | Four 3D sites name a member of the options object instead of the method parameter (bin counts, alignment cosine, display sample limit); the Pipeline helper reports its caller's `parameters` name. Preserve this observable exception detail in this batch; any cleanup must review consumer expectations. |
 
 The six CA1806 sites, all three Dispose bodies, and all five CA2208 call sites
-were inspected. The other groups were classified by diagnostics; this is not an
-individual correctness certification of all 596 locations. No baseline ceiling
-or coverage minimum was relaxed.
+were inspected under PL-0006. The other groups were classified by diagnostics;
+this is not an individual correctness certification of all 544 current locations.
+The CA1305 ceiling was reduced by 52; no ceiling or coverage minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

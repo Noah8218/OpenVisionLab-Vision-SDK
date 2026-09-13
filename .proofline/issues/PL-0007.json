@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "두 공개 변환기의 invariant 구현, 다문화권 회귀, Core 사용 문서와 낮춘 analyzer 상한을 완료했다. Release/focused/full/coverage/API/analyzer가 통과했고 commit-fixed package/consumer와 원격 CI가 남았다.",
-    "next_action": "구현을 main에 commit/push하고 정확한 커밋의 package provenance, 격리 consumer와 원격 CI를 검증한 뒤 현재 상태 문서와 장부를 종료한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 00a3fb2ede8a85708ae00d3fd23be14482aa1c66을 main에 반영했다. 다문화권 변환, 기존 실패 계약, 232/232 smoke/coverage, API 3295 exact, analyzer 544/Converter 0, README 예제, 5개 패키지/격리 consumer 및 원격 CI 34767469759가 통과했다. 패키지 게시와 현장·재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "공개 API 서명을 유지하면서 좌표·ROI 문자열을 실행 환경의 CurrentCulture와 무관한 쉼표 구분 invariant 형식으로 직렬화하고 역직렬화한다.",
@@ -41,21 +40,24 @@
       "id": "C2",
       "text": "기존 public API 3295개와 기존 변환 실패 계약이 유지되고 focused/full smoke가 통과한다.",
       "evidence_refs": [
-        "E2"
+        "E2",
+        "E3"
       ]
     },
     {
       "id": "C3",
       "text": "CA1305 변환기 진단 52건을 제거하고 실제 analyzer 수에 맞춰 기준을 낮추며 신규 analyzer 코드나 기준 초과가 없다.",
       "evidence_refs": [
-        "E2"
+        "E2",
+        "E3"
       ]
     },
     {
       "id": "C4",
       "text": "Core 사용 문서에 invariant 문자열 형식, 예제, 호스트 UI 현지화 경계를 기록하고 패키지 소비 및 main 원격 CI까지 통과한다.",
       "evidence_refs": [
-        "E2"
+        "E2",
+        "E3"
       ]
     }
   ],
@@ -96,9 +98,25 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\green; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\precommit; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\analyzer-after-baseline; src/OpenVisionLab.Core/README.md",
       "observation": "CommonConverter/CConverter에 invariant format/parse를 적용했다. en-US/de-DE/fr-FR/ko-KR 및 malformed/exception focused smoke 1/1, Release 0 warnings/errors, full smoke와 coverage 각 232/232, exact public API 3295, coverage Core 37.35/Inspection 69.92/Vision2D 74.10/Blob 69.17/Vision3D 90.67%가 통과했다. CA1305는 83에서 31, 전체는 596에서 544로 감소했고 다른 코드 수는 불변이며 새 상한에서 analyzer gate가 통과했다.",
       "observed_at": "2026-09-14T01:01:30.6565066+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "fixed commit integrated verification and remote CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\final-00a3fb2\\integrated-verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34767469759",
+      "observation": "정확한 구현 커밋 00a3fb2의 5개 package 3.0.1-dev.1789315533708이 provenance와 3개 fail-closed probe를 통과했고 격리 net8.0/win-x64 consumer 및 native output-root 1개가 실행됐다. 원격 Build 34767469759의 build, 232 smoke/coverage, API 3295, analyzer 544, package/provenance/consumer 15단계가 모두 success였다. 통합 요약 SHA256은 7FD1169A8534E5151AAF220E9F0B213B0D2241A72A9FD6BB8A5CBE6884A86704다.",
+      "observed_at": "2026-09-14T01:09:29.9673911+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T01:09:29.9673911+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 구현 커밋 00a3fb2ede8a85708ae00d3fd23be14482aa1c66을 main에 반영했다. 다문화권 변환, 기존 실패 계약, 232/232 smoke/coverage, API 3295 exact, analyzer 544/Converter 0, README 예제, 5개 패키지/격리 consumer 및 원격 CI 34767469759가 통과했다. 패키지 게시와 현장·재배포 승인은 별도 경계다."
+    }
+  ],
   "created_at": "2026-09-14T00:51:07.9334991+09:00",
-  "updated_at": "2026-09-14T01:01:30.6565066+09:00"
+  "updated_at": "2026-09-14T01:09:29.9673911+09:00"
 }
