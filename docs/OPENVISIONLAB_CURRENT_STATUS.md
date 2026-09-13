@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0008`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0008.json` records the active analyzer follow-up.
+`.proofline/issues/PL-0008.json` records the latest completed analyzer follow-up.
 `.proofline/issues/PL-0007.json` preserves the latest completed culture-conversion
 closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
 API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
@@ -56,8 +56,8 @@ redistribution; that separate clearance remains blocked by the prerequisites bel
 implementation makes 3D numeric failure messages and generated test evidence
 culture invariant, aligns legacy `CVMean` standard-deviation rounding with the
 modern owner, and makes the numeric reflection provider explicit. Focused tests and
-the analyzer pass; local integrated verification also passes. Commit-fixed package
-consumption and remote CI remain in progress.
+the analyzer pass; local integrated verification, commit-fixed package consumption,
+and remote CI also pass.
 `PL-0007` corrected culture-dependent coordinate persistence in both the modern
 and 3.x compatibility converters, documented the invariant contract, and removed
 the associated 52 analyzer diagnostics. The remaining analyzer debt and its
@@ -68,8 +68,8 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0008 work contract
 
-Status: `In progress`; implementation and local integrated verification are complete
-in the working tree, while exact-commit packaging and remote `main` verification remain.
+Status: `Complete` at implementation commit
+`fac71d5e4949938ded375929cfd02aaea0865d93` on `origin/main`.
 
 Implement now: review every remaining CA1305 site by owner and observable contract;
 make machine-readable evidence and the affected 3D failure messages culture
@@ -100,7 +100,7 @@ results agree under `de-DE`; CA1305 is zero with no other analyzer-count increas
 the exact public API and all local/package/remote gates pass. Evidence is retained
 under `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0008`.
 
-### PL-0008 local verification
+### PL-0008 verification and closure
 
 - The new 3D culture regression built with 0 warnings/errors and failed before the
   correction at `de-DE`; it passes after correction for all four declared cultures.
@@ -114,9 +114,23 @@ under `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0008`.
   passes at **513 diagnostics in 15 emitted codes**, CA1305 is absent, and every
   other code count is unchanged. The CA1305 ceiling is fixed at zero. All 80 local
   Markdown links resolve.
-- These checks use the working tree and are reusable under the PL-0008 evidence
-  root. Exact implementation-commit packages, isolated consumption, and remote
-  `main` CI are still required before `Complete`.
+- Five exact-commit packages at `3.0.1-dev.1789338223890` pass package provenance,
+  documentation and binary hashes, three fail-closed mutation probes, isolated
+  `net8.0/win-x64` consumption, and the one-native-copy check. The packages were
+  not published and no consumer repository was changed.
+- GitHub Actions [Build run 34786623362](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34786623362)
+  completed successfully for the exact implementation commit, including the same
+  build, smoke/coverage, API, analyzer, package, provenance, consumer, and native
+  runtime gates.
+
+Reusable exact-commit evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0008\final-fac71d5`.
+`integrated-verification-summary.json` has SHA-256
+`2B9849F1ECAC6CC9CC036FCBBDBC52869D9E186D160EBA263130A0B12F971845`;
+the package hashes are in `package-provenance.json`. Only console DLLs were
+executed. This does not prove real-sensor accuracy, calibration, false accept/reject
+rates, long-running production performance, non-Windows-x64 runtimes, or commercial
+redistribution clearance.
 
 ## PL-0007 work contract
 
@@ -268,11 +282,11 @@ runtimes and redistribution clearance remain outside this completed scope.
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
 PL-0007 removed 52 Core converter CA1305 diagnostics. PL-0008 reviewed and removed
-the remaining 31 CA1305 diagnostics. The current working tree reports **513
+the remaining 31 CA1305 diagnostics. The exact implementation commit reports **513
 diagnostics in 15 emitted codes**, with every non-CA1305 code count unchanged.
-Current evidence is in `PL-0008/analyzer-before-baseline` under the D-drive evidence
-root; exact-commit evidence will replace it at closure. This remains a no-regression
-gate and categorized debt review, not a zero-warning claim.
+Current counts are recorded in `PL-0008/final-fac71d5/integrated-verification-summary.json`
+under the D-drive evidence root and in remote Build run 34786623362. This remains a
+no-regression gate and categorized debt review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |

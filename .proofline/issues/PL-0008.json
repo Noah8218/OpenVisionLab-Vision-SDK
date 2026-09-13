@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "M3 완료: Release solution build, 233/233 full smoke와 coverage, exact API 3295, analyzer 513/CA1305 0, 문서 링크 80개가 모두 통과했다. M4에서 구현 커밋을 push하고 exact-commit 패키지/소비자/원격 CI를 검증한다.",
-    "next_action": "변경 파일을 최종 검토한 뒤 구현 커밋을 main에 push하고 그 정확한 커밋으로 package provenance, negative probes, isolated consumer, native-copy와 GitHub Actions를 검증한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 fac71d5e4949938ded375929cfd02aaea0865d93을 origin/main에 반영했다. CA1305 31건을 전수 분류·수정해 CA1305 0/전체 513을 달성했고, 문화권 회귀, 233/233 smoke/coverage, API 3295 exact, 5개 package provenance/3개 negative probe/격리 consumer/native 1개 및 원격 CI 34786623362가 통과했다. 패키지 게시, 센서·교정·재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "기존 3.x 공개 API와 실패 형태를 유지하면서 남은 CA1305 31건의 문화권 종속 동작을 제거하고 analyzer CA1305 상한을 0으로 낮춘다.",
@@ -59,14 +58,16 @@
       "text": "CA1305가 31에서 0으로 감소하고 전체 analyzer가 544에서 513으로 감소하며 다른 진단 코드 수와 공개 API 3295개가 바뀌지 않는다.",
       "evidence_refs": [
         "E2",
-        "E3"
+        "E3",
+        "E4"
       ]
     },
     {
       "id": "C5",
       "text": "focused/full smoke, Release build, coverage floors, analyzer, exact API, 문서 링크, package provenance/negative probes/isolated consumer 및 remote main CI가 통과한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4"
       ]
     }
   ],
@@ -106,7 +107,7 @@
     {
       "id": "M4",
       "summary": "고정 커밋 패키지·소비자·원격 CI 및 durable closure",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C5"
@@ -162,9 +163,25 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\precommit",
       "observation": "Release solution build 0 warnings/errors, full smoke와 instrumented coverage 각 233/233, exact public API 3295, analyzer 513 in 15 emitted codes with CA1305 0, local Markdown links 80/80가 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.34%, Vision2D.Blob 69.17%, Vision3D 90.70%로 모두 기준 이상이다.",
       "observed_at": "2026-09-14T07:22:06.2075305+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "exact implementation commit packages and remote CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\final-fac71d5\\integrated-verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34786623362",
+      "observation": "구현 커밋 fac71d5e4949938ded375929cfd02aaea0865d93의 5개 package 3.0.1-dev.1789338223890이 provenance와 3개 fail-closed probe를 통과했고 격리 net8.0/win-x64 consumer 및 native output-root 1개가 실행됐다. 원격 Build 34786623362도 exact commit의 모든 build/smoke/coverage/API/analyzer/package/consumer 단계를 success로 완료했다. 통합 요약 SHA256은 2B9849F1ECAC6CC9CC036FCBBDBC52869D9E186D160EBA263130A0B12F971845다.",
+      "observed_at": "2026-09-14T07:26:41.0182457+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T07:26:41.0182457+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 구현 커밋 fac71d5e4949938ded375929cfd02aaea0865d93을 origin/main에 반영했다. CA1305 31건을 전수 분류·수정해 CA1305 0/전체 513을 달성했고, 문화권 회귀, 233/233 smoke/coverage, API 3295 exact, 5개 package provenance/3개 negative probe/격리 consumer/native 1개 및 원격 CI 34786623362가 통과했다. 패키지 게시, 센서·교정·재배포 승인은 별도 경계다."
+    }
+  ],
   "created_at": "2026-09-14T07:06:36.9578737+09:00",
-  "updated_at": "2026-09-14T07:22:06.2075305+09:00"
+  "updated_at": "2026-09-14T07:26:41.0182457+09:00"
 }
