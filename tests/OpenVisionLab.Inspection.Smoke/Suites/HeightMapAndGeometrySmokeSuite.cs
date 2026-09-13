@@ -9,6 +9,7 @@ using OpenVisionLab.Vision3D.Inspection;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -59,6 +60,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Full XYZ affine solve recovers an analytic matrix", TestFullXyzAffineSolve);
             yield return new SmokeCase("Full XYZ affine solve is invariant under a large common translation", TestFullXyzAffineSolveLargeTranslation);
             yield return new SmokeCase("Full XYZ affine solve rejects a taught condition limit", TestFullXyzAffineCondition);
+            yield return new SmokeCase("3D numeric failure messages remain culture invariant", TestThreeDNumericFailureMessageCultureInvariance);
             yield return new SmokeCase("Full XYZ affine apply preserves locator order and exact transformed XYZ", TestFullXyzAffineApply);
             yield return new SmokeCase("Full XYZ affine apply rejects duplicate source locators", TestFullXyzAffineApplyDuplicateLocator);
             yield return new SmokeCase("Reference-grid re-sampling projects U/V/H cells and preserves holes", TestReferenceGridProjectionAndHoles);
@@ -1196,6 +1198,93 @@ namespace OpenVisionLab.Inspection.Smoke
                 new FullXyzAffineSolveOptions { MaximumConditionEstimate = 0.5, ArithmeticResidualWarning = 0.0 });
 
             Require(!result.Success, "Full XYZ affine solve must reject an exceeded taught condition limit.");
+        }
+
+        private static void TestThreeDNumericFailureMessageCultureInvariance()
+        {
+            CultureInfo originalCulture = CultureInfo.CurrentCulture;
+            string[] baselineMessages = null;
+            ThreeDLineGeometry horizontal = CreateLine(
+                new ThreeDPoint(0.0, 0.0, 0.0),
+                new ThreeDPoint(1.0, 0.0, 0.0),
+                new ThreeDPoint(-1.0, 0.0, 0.0),
+                new ThreeDPoint(1.0, 0.0, 0.0));
+            ThreeDLineGeometry acute = CreateLine(
+                new ThreeDPoint(0.0, 0.0, 0.0),
+                new ThreeDPoint(Math.Sqrt(3.0) / 2.0, 0.5, 0.0),
+                new ThreeDPoint(-Math.Sqrt(3.0) / 2.0, -0.5, 0.0),
+                new ThreeDPoint(Math.Sqrt(3.0) / 2.0, 0.5, 0.0));
+            ThreeDLineGeometry offset = CreateLine(
+                new ThreeDPoint(0.0, 0.0, 1.25),
+                new ThreeDPoint(0.0, 1.0, 0.0),
+                new ThreeDPoint(0.0, -1.0, 1.25),
+                new ThreeDPoint(0.0, 1.0, 1.25));
+            ThreeDLineGeometry outsideSupport = CreateLine(
+                new ThreeDPoint(2.0, 0.0, 0.0),
+                new ThreeDPoint(0.0, 1.0, 0.0),
+                new ThreeDPoint(2.0, -1.0, 0.0),
+                new ThreeDPoint(2.0, 1.0, 0.0));
+
+            try
+            {
+                foreach (string cultureName in new[] { "en-US", "de-DE", "fr-FR", "ko-KR" })
+                {
+                    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+                    LineIntersectionResult acuteAngle = new LineIntersectionTool().Execute(
+                        horizontal,
+                        acute,
+                        new LineIntersectionOptions
+                        {
+                            MaximumClosestApproachDistance = 0.5,
+                            MinimumAcuteAngleDegrees = 45.5,
+                            MaximumSupportExtension = 0.25
+                        });
+                    LineIntersectionResult closestApproach = new LineIntersectionTool().Execute(
+                        horizontal,
+                        offset,
+                        new LineIntersectionOptions
+                        {
+                            MaximumClosestApproachDistance = 0.5,
+                            MinimumAcuteAngleDegrees = 1.0,
+                            MaximumSupportExtension = 0.25
+                        });
+                    LineIntersectionResult supportExtension = new LineIntersectionTool().Execute(
+                        horizontal,
+                        outsideSupport,
+                        new LineIntersectionOptions
+                        {
+                            MaximumClosestApproachDistance = 0.5,
+                            MinimumAcuteAngleDegrees = 1.0,
+                            MaximumSupportExtension = 0.25
+                        });
+                    FullXyzAffineSolveResult affine = new FullXyzAffineSolveTool().Execute(
+                        CreateAffinePairs(),
+                        new FullXyzAffineSolveOptions { MaximumConditionEstimate = 0.5, ArithmeticResidualWarning = 0.0 });
+
+                    Require(!acuteAngle.Success && !closestApproach.Success && !supportExtension.Success && !affine.Success,
+                        "Culture-invariance fixtures must exercise all four numeric failure-message paths.");
+                    string[] messages = { acuteAngle.Message, closestApproach.Message, supportExtension.Message, affine.Message };
+                    if (baselineMessages == null)
+                    {
+                        baselineMessages = messages;
+                    }
+                    else
+                    {
+                        Require(messages.SequenceEqual(baselineMessages),
+                            "3D numeric failure messages depend on the current culture " + cultureName + ".");
+                    }
+
+                    Require(messages[0].Contains("45.5", StringComparison.Ordinal)
+                        && messages[1].Contains("1.25", StringComparison.Ordinal)
+                        && messages[2].Contains("0.25", StringComparison.Ordinal)
+                        && messages[3].Contains("0.5", StringComparison.Ordinal),
+                        "3D numeric failure messages must use invariant decimal separators.");
+                }
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+            }
         }
 
         private static void TestFullXyzAffineApply()

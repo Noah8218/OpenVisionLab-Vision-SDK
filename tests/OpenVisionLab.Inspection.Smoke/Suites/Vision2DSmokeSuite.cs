@@ -9,6 +9,7 @@ using OpenVisionLab.Vision3D.Inspection;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
@@ -359,11 +360,11 @@ namespace OpenVisionLab.Inspection.Smoke
                             "Status=Accepted",
                             "ResultCount=" + firstTool.results.Count,
                             "BestPatternRoi=" + firstTool.results[0].PatternRoi,
-                            "BestScore=" + firstTool.results[0].Score.ToString("0.000"),
-                            "BestUniquenessMargin=" + firstTool.results[0].UniquenessMargin.ToString("0.000000"),
-                            "BestPositionErrorMaxPx=" + firstTool.results[0].PositionErrorMaxPixels.ToString("0.000"),
-                            "BestRuntimeMedianMs=" + firstTool.results[0].RuntimeMedianMilliseconds.ToString("0.000"),
-                            "BestRuntimeP95Ms=" + firstTool.results[0].RuntimeP95Milliseconds.ToString("0.000")
+                            "BestScore=" + firstTool.results[0].Score.ToString("0.000", CultureInfo.InvariantCulture),
+                            "BestUniquenessMargin=" + firstTool.results[0].UniquenessMargin.ToString("0.000000", CultureInfo.InvariantCulture),
+                            "BestPositionErrorMaxPx=" + firstTool.results[0].PositionErrorMaxPixels.ToString("0.000", CultureInfo.InvariantCulture),
+                            "BestRuntimeMedianMs=" + firstTool.results[0].RuntimeMedianMilliseconds.ToString("0.000", CultureInfo.InvariantCulture),
+                            "BestRuntimeP95Ms=" + firstTool.results[0].RuntimeP95Milliseconds.ToString("0.000", CultureInfo.InvariantCulture)
                         });
                 }
                 finally
@@ -488,8 +489,8 @@ namespace OpenVisionLab.Inspection.Smoke
                                     + string.Join(
                                         ",",
                                         candidate.RepresentativeMatches.Select(match =>
-                                            match.Outcome + ":" + match.Score.ToString("0.0")
-                                            + "/" + match.UniquenessMargin.ToString("0.000"))))));
+                                            match.Outcome + ":" + match.Score.ToString("0.0", CultureInfo.InvariantCulture)
+                                            + "/" + match.UniquenessMargin.ToString("0.000", CultureInfo.InvariantCulture))))));
                         Require(tool.results.Count >= 1
                             && tool.results[0].PatternRoi == new Rect(64, 64, 64, 64),
                             "The pattern preserved across representative images must rank first.");
@@ -513,10 +514,10 @@ namespace OpenVisionLab.Inspection.Smoke
                                 "BestPatternRoi=" + tool.results[0].PatternRoi,
                                 "RepresentativeImages=" + tool.results[0].RepresentativeImageCount,
                                 "RepresentativeSuccess=" + tool.results[0].RepresentativeSuccessCount,
-                                "RepresentativeSuccessRate=" + tool.results[0].RepresentativeSuccessRate.ToString("0.000"),
-                                "RepresentativeMeanScore=" + tool.results[0].RepresentativeMeanScore.ToString("0.000"),
+                                "RepresentativeSuccessRate=" + tool.results[0].RepresentativeSuccessRate.ToString("0.000", CultureInfo.InvariantCulture),
+                                "RepresentativeMeanScore=" + tool.results[0].RepresentativeMeanScore.ToString("0.000", CultureInfo.InvariantCulture),
                                 "RepresentativeMinimumUniquenessMargin="
-                                    + tool.results[0].RepresentativeMinimumUniquenessMargin.ToString("0.000000")
+                                    + tool.results[0].RepresentativeMinimumUniquenessMargin.ToString("0.000000", CultureInfo.InvariantCulture)
                             });
                     }
                     finally
@@ -927,15 +928,15 @@ namespace OpenVisionLab.Inspection.Smoke
                 .Where(metric => metric.Key.StartsWith("UniqueMatch.", StringComparison.Ordinal))
                 .OrderBy(metric => metric.Key, StringComparer.Ordinal))
             {
-                summary.Add(metric.Key + "=" + metric.Value.ToString("0.######"));
+                summary.Add(metric.Key + "=" + metric.Value.ToString("0.######", CultureInfo.InvariantCulture));
             }
 
             if (tool.results.Count > 0)
             {
-                summary.Add("EdgeScore=" + tool.results[0].EdgeScore.ToString("0.###"));
-                summary.Add("ImageScore=" + tool.results[0].ImageScore.ToString("0.###"));
-                summary.Add("FinalScore=" + tool.results[0].FinalScore.ToString("0.###"));
-                summary.Add("ScoreMargin=" + tool.results[0].ScoreMargin.ToString("0.###"));
+                summary.Add("EdgeScore=" + tool.results[0].EdgeScore.ToString("0.###", CultureInfo.InvariantCulture));
+                summary.Add("ImageScore=" + tool.results[0].ImageScore.ToString("0.###", CultureInfo.InvariantCulture));
+                summary.Add("FinalScore=" + tool.results[0].FinalScore.ToString("0.###", CultureInfo.InvariantCulture));
+                summary.Add("ScoreMargin=" + tool.results[0].ScoreMargin.ToString("0.###", CultureInfo.InvariantCulture));
             }
 
             File.WriteAllLines(Path.Combine(directory, name + "_summary.txt"), summary);

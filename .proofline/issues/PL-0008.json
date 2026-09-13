@@ -1,0 +1,170 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0008",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "남은 CA1305 소유자별 문화권 결함 제거",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "user-approved analyzer follow-up",
+    "summary": "PL-0007 이후 남은 CA1305 31건을 소유자와 외부 계약별로 재검토하고 실제 문화권 일관성 및 재현성 결함을 수정한다.",
+    "refs": [
+      "PL-0007"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "M3 완료: Release solution build, 233/233 full smoke와 coverage, exact API 3295, analyzer 513/CA1305 0, 문서 링크 80개가 모두 통과했다. M4에서 구현 커밋을 push하고 exact-commit 패키지/소비자/원격 CI를 검증한다.",
+    "next_action": "변경 파일을 최종 검토한 뒤 구현 커밋을 main에 push하고 그 정확한 커밋으로 package provenance, negative probes, isolated consumer, native-copy와 GitHub Actions를 검증한다."
+  },
+  "objective": {
+    "summary": "기존 3.x 공개 API와 실패 형태를 유지하면서 남은 CA1305 31건의 문화권 종속 동작을 제거하고 analyzer CA1305 상한을 0으로 낮춘다.",
+    "constraints": [
+      "C:\\Git\\OpenVisionLab-Vision-SDK의 main만 수정하고 C:\\Git\\Vision-SDK의 과거 worktree는 변경하지 않는다.",
+      "공개 형식·이름 186건과 성능 제안 272건은 이번 범위에 포함하지 않는다.",
+      "새 추상화나 소유자 이동 없이 각 기존 소유자에 최소 수정한다.",
+      "패키지를 게시하지 않고 실제 센서·교정 정확도나 외부 네이티브 DLL 재배포 권리를 완료로 주장하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "현재 CA1305 31건을 소유자, 호출 경로, 관찰 가능한 계약과 수정 결정으로 전수 분류하고 누락이 없다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "3D 실패 메시지, legacy CVMean 값, Vision2D 결과 metric 변환이 지원 문화권에서 결정적이며 기존 성공/실패 결과 형태를 유지한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Auto MPoint와 unique matching의 파일 증거 숫자 형식이 실행 문화권과 무관한 invariant 형식이고 재현 가능하다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "CA1305가 31에서 0으로 감소하고 전체 analyzer가 544에서 513으로 감소하며 다른 진단 코드 수와 공개 API 3295개가 바뀌지 않는다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "focused/full smoke, Release build, coverage floors, analyzer, exact API, 문서 링크, package provenance/negative probes/isolated consumer 및 remote main CI가 통과한다.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "31건 소유자·계약 분류와 수정 전 문화권 증거",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "Vision2D·Vision3D 문화권 동작과 증거 출력 수정",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "analyzer/API/회귀/문서 통합 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C4",
+        "C5"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "고정 커밋 패키지·소비자·원격 CI 및 durable closure",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0007"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "44a7e12789822807e0e4ffa5a8362b002cfd1a01"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "diagnostic source",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0007/final-00a3fb2/analyzer-diagnostics/diagnostics.log"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0008",
+      "summary": "CA1305 분류, 문화권 회귀, analyzer/API, package consumer와 CI 증거."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "diagnostic inventory and failing regression",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\final-00a3fb2\\analyzer-diagnostics\\diagnostics.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\red\\build.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\red\\culture-smoke.log",
+      "observation": "CA1305 31건은 LineIntersection 5, FullXyzAffine 2, NominalActualMeshComparison 2의 공개/제어 실패 메시지 9건, legacy CVMean 반올림 문자열 왕복 4건, OpenCvAlgorithmBase의 숫자형 결과 반사 변환 3건, Vision2DSmoke의 machine-readable 증거 형식 15건이다. 신규 3D 문화권 smoke를 포함한 Release 빌드는 경고/오류 0이었고 수정 전 smoke는 de-DE 메시지 차이로 0/1 실패했다.",
+      "observed_at": "2026-09-14T07:11:53.3123550+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused implementation verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\green-2; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\analyzer-after-baseline\\analyzer.log; docs/OPENVISIONLAB_CURRENT_STATUS.md",
+      "observation": "LineIntersection/FullXyzAffine/NominalActualMeshComparison의 숫자 메시지에 invariant provider를 지정하고, CVMean 문자열 왕복을 Math.Round로 교체했으며, OpenCvAlgorithmBase 숫자 변환과 Vision2DSmoke 증거 출력에 invariant provider를 지정했다. 4개 문화권 3D 메시지와 de-DE legacy/modern mean·metric·overlay focused smoke 각 1/1, Release build 0 warnings/errors가 통과했다. Analyzer는 CA1305를 방출하지 않았고 다른 코드 수 불변으로 총 513건이며 CA1305 상한 0에서 gate가 통과했다.",
+      "observed_at": "2026-09-14T07:20:10.0869396+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "working-tree integrated verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0008\\precommit",
+      "observation": "Release solution build 0 warnings/errors, full smoke와 instrumented coverage 각 233/233, exact public API 3295, analyzer 513 in 15 emitted codes with CA1305 0, local Markdown links 80/80가 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.34%, Vision2D.Blob 69.17%, Vision3D 90.70%로 모두 기준 이상이다.",
+      "observed_at": "2026-09-14T07:22:06.2075305+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-09-14T07:06:36.9578737+09:00",
+  "updated_at": "2026-09-14T07:22:06.2075305+09:00"
+}

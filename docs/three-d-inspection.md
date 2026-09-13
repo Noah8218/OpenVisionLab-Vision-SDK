@@ -184,6 +184,12 @@ frames, sampling area and calibrated acceptance limits.
 | Typed dimensional inspections | `Passed=false` is a valid measurement outside tolerance; invalid inputs/calculations may throw | Retain finite metrics and the applied tolerance separately from execution failure. |
 | Overloads with `CancellationToken` | Only the declared overload offers cooperative cancellation | Keep input alive until completion and handle `OperationCanceledException` where propagated; other Tools have no general abort contract. |
 
+Numeric values embedded in failure `Message` text from `LineIntersectionTool`,
+`FullXyzAffineSolveTool`, and `NominalActualMeshComparisonTool` use invariant decimal
+and grouping separators so logs and evidence stay comparable across host cultures.
+Use typed status and numeric properties for control flow; localize operator-facing
+text in the host rather than parsing or rewriting these diagnostic messages.
+
 These APIs are synchronous. The height-map interface and combined runner have no
 cancellation or hard-timeout parameter. `Task.Run` does not add cancellation to an
 algorithm. Pass stable inputs and options throughout a call; per-worker Tool

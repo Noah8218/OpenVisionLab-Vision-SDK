@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
@@ -516,7 +517,7 @@ namespace OpenVisionLab.Vision2D.Property
 
             try
             {
-                return Convert.ToDouble(value);
+                return Convert.ToDouble(value, CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -740,7 +741,7 @@ namespace OpenVisionLab.Vision2D.Property
 
             try
             {
-                return Convert.ToInt32(value);
+                return Convert.ToInt32(value, CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -758,7 +759,7 @@ namespace OpenVisionLab.Vision2D.Property
 
             try
             {
-                return Convert.ToSingle(value);
+                return Convert.ToSingle(value, CultureInfo.InvariantCulture);
             }
             catch
             {

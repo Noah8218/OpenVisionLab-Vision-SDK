@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 
 namespace OpenVisionLab.Vision3D.FeatureExtraction
@@ -188,7 +189,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double condition = InfinityNorm(source) * InfinityNorm(inverse);
                 if (!IsFinite(condition) || condition > options.MaximumConditionEstimate)
                 {
-                    return FullXyzAffineSolveResult.Failed("Full XYZ affine solve rejected source correspondence condition estimate " + condition.ToString("G8") + "; taught maximum is " + options.MaximumConditionEstimate.ToString("G8") + ".");
+                    return FullXyzAffineSolveResult.Failed(
+                        "Full XYZ affine solve rejected source correspondence condition estimate "
+                        + condition.ToString("G8", CultureInfo.InvariantCulture)
+                        + "; taught maximum is "
+                        + options.MaximumConditionEstimate.ToString("G8", CultureInfo.InvariantCulture)
+                        + ".");
                 }
 
                 double[,] coefficients = new double[RequiredPairCount, 3];

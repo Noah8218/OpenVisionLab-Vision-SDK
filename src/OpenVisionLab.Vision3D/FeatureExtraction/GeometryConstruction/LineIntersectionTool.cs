@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading;
 
 namespace OpenVisionLab.Vision3D.FeatureExtraction
@@ -189,7 +190,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double acuteAngleDegrees = Math.Acos(Math.Abs(dot)) * 180.0 / Math.PI;
                 if (!IsFinite(acuteAngleDegrees) || acuteAngleDegrees < options.MinimumAcuteAngleDegrees)
                 {
-                    return LineIntersectionResult.Failed("Line acute angle " + acuteAngleDegrees.ToString("G8") + " degrees is below taught minimum " + options.MinimumAcuteAngleDegrees.ToString("G8") + " degrees.");
+                    return LineIntersectionResult.Failed(
+                        "Line acute angle "
+                        + acuteAngleDegrees.ToString("G8", CultureInfo.InvariantCulture)
+                        + " degrees is below taught minimum "
+                        + options.MinimumAcuteAngleDegrees.ToString("G8", CultureInfo.InvariantCulture)
+                        + " degrees.");
                 }
 
                 double denominator = 1.0 - (dot * dot);
@@ -212,14 +218,22 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 RequireFinite(secondClosest, "Second line closest point");
                 if (!IsFinite(gap) || gap > options.MaximumClosestApproachDistance)
                 {
-                    return LineIntersectionResult.Failed("Line closest-approach gap " + gap.ToString("G8") + " source-coordinate exceeds taught maximum " + options.MaximumClosestApproachDistance.ToString("G8") + ".");
+                    return LineIntersectionResult.Failed(
+                        "Line closest-approach gap "
+                        + gap.ToString("G8", CultureInfo.InvariantCulture)
+                        + " source-coordinate exceeds taught maximum "
+                        + options.MaximumClosestApproachDistance.ToString("G8", CultureInfo.InvariantCulture)
+                        + ".");
                 }
 
                 Support firstSupport = GetSupport(firstLine, firstParameter);
                 Support secondSupport = GetSupport(secondLine, secondParameter);
                 if (firstSupport.Extension > options.MaximumSupportExtension || secondSupport.Extension > options.MaximumSupportExtension)
                 {
-                    return LineIntersectionResult.Failed("Line closest approach is outside taught inlier support extension " + options.MaximumSupportExtension.ToString("G8") + " source-coordinate.");
+                    return LineIntersectionResult.Failed(
+                        "Line closest approach is outside taught inlier support extension "
+                        + options.MaximumSupportExtension.ToString("G8", CultureInfo.InvariantCulture)
+                        + " source-coordinate.");
                 }
 
                 ThreeDPoint corner = Scale(Add(firstClosest, secondClosest), 0.5);

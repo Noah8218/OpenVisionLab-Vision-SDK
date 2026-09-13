@@ -532,29 +532,67 @@ namespace OpenVisionLab.Inspection.Smoke
 
         private static void TestMeanToolParity()
         {
-            using (Mat source = new Mat(new Size(64, 48), MatType.CV_8UC1, Scalar.All(137)))
+            CultureInfo originalCulture = CultureInfo.CurrentCulture;
+            using (Mat source = new Mat(new Size(64, 48), MatType.CV_8UC1, Scalar.All(100)))
             using (MeanTool modern = new MeanTool())
             {
-                CVMean legacy = new CVMean();
+                Cv2.Rectangle(
+                    source,
+                    new Rect(0, 0, 32, 48),
+                    Scalar.All(150),
+                    Cv2.FILLED);
+
                 try
                 {
-                    legacy.SetProperty(CreateMeanProperty());
-                    modern.SetProperty(CreateMeanProperty());
-                    legacy.SetSourceImage(source);
-                    modern.SetSourceImage(source);
-                    legacy.Run();
-                    modern.Run();
-                    Require(legacy.results.Count == modern.results.Count && legacy.results.Count == 1,
-                        "Mean result count changed between legacy and modern tools.");
-                    RequireApproximately(legacy.results[0].meanValue, modern.results[0].meanValue, 0d,
-                        "Mean value changed between legacy and modern tools.");
-                    Require(legacy.results[0].Bounding == modern.results[0].Bounding
-                        && legacy.results[0].Center == modern.results[0].Center,
-                        "Mean result geometry changed between legacy and modern tools.");
+                    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+                    foreach (bool useMultipleRois in new[] { false, true })
+                    {
+                        MeanToolProperty legacyProperty = CreateMeanProperty();
+                        MeanToolProperty modernProperty = CreateMeanProperty();
+                        legacyProperty.MEAN_TYPES = MeanType.MeanStdDev;
+                        modernProperty.MEAN_TYPES = MeanType.MeanStdDev;
+                        legacyProperty.USE_MULTI_ROI = useMultipleRois;
+                        modernProperty.USE_MULTI_ROI = useMultipleRois;
+                        if (useMultipleRois)
+                        {
+                            legacyProperty.CvROIS.Add(legacyProperty.CvROI);
+                            modernProperty.CvROIS.Add(modernProperty.CvROI);
+                        }
+
+                        CVMean legacy = new CVMean();
+                        try
+                        {
+                            legacy.SetProperty(legacyProperty);
+                            modern.SetProperty(modernProperty);
+                            legacy.SetSourceImage(source);
+                            legacy.Run();
+                            using (VisionToolResult modernResult = modern.Execute(source))
+                            {
+                                Require(modernResult.Success && legacy.results.Count == 1 && modern.results.Count == 1,
+                                    "Mean result count or execution status changed under de-DE.");
+                                RequireApproximately(legacy.results[0].meanValue, 21.7, 0d,
+                                    "Legacy standard deviation depends on the current culture.");
+                                RequireApproximately(legacy.results[0].meanValue, modern.results[0].meanValue, 0d,
+                                    "Mean value changed between legacy and modern tools.");
+                                Require(legacy.results[0].Bounding == modern.results[0].Bounding
+                                    && legacy.results[0].Center == modern.results[0].Center,
+                                    "Mean result geometry changed between legacy and modern tools.");
+                                Require(modernResult.Metrics.TryGetValue("MeanValueAvg", out double metric)
+                                    && metric == 21.7
+                                    && modernResult.Overlays.Count == 1
+                                    && modernResult.Overlays[0].Label.StartsWith("#0 ", StringComparison.Ordinal),
+                                    "Mean metric or overlay numeric extraction changed under de-DE.");
+                            }
+                        }
+                        finally
+                        {
+                            DisposeLegacyTool(legacy);
+                        }
+                    }
                 }
                 finally
                 {
-                    DisposeLegacyTool(legacy);
+                    CultureInfo.CurrentCulture = originalCulture;
                 }
             }
         }

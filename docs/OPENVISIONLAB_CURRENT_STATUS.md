@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0007`
-Overall state: `resolved`
+Project work item: `PL-0008`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0007.json` records the latest completed follow-up.
-`.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
+`.proofline/issues/PL-0008.json` records the active analyzer follow-up.
+`.proofline/issues/PL-0007.json` preserves the latest completed culture-conversion
+closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
 API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
 reopened after a missed success path was found, then corrected and revalidated by
 PL-0006. The other prior verification remains historical evidence, while
@@ -51,13 +52,71 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-`PL-0007` has corrected culture-dependent coordinate persistence in both the modern
+`PL-0008` has reviewed all 31 CA1305 sites remaining after PL-0007. The current
+implementation makes 3D numeric failure messages and generated test evidence
+culture invariant, aligns legacy `CVMean` standard-deviation rounding with the
+modern owner, and makes the numeric reflection provider explicit. Focused tests and
+the analyzer pass; local integrated verification also passes. Commit-fixed package
+consumption and remote CI remain in progress.
+`PL-0007` corrected culture-dependent coordinate persistence in both the modern
 and 3.x compatibility converters, documented the invariant contract, and removed
 the associated 52 analyzer diagnostics. The remaining analyzer debt and its
 no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0008 work contract
+
+Status: `In progress`; implementation and local integrated verification are complete
+in the working tree, while exact-commit packaging and remote `main` verification remain.
+
+Implement now: review every remaining CA1305 site by owner and observable contract;
+make machine-readable evidence and the affected 3D failure messages culture
+invariant; remove the legacy numeric string round trip; preserve result shapes,
+exception flow, public API, and analyzer counts outside CA1305; then run the local
+and remote repository gates.
+
+Review later: public field/name compatibility diagnostics and optimization
+suggestions still require a separately approved compatibility migration or measured
+hot-path evidence. Sensor-backed accuracy and redistribution clearance require the
+external prerequisites below.
+
+Out of scope: renaming 3.x public members, speculative performance rewrites, a new
+localization framework, package publication, consumer-repository changes, sensor or
+calibration qualification, and native binary replacement.
+
+The current owners stay unchanged. `LineIntersectionTool`,
+`FullXyzAffineSolveTool`, and `NominalActualMeshComparisonTool` own their diagnostic
+messages. `CVMean` owns legacy standard-deviation output. `OpenCvAlgorithmBase`
+owns result metric/overlay extraction, and `Vision2DSmokeSuite` owns its generated
+evidence text. No mutable state, lifetime, dependency direction, or public contract
+moved. The shortest review route is those five product files, the two culture/legacy
+smoke cases, `eng/analyzer-baseline.json`, and this section.
+
+Acceptance: the pre-fix 3D culture regression fails and the corrected version passes
+for `en-US`, `de-DE`, `fr-FR`, and `ko-KR`; legacy and modern mean/metric/overlay
+results agree under `de-DE`; CA1305 is zero with no other analyzer-count increase;
+the exact public API and all local/package/remote gates pass. Evidence is retained
+under `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0008`.
+
+### PL-0008 local verification
+
+- The new 3D culture regression built with 0 warnings/errors and failed before the
+  correction at `de-DE`; it passes after correction for all four declared cultures.
+  The legacy/modern standard-deviation, metric, and overlay check passes under
+  `de-DE` through both single- and multi-ROI routes.
+- The Release solution build reports 0 warnings and 0 errors. Full smoke and the
+  instrumented coverage run each pass **233/233** cases. Coverage is Core 37.35%,
+  Inspection 69.92%, Vision2D 74.34%, Vision2D.Blob 69.17%, and Vision3D 90.70%;
+  every configured floor passes.
+- The public API matches all **3,295** baseline entries exactly. The analyzer gate
+  passes at **513 diagnostics in 15 emitted codes**, CA1305 is absent, and every
+  other code count is unchanged. The CA1305 ceiling is fixed at zero. All 80 local
+  Markdown links resolve.
+- These checks use the working tree and are reusable under the PL-0008 evidence
+  root. Exact implementation-commit packages, isolated consumption, and remote
+  `main` CI are still required before `Complete`.
 
 ## PL-0007 work contract
 
@@ -208,26 +267,39 @@ runtimes and redistribution clearance remain outside this completed scope.
 ### Current analyzer triage boundary
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
-PL-0007 removed the 52 culture diagnostics owned by the two Core converters and
-lowered the CA1305 ceiling. The exact implementation commit now reports **544
-diagnostics in the same 16 codes**. Current locations and counts are in
-`PL-0007/final-00a3fb2/analyzer-diagnostics` under the D-drive evidence root. This
-remains a no-regression gate and categorized debt review, not a zero-warning claim.
+PL-0007 removed 52 Core converter CA1305 diagnostics. PL-0008 reviewed and removed
+the remaining 31 CA1305 diagnostics. The current working tree reports **513
+diagnostics in 15 emitted codes**, with every non-CA1305 code count unchanged.
+Current evidence is in `PL-0008/analyzer-before-baseline` under the D-drive evidence
+root; exact-commit evidence will replace it at closure. This remains a no-regression
+gate and categorized debt review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
 | Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | Preserve 3.x public names and fields; broad renaming is a separate compatibility migration. |
-| Culture-sensitive formatting | CA1305 / 31 | The modern and legacy Core converters are fixed and have zero diagnostics. The 31 remaining sites are outside those owners and need their own persistence, diagnostic-text, or compatibility review before editing. |
+| Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
 | Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
 | Readability | CA1507, CA2249 / 41 | Defer unrelated nameof/Contains rewrites. |
 | Ignored constructed result | CA1806 / 6 | All six sites intentionally expect constructor rejection: five TriangleMeshDistance invalid-contract cases and one Pipeline duplicate-parameter case. Removing construction would remove the assertion. |
 | Dispose/finalizer extensibility | CA1816 / 3 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release owned Mats/results; these classes have no finalizer. Derived-finalizer suppression remains an extensibility concern, distinct from the corrected preprocessing exception leaks. |
 | Exception parameter naming | CA2208 / 5 | Four 3D sites name a member of the options object instead of the method parameter (bin counts, alignment cosine, display sample limit); the Pipeline helper reports its caller's `parameters` name. Preserve this observable exception detail in this batch; any cleanup must review consumer expectations. |
 
-The six CA1806 sites, all three Dispose bodies, and all five CA2208 call sites
-were inspected under PL-0006. The other groups were classified by diagnostics;
-this is not an individual correctness certification of all 544 current locations.
-The CA1305 ceiling was reduced by 52; no ceiling or coverage minimum was relaxed.
+The CA1305 review covered every prior location:
+
+| Owner | Prior count | Decision |
+| --- | ---: | --- |
+| `LineIntersectionTool` | 5 | Keep the existing controlled-result messages and format measured/taught decimal values with `InvariantCulture`. |
+| `FullXyzAffineSolveTool` | 2 | Keep the existing rejected-condition result and make actual/maximum condition text deterministic. |
+| `NominalActualMeshComparisonTool` | 2 | Preserve the defensive unresolved-sign failure shape and make grouped point counts invariant. |
+| Legacy `CVMean` | 4 | Replace two format/parse pairs with the modern owner's direct `Math.Round(value, 1)` behavior. |
+| `OpenCvAlgorithmBase` | 3 | Keep reflection over the existing strongly typed numeric result members and pass `InvariantCulture` to `Convert`. |
+| `Vision2DSmokeSuite` evidence writers | 15 | Use invariant decimal text for Auto MPoint and unique-match reproducibility files. |
+
+The six CA1806 sites, all three Dispose bodies, and all five CA2208 call sites were
+inspected under PL-0006. The other remaining groups are still classified by
+diagnostics; this is not an individual correctness certification of all 513 current
+locations. The CA1305 ceiling is now zero; no other ceiling or coverage minimum was
+relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

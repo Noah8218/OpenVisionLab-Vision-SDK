@@ -73,7 +73,7 @@ namespace OpenVisionLab.Vision2D.Tool
                                 break;
                             case MeanType.MeanStdDev:
                                 Cv2.MeanStdDev(ImageMean, out Scalar mean, out Scalar stddev);
-                                MeanStdDev = double.Parse(stddev[0].ToString("F1"));
+                                MeanStdDev = Math.Round(stddev[0], 1);
                                 results.Add(new CResultMean(0, MeanStdDev, OpenVisionLab.Core.CConverter.RectToRectangle(property.CvROIS[i])));
                                 break;
                         }
@@ -131,7 +131,7 @@ namespace OpenVisionLab.Vision2D.Tool
                             break;
                         case MeanType.MeanStdDev:
                             Cv2.MeanStdDev(ImageMean, out Scalar mean, out Scalar stddev);
-                            MeanStdDev = double.Parse(stddev[0].ToString("F1"));
+                            MeanStdDev = Math.Round(stddev[0], 1);
                             results.Add(new CResultMean(0, MeanStdDev, OpenVisionLab.Core.CConverter.RectToRectangle(property.CvROI)));                  
                             break;
                     }

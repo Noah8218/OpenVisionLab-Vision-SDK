@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 
 namespace OpenVisionLab.Vision3D.FeatureExtraction
@@ -361,9 +362,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 {
                     throw new InvalidOperationException(
                         "Signed deviation remained unresolved for "
-                        + unresolvedSignCount.ToString("N0")
+                        + unresolvedSignCount.ToString("N0", CultureInfo.InvariantCulture)
                         + " of "
-                        + processedPointCount.ToString("N0")
+                        + processedPointCount.ToString("N0", CultureInfo.InvariantCulture)
                         + " points.");
                 }
 
