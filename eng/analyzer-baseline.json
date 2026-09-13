@@ -3,7 +3,7 @@
   "analysisMode": "All",
   "maximumWarningsByCode": {
     "CA1051": 39,
-    "CA1305": 83,
+    "CA1305": 31,
     "CA1507": 4,
     "CA1707": 145,
     "CA1716": 2,

@@ -1,0 +1,104 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0007",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "좌표 문자열 변환의 문화권 종속성 제거",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "verified defect follow-up",
+    "summary": "analyzer 부채 설명 중 CommonConverter와 CConverter가 소수점 쉼표 문화권에서 쉼표 구분 형식을 모호하게 만들어 PointF 왕복 변환에 실패하는 결함을 재현했다.",
+    "refs": [
+      "PL-0006"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "두 공개 변환기의 invariant 구현, 다문화권 회귀, Core 사용 문서와 낮춘 analyzer 상한을 완료했다. Release/focused/full/coverage/API/analyzer가 통과했고 commit-fixed package/consumer와 원격 CI가 남았다.",
+    "next_action": "구현을 main에 commit/push하고 정확한 커밋의 package provenance, 격리 consumer와 원격 CI를 검증한 뒤 현재 상태 문서와 장부를 종료한다."
+  },
+  "objective": {
+    "summary": "공개 API 서명을 유지하면서 좌표·ROI 문자열을 실행 환경의 CurrentCulture와 무관한 쉼표 구분 invariant 형식으로 직렬화하고 역직렬화한다.",
+    "constraints": [
+      "CommonConverter와 legacy CConverter의 기존 public API, 예외 종류, 잘못된 토큰 개수에 대한 기본값 반환 계약을 유지한다.",
+      "새 추상화나 소유자 이동 없이 기존 Core 변환 소유자에 최소 수정한다.",
+      "패키지를 게시하지 않고 센서·교정 정확도나 외부 DLL 재배포 권리를 이번 범위의 완료로 주장하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "CommonConverter와 CConverter가 en-US, de-DE, fr-FR, ko-KR에서 동일한 invariant 좌표/ROI 문자열을 만들고 PointF 포함 유효 입력을 왕복 변환한다.",
+      "evidence_refs": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "기존 public API 3295개와 기존 변환 실패 계약이 유지되고 focused/full smoke가 통과한다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "CA1305 변환기 진단 52건을 제거하고 실제 analyzer 수에 맞춰 기준을 낮추며 신규 analyzer 코드나 기준 초과가 없다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Core 사용 문서에 invariant 문자열 형식, 예제, 호스트 UI 현지화 경계를 기록하고 패키지 소비 및 main 원격 CI까지 통과한다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0006"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "b4941b6f3c15acc3f29f812b9a58856002196b48"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0007",
+      "summary": "문화권 회귀, analyzer, API, 패키지 소비와 통합 검증 증거."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "failing regression reproduction",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\red\\build.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\red\\culture-smoke.log",
+      "observation": "b4941b6 변환 구현에 신규 문화권 회귀만 추가한 Release build는 경고/오류 0으로 통과했고, en-US 다음 de-DE에서 CommonConverter.PointFToString 결과가 invariant 기대값과 달라 focused smoke가 0/1로 실패했다.",
+      "observed_at": "2026-09-14T00:55:52.4449290+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "pre-commit implementation verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\green; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\precommit; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0007\\analyzer-after-baseline; src/OpenVisionLab.Core/README.md",
+      "observation": "CommonConverter/CConverter에 invariant format/parse를 적용했다. en-US/de-DE/fr-FR/ko-KR 및 malformed/exception focused smoke 1/1, Release 0 warnings/errors, full smoke와 coverage 각 232/232, exact public API 3295, coverage Core 37.35/Inspection 69.92/Vision2D 74.10/Blob 69.17/Vision3D 90.67%가 통과했다. CA1305는 83에서 31, 전체는 596에서 544로 감소했고 다른 코드 수는 불변이며 새 상한에서 analyzer gate가 통과했다.",
+      "observed_at": "2026-09-14T01:01:30.6565066+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-09-14T00:51:07.9334991+09:00",
+  "updated_at": "2026-09-14T01:01:30.6565066+09:00"
+}

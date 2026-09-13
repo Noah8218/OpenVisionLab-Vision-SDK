@@ -41,6 +41,35 @@ This package deliberately does not provide WinForms/WPF image conversion, serial
 system-time, drive-management, or other application-platform helpers. Consumers that
 display a `Mat` should keep framework-specific conversion in their own UI adapter.
 
+## Persisted coordinate text
+
+`CommonConverter` and the 3.x compatibility type `CConverter` use invariant numeric
+text for their comma-delimited ROI, rectangle, point, floating-point, and color
+methods. The stored value therefore does not change with the process
+`CurrentCulture`:
+
+```csharp
+using System.Drawing;
+using OpenVisionLab.Core;
+
+PointF original = new PointF(1.5f, -2.25f);
+string stored = CommonConverter.PointFToString(original); // "1.5,-2.25"
+PointF restored = CommonConverter.StringToPointF(stored);
+```
+
+The corresponding `StringTo*` methods expect this invariant syntax. An input with
+the wrong token count keeps the existing zero/default result contract. An invalid
+numeric token or an out-of-range value keeps the existing `FormatException` or
+`OverflowException` behavior. Format values separately in the application when
+localized UI text is required; do not use localized display text as persisted SDK
+input.
+
+Earlier 3.x builds could produce ambiguous floating-point text in a decimal-comma
+culture, for example `1,5,-2,25`. Because the comma represented both the decimal
+mark and the field separator, that text cannot be decoded losslessly. Regenerate
+such values from the original numeric data before treating them as persisted
+coordinates. Integer-only values are unaffected.
+
 ## Numerical geometry contracts
 
 `Geometry2D.LineFittingCalculator` fits `y = Slope*x + Intercept`. Use `LineFitY`

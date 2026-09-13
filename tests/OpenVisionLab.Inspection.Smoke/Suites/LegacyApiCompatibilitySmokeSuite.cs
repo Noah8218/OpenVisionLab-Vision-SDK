@@ -10,6 +10,7 @@ using OpenVisionLab.Vision2D.Tool;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using DrawingPoint = System.Drawing.Point;
@@ -28,6 +29,7 @@ namespace OpenVisionLab.Inspection.Smoke
         internal static IEnumerable<SmokeCase> Cases()
         {
             yield return new SmokeCase("Legacy Core conversion and formula results match modern APIs", TestCoreConversionAndFormulaParity);
+            yield return new SmokeCase("Core coordinate strings remain culture invariant", TestCoreCoordinateStringCultureInvariance);
             yield return new SmokeCase("Legacy Core fitting and vertical geometry match modern APIs", TestCoreFittingAndVerticalParity);
             yield return new SmokeCase("Modern Core fitting remains stable for large coordinates and angles", TestModernCoreNumericalStability);
             yield return new SmokeCase("Modern Core fitting covers overloads and invalid geometry", TestModernCoreFittingBoundaries);
@@ -79,6 +81,63 @@ namespace OpenVisionLab.Inspection.Smoke
             bool modernFound = FormulaUtil.FindIntersection(modernLine, modernVertical, out Point modernIntersection);
             Require(legacyFound == modernFound && legacyIntersection == modernIntersection,
                 "Line intersection changed during the Core rename.");
+        }
+
+        private static void TestCoreCoordinateStringCultureInvariance()
+        {
+            CultureInfo originalCulture = CultureInfo.CurrentCulture;
+            Rect cvRect = new Rect(-11, 13, 17, 19);
+            DrawingRectangle rectangle = new DrawingRectangle(-11, 13, 17, 19);
+            DrawingPoint drawingPoint = new DrawingPoint(-23, 29);
+            DrawingPointF drawingPointF = new DrawingPointF(1.5f, -2.25f);
+            Point cvPoint = new Point(-23, 29);
+
+            try
+            {
+                foreach (string cultureName in new[] { "en-US", "de-DE", "fr-FR", "ko-KR" })
+                {
+                    CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
+
+                    Require(CommonConverter.RoiToString(cvRect) == "-11,13,17,19", "Modern OpenCV ROI serialization depends on the current culture.");
+                    Require(CommonConverter.RoiToString(rectangle) == "-11,13,17,19", "Modern drawing ROI serialization depends on the current culture.");
+                    Require(CommonConverter.RectToString(rectangle) == "-11,13,17,19", "Modern rectangle serialization depends on the current culture.");
+                    Require(CommonConverter.PointToString(drawingPoint) == "-23,29", "Modern drawing-point serialization depends on the current culture.");
+                    Require(CommonConverter.CVPointToString(cvPoint) == "-23,29", "Modern OpenCV-point serialization depends on the current culture.");
+                    Require(CommonConverter.PointFToString(drawingPointF) == "1.5,-2.25", "Modern floating-point serialization depends on the current culture.");
+                    Require(CommonConverter.StringToRectangle("-11,13,17,19") == rectangle, "Modern drawing ROI parsing depends on the current culture.");
+                    Require(CommonConverter.StringToRect("-11,13,17,19") == cvRect, "Modern OpenCV ROI parsing depends on the current culture.");
+                    Require(CommonConverter.StringToCVRect("-11,13,17,19") == cvRect, "Modern OpenCV rectangle parsing depends on the current culture.");
+                    Require(CommonConverter.StringToPoint("-23,29") == drawingPoint, "Modern drawing-point parsing depends on the current culture.");
+                    Require(CommonConverter.StringToCVPoint("-23,29") == cvPoint, "Modern OpenCV-point parsing depends on the current culture.");
+                    Require(CommonConverter.StringToPointF("1.5,-2.25") == drawingPointF, "Modern floating-point parsing depends on the current culture.");
+
+                    Require(CConverter.RoiToString(cvRect) == "-11,13,17,19", "Legacy OpenCV ROI serialization depends on the current culture.");
+                    Require(CConverter.RoiToString(rectangle) == "-11,13,17,19", "Legacy drawing ROI serialization depends on the current culture.");
+                    Require(CConverter.RectToString(rectangle) == "-11,13,17,19", "Legacy rectangle serialization depends on the current culture.");
+                    Require(CConverter.PointToString(drawingPoint) == "-23,29", "Legacy drawing-point serialization depends on the current culture.");
+                    Require(CConverter.CVPointToString(cvPoint) == "-23,29", "Legacy OpenCV-point serialization depends on the current culture.");
+                    Require(CConverter.PointFToString(drawingPointF) == "1.5,-2.25", "Legacy floating-point serialization depends on the current culture.");
+                    Require(CConverter.StringToRectangle("-11,13,17,19") == rectangle, "Legacy drawing ROI parsing depends on the current culture.");
+                    Require(CConverter.StringToRect("-11,13,17,19") == cvRect, "Legacy OpenCV ROI parsing depends on the current culture.");
+                    Require(CConverter.StringToCVRect("-11,13,17,19") == cvRect, "Legacy OpenCV rectangle parsing depends on the current culture.");
+                    Require(CConverter.StringToPoint("-23,29") == drawingPoint, "Legacy drawing-point parsing depends on the current culture.");
+                    Require(CConverter.StringToCVPoint("-23,29") == cvPoint, "Legacy OpenCV-point parsing depends on the current culture.");
+                    Require(CConverter.StringToPointF("1.5,-2.25") == drawingPointF, "Legacy floating-point parsing depends on the current culture.");
+                }
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+            }
+
+            Require(CommonConverter.StringToPointF("1,5,-2,25") == DrawingPointF.Empty, "Modern malformed token-count fallback changed.");
+            Require(CConverter.StringToPointF("1,5,-2,25") == DrawingPointF.Empty, "Legacy malformed token-count fallback changed.");
+            RequireThrows<FormatException>(() => CommonConverter.StringToPointF("invalid,2"));
+            RequireThrows<FormatException>(() => CConverter.StringToPointF("invalid,2"));
+            Require(CommonConverter.IntToByte(255) == byte.MaxValue, "Modern byte conversion changed.");
+            Require(CConverter.IntToByte(255) == byte.MaxValue, "Legacy byte conversion changed.");
+            RequireThrows<OverflowException>(() => CommonConverter.IntToByte(256));
+            RequireThrows<OverflowException>(() => CConverter.IntToByte(256));
         }
 
         private static void TestCoreFittingAndVerticalParity()
