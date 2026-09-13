@@ -2,7 +2,7 @@
 
 Updated: 2026-09-13
 Project work item: `PL-0005`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
@@ -271,8 +271,9 @@ approval.
 
 ## PL-0005 — audit finding remediation
 
-Status: `doing` until the changed worktree has passed the current quality gates and
-has one exact source commit on `origin/main`.
+Status: `Complete`. Implementation commit
+`a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b` is on `origin/main`; the package
+provenance and consumer evidence below is fixed to that same commit.
 
 Scope: fix the reproduced acceptance, numerical, filter, threshold, and error-code
 failures; document the actual SIFT/ORB runtime choice; and make the source-reference
@@ -310,7 +311,46 @@ Completion criteria:
 - Release build, coverage, exact public API, analyzer no-regression, package
   provenance, and isolated package-only consumer checks pass for one clean commit.
 
-Verification and evidence are recorded below after the final clean-commit run.
+Verification and evidence:
+
+- .NET SDK `8.0.423`; clean-commit Release build: `0` warnings and `0` errors;
+  full synthetic smoke: `224/224` passed. Evidence:
+  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0005\postcommit-a872ed1\build.log`,
+  `smoke.log`.
+- Coverage gate passed: Core `24.36% >= 20.00%`, Inspection
+  `69.92% >= 68.00%`, Vision2D `72.81% >= 68.00%`, Vision2D.Blob
+  `69.17% >= 68.00%`, Vision3D `90.58% >= 89.00%`.
+- Exact public API gate passed `3,295/3,295`; analyzer no-regression gate passed
+  `596` diagnostics at or below the existing per-code baseline.
+- Five local packages were created as `3.0.1-audit.20260913.1`. The provenance
+  verifier passed with a clean worktree and exact commit
+  `a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b`. Manifest and logs:
+  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0005\package-20260913-a872ed1\package-provenance.json`.
+
+  | Package | SHA-256 |
+  | --- | --- |
+  | `OpenVisionLab.Core` | `1A63E33B945F82620920C9FB5F6E424BA7BCE818ECD6A274E726637F6B09BDA5` |
+  | `OpenVisionLab.Inspection` | `0B4E518B79555F29EE41583B1F5B4A42295945547793E4CEF6D370B2FBF57C54` |
+  | `OpenVisionLab.Vision2D` | `0D26CA93DE1CDD7FCAE0090409A542076497B4E31713225D823D9F4F65737D42` |
+  | `OpenVisionLab.Vision2D.Blob` | `E0D7C2F5CBFD8166B1F82AF075F70DA1EF6A3DD53E5A09BAE704741D8EEB8A0A` |
+  | `OpenVisionLab.Vision3D` | `B2FBD34F5345E70FC44324112FDF3B34652E36025CBF0159D2E6F358B4280A14` |
+
+- Isolated `net8.0/win-x64` package consumer restore/build/run passed. Its output
+  contains `13` top-level files and exactly one `OpenCvSharpExtern.dll` at the
+  output root. Evidence:
+  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0005\package-20260913-a872ed1\consumer`.
+- `git push origin main` delivered the implementation commit. GitHub Actions Build
+  run [`34747318509`](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34747318509)
+  passed in `1m55s`, including the repository's package provenance guards and
+  package-only consumer. The runner emitted only the existing Node.js 20
+  deprecation annotation for actions forced to Node.js 24.
+
+Boundary: this closes the reproduced F1-F9 findings and the documented first-use
+source-reference gap. It does not replace the bundled native bytes, provide a
+native SIFT entry point, publish a package, create a release/tag, deploy, validate
+another RID or .NET Framework runtime, run real sensors/calibration/Gauge R&R, or
+establish commercial redistribution clearance. The latter remains blocked by the
+prerequisites recorded above.
 
 ## Next priority — external redistribution-clearance evidence
 

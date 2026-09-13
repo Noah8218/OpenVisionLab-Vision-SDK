@@ -14,8 +14,8 @@
     "refs": []
   },
   "state": {
-    "status": "doing",
-    "current_summary": "F1-F9 remediation is implemented in the working tree; final clean-commit quality, package, and delivery evidence is pending."
+    "status": "resolved",
+    "current_summary": "PL-0005 is resolved. Implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b was pushed to origin/main; clean local and GitHub Actions quality, package provenance, and isolated consumer evidence passed."
   },
   "objective": {
     "summary": "재현된 acceptance/numerical/filter/threshold/error-classification 결함을 고치고 SIFT fallback과 direct-source native setup을 문서화한다.",
@@ -56,7 +56,7 @@
     {"id": "M1", "summary": "Fix F1-F3 and F9 numerical/acceptance contracts with direct regressions.", "status": "done", "required": true, "criteria_refs": ["C1", "C2"], "issue_refs": []},
     {"id": "M2", "summary": "Fix F4-F6 execution and error classification with direct regressions.", "status": "done", "required": true, "criteria_refs": ["C3"], "issue_refs": []},
     {"id": "M3", "summary": "Document F7/F8 behavior and align current status with the remediation scope.", "status": "done", "required": true, "criteria_refs": ["C4"], "issue_refs": []},
-    {"id": "M4", "summary": "Run the clean-commit quality/package gates and record delivery evidence.", "status": "doing", "required": true, "criteria_refs": ["C5"], "issue_refs": []}
+    {"id": "M4", "summary": "Run the clean-commit quality/package gates and record delivery evidence.", "status": "done", "required": true, "criteria_refs": ["C5"], "issue_refs": []}
   ],
   "relations": [
     {"type": "follow_up_to", "target": "PL-0004"}
@@ -66,11 +66,50 @@
     {"kind": "audit evidence", "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\audit-20260913-c55fa4f"},
     {"kind": "current authority", "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"}
   ],
-  "artifacts": [],
-  "evidence": [],
+  "artifacts": [
+    {
+      "kind": "clean-commit quality evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0005\\postcommit-a872ed1",
+      "summary": "Release build, 224/224 smoke, five coverage floors, exact public API 3295, and analyzer baseline 596 passed for implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b."
+    },
+    {
+      "kind": "package provenance evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0005\\package-20260913-a872ed1",
+      "summary": "Five packages version 3.0.1-audit.20260913.1 passed exact source, commit, dependency, third-party, archive, and assembly product-version checks."
+    },
+    {
+      "kind": "package consumer evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0005\\package-20260913-a872ed1\\consumer",
+      "summary": "Isolated net8.0/win-x64 package-only consumer passed with 13 top-level output files and one OpenCvSharpExtern.dll."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "clean-commit local quality verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0005\\postcommit-a872ed1",
+      "observation": "Implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b built with .NET SDK 8.0.423 at 0 warnings/0 errors; full synthetic smoke passed 224/224. Coverage passed Core 24.36%, Inspection 69.92%, Vision2D 72.81%, Vision2D.Blob 69.17%, Vision3D 90.58%. Exact public API passed 3295/3295 and analyzer baseline passed 596 diagnostics.",
+      "observed_at": "2026-09-13T17:17:37+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "package provenance and isolated consumer",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0005\\package-20260913-a872ed1",
+      "observation": "Five packages version 3.0.1-audit.20260913.1 passed Verify-PackageProvenance.ps1 with RequireCleanWorktree and exact commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b. Package hashes are recorded in package-provenance.json. The isolated net8.0/win-x64 package consumer passed with 13 top-level files and exactly one native OpenCvSharpExtern.dll at the output root.",
+      "observed_at": "2026-09-13T17:17:37+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "remote delivery",
+      "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34747318509",
+      "observation": "origin/main implementation commit a872ed11b88b0371a3a39b3a9a7a9a46db4d1f5b passed the GitHub Actions Build workflow in 1m55s, including build, smoke/coverage, exact public API, analyzer, pack, provenance fail-closed guards, isolated package consumer, and native runtime copy checks. A Node.js 20 deprecation annotation was non-blocking.",
+      "observed_at": "2026-09-13T17:19:00+09:00"
+    }
+  ],
   "events": [
-    {"id": "D1", "kind": "decision", "at": "2026-09-13T00:00:00+09:00", "summary": "사용자가 감사 결과의 우선순위에 따라 F1-F9 수정을 진행하도록 승인했다.", "evidence_refs": []}
+    {"id": "D1", "kind": "decision", "at": "2026-09-13T00:00:00+09:00", "summary": "사용자가 감사 결과의 우선순위에 따라 F1-F9 수정을 진행하도록 승인했다.", "evidence_refs": []},
+    {"id": "T1", "kind": "transition", "at": "2026-09-13T17:19:00+09:00", "from": "doing", "to": "resolved", "summary": "C1-C5가 직접 회귀 테스트, clean-commit quality gates, package provenance, isolated package consumer, durable documentation, implementation commit push, and remote Build success로 충족됐다. 상용 재배포, stable release, 추가 RID/.NET Framework, 실제 센서·교정 검증은 별도 경계로 유지한다.", "evidence_refs": ["E1", "E2", "E3"]}
   ],
   "created_at": "2026-09-13T00:00:00+09:00",
-  "updated_at": "2026-09-13T00:00:00+09:00"
+  "updated_at": "2026-09-13T17:19:00+09:00"
 }
