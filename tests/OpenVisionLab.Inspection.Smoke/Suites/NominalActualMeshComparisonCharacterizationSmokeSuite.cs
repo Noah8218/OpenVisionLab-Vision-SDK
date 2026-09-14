@@ -321,9 +321,9 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             Require(!result.Success
                     && !string.IsNullOrWhiteSpace(result.Message)
-                    && result.Message.IndexOf(
+                    && result.Message.Contains(
                         messageFragment,
-                        StringComparison.OrdinalIgnoreCase) >= 0
+                        StringComparison.OrdinalIgnoreCase)
                     && result.ProcessedPointCount == 0
                     && result.UnsignedStatistics == null
                     && result.SignedStatistics == null

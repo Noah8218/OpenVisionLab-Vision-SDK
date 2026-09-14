@@ -138,7 +138,7 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(missing.Success && missing.Points.Count == 2 && missing.Diagnostics.SkippedMissingPairCount == 2,
                 "Missing edge cells must skip only their adjacent pairs without filling or bridging.");
-            Require(!insufficient.Success && insufficient.Message.IndexOf("at least two accepted", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!insufficient.Success && insufficient.Message.Contains("at least two accepted", StringComparison.OrdinalIgnoreCase),
                 "Height-difference edge must reject fewer than two accepted scanlines.");
         }
 
@@ -196,7 +196,7 @@ namespace OpenVisionLab.Inspection.Smoke
                     PositiveScanlineAxis = DeterministicLineFitPositiveAxis.Z
                 });
 
-            Require(!result.Success && result.Message.IndexOf("support", StringComparison.OrdinalIgnoreCase) >= 0, "Deterministic line fit must reject insufficient taught support.");
+            Require(!result.Success && result.Message.Contains("support", StringComparison.OrdinalIgnoreCase), "Deterministic line fit must reject insufficient taught support.");
         }
 
         private static void TestDeterministicRigidSurfacePoseSearch()
@@ -342,14 +342,14 @@ namespace OpenVisionLab.Inspection.Smoke
                 && !noMatch.Matched
                 && noMatch.Pose == null
                 && noMatch.EvaluatedCandidateCount == 7
-                && noMatch.RejectionReason.IndexOf(
+                && noMatch.RejectionReason.Contains(
                     "bounds",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Translation bounds must produce a controlled no-match result.");
             Require(!rejected.Success
-                && rejected.Message.IndexOf(
+                && rejected.Message.Contains(
                     "exceeds",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "A declared candidate budget must fail closed before search.");
         }
 
@@ -441,14 +441,14 @@ namespace OpenVisionLab.Inspection.Smoke
                     invalidBounds);
 
             Require(!result.Success
-                && result.Message.IndexOf(
+                && result.Message.Contains(
                     "expanded candidate count",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Multiple-match search must reject an insufficient expanded candidate budget before execution.");
             Require(!invalidResult.Success
-                && invalidResult.Message.IndexOf(
+                && invalidResult.Message.Contains(
                     "finite and ordered",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Multiple-match search must fail closed on invalid nested pose bounds.");
         }
 
@@ -682,14 +682,14 @@ namespace OpenVisionLab.Inspection.Smoke
                     0.0));
 
             Require(!invalidSymmetry.Success
-                && invalidSymmetry.Message.IndexOf(
+                && invalidSymmetry.Message.Contains(
                     "None symmetry",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "A malformed none declaration must fail closed.");
             Require(!invalidPose.Success
-                && invalidPose.Message.IndexOf(
+                && invalidPose.Message.Contains(
                     "rigid",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "A non-rigid candidate pose must fail closed.");
         }
 
@@ -836,19 +836,19 @@ namespace OpenVisionLab.Inspection.Smoke
                 });
 
             Require(!overlap.Success
-                && overlap.Message.IndexOf(
+                && overlap.Message.Contains(
                     "both explicitly",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Overlapping authored roles must fail closed.");
             Require(!outside.Success
-                && outside.Message.IndexOf(
+                && outside.Message.Contains(
                     "must exist",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Out-of-range authored exclusions must fail closed.");
             Require(!empty.Success
-                && empty.Message.IndexOf(
+                && empty.Message.Contains(
                     "retain at least one",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "A selection that removes every surface must fail closed.");
         }
 
@@ -1037,7 +1037,7 @@ namespace OpenVisionLab.Inspection.Smoke
             RequireApproximately(result.RotationAngleDegrees, 90.0, 1e-12,
                 "Unexpected rotation angle.");
             Require(!rejected.Success
-                && rejected.Message.IndexOf("16 finite", StringComparison.Ordinal) >= 0,
+                && rejected.Message.Contains("16 finite", StringComparison.Ordinal),
                 "Non-finite transform input must fail closed.");
         }
 
@@ -1118,9 +1118,9 @@ namespace OpenVisionLab.Inspection.Smoke
                 canceled = true;
             }
 
-            Require(!rejectedCollinear.Success && rejectedCollinear.Message.IndexOf("collinear", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedCollinear.Success && rejectedCollinear.Message.Contains("collinear", StringComparison.OrdinalIgnoreCase),
                 "Collinear rigid point pairs must fail closed.");
-            Require(!rejectedMismatch.Success && rejectedMismatch.Message.IndexOf("lengths differ", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedMismatch.Success && rejectedMismatch.Message.Contains("lengths differ", StringComparison.OrdinalIgnoreCase),
                 "Distance-inconsistent rigid point pairs must fail closed.");
             Require(canceled, "Rigid point-pair alignment must honor cancellation before evaluation.");
         }
@@ -1227,15 +1227,15 @@ namespace OpenVisionLab.Inspection.Smoke
             }
 
             Require(!rejectedCollinear.Success
-                && rejectedCollinear.Message.IndexOf("collinear", StringComparison.OrdinalIgnoreCase) >= 0,
+                && rejectedCollinear.Message.Contains("collinear", StringComparison.OrdinalIgnoreCase),
                 "Collinear best-fit correspondences must fail closed.");
-            Require(!rejectedCount.Success && rejectedCount.Message.IndexOf("four", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedCount.Success && rejectedCount.Message.Contains("four", StringComparison.OrdinalIgnoreCase),
                 "Best-fit correspondence count below four must fail closed.");
-            Require(!rejectedCap.Success && rejectedCap.Message.IndexOf("maximum", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedCap.Success && rejectedCap.Message.Contains("maximum", StringComparison.OrdinalIgnoreCase),
                 "Best-fit correspondence count above the authored cap must fail closed.");
-            Require(!rejectedDuplicate.Success && rejectedDuplicate.Message.IndexOf("unique", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedDuplicate.Success && rejectedDuplicate.Message.Contains("unique", StringComparison.OrdinalIgnoreCase),
                 "Duplicate best-fit coordinates must fail closed.");
-            Require(!rejectedNonFinite.Success && rejectedNonFinite.Message.IndexOf("finite", StringComparison.OrdinalIgnoreCase) >= 0,
+            Require(!rejectedNonFinite.Success && rejectedNonFinite.Message.Contains("finite", StringComparison.OrdinalIgnoreCase),
                 "Non-finite best-fit coordinates must fail closed.");
             Require(canceled, "Constrained best-fit rigid alignment must honor cancellation before evaluation.");
         }
@@ -1964,7 +1964,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                Require(exception.Message.IndexOf("span two horizontal axes", StringComparison.OrdinalIgnoreCase) >= 0,
+                Require(exception.Message.Contains("span two horizontal axes", StringComparison.OrdinalIgnoreCase),
                     "Degenerate reference rejection must retain the plane-fit contract.");
             }
         }
@@ -2017,7 +2017,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                Require(exception.Message.IndexOf("distinct", StringComparison.OrdinalIgnoreCase) >= 0,
+                Require(exception.Message.Contains("distinct", StringComparison.OrdinalIgnoreCase),
                     "Coincident point-pair rejection must explain the distinct-point contract.");
             }
         }
@@ -2061,7 +2061,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                Require(exception.Message.IndexOf("at least one sample", StringComparison.OrdinalIgnoreCase) >= 0,
+                Require(exception.Message.Contains("at least one sample", StringComparison.OrdinalIgnoreCase),
                     "Empty gap/flush rejection must name the sample requirement.");
             }
         }
@@ -2119,7 +2119,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                Require(exception.Message.IndexOf("at least one sample", StringComparison.OrdinalIgnoreCase) >= 0,
+                Require(exception.Message.Contains("at least one sample", StringComparison.OrdinalIgnoreCase),
                     "Empty volume rejection must name the sample requirement.");
             }
         }
@@ -2223,7 +2223,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                Require(exception.Message.IndexOf("finite", StringComparison.OrdinalIgnoreCase) >= 0,
+                Require(exception.Message.Contains("finite", StringComparison.OrdinalIgnoreCase),
                     "Cross-section rejection must explain the finite sample contract.");
             }
         }

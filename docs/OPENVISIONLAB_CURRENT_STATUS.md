@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0009`
-Overall state: `resolved`
+Project work item: `PL-0010`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0009.json` records the completed correctness-focused analyzer
-follow-up. `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
+`.proofline/issues/PL-0010.json` records the active readability-focused analyzer
+follow-up. `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
+review, and `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
 and `.proofline/issues/PL-0007.json` preserves the preceding culture-conversion
 closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
 API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
@@ -53,6 +54,11 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
+`PL-0010` is reviewing all 41 readability diagnostics. The implementation candidate
+uses `nameof` at four existing Vision3D argument checks and the same
+`StringComparison` with `Contains` at 37 .NET 8 smoke assertions. The focused
+analyzer and local integrated gates pass at 458 diagnostics in 10 codes. Package
+consumption from the exact commit and remote CI are still pending.
 `PL-0009` reviewed the 14 remaining exception-parameter, Dispose/finalizer, and
 intentional-construction diagnostics. The implementation reports the
 public `options` argument while retaining the invalid 3D option-property name,
@@ -73,6 +79,60 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0010 work contract
+
+Status: `Locally verified implementation candidate` on `main`; no implementation
+commit is fixed yet.
+
+Implement now: review every CA1507 and CA2249 diagnostic by owner, target
+framework, and observable meaning; replace only literal parameter names that are
+identical to the current parameter and positive `IndexOf` containment assertions
+that can retain their exact `StringComparison`; lower the measured analyzer
+ceilings to zero; then run integrated, package-consumer, and remote verification.
+
+Review later: the 186 public field/name compatibility diagnostics require a
+separately versioned migration, and the 272 allocation/static/dispatch suggestions
+require measured hot-path evidence. Sensor-backed accuracy and redistribution
+clearance still require the external prerequisites listed below.
+
+Out of scope: public renaming or field encapsulation, speculative performance work,
+new abstractions, behavior or exception-contract changes, package publication,
+consumer-repository mutation, sensor/calibration qualification, UI, or native
+binary changes.
+
+The existing owners stay unchanged. Three Vision3D validation files own the four
+argument checks and continue to produce the same exception types and parameter
+names. Five `OpenVisionLab.Inspection.Smoke` suites own the 37 failure-message
+assertions and continue to test the same fragments with `Ordinal` or
+`OrdinalIgnoreCase`. All `Contains(string, StringComparison)` calls remain in the
+`net8.0` smoke project; no `netstandard2.0` package dependency or public contract
+moves. There is no mutable-state or lifetime change.
+
+Shortest review order: the three Vision3D validation sites, the five smoke suite
+diffs, `eng/analyzer-baseline.json`, then this section. One search for `CA1507` or
+`CA2249` in the retained analyzer output reaches the complete source inventory.
+
+Acceptance: all 41 replacements preserve their prior result and comparison mode;
+CA1507 and CA2249 are zero, analyzer total is 458 with the other ten code counts
+unchanged, public API remains exactly 3,295 entries, and all local/package/remote
+gates pass. Evidence is retained under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0010`.
+
+### PL-0010 verification and closure
+
+- The source inventory confirms four current parameter-name literals and 37
+  positive `IndexOf(..., StringComparison) >= 0` assertions. The replacements do
+  not introduce a negative comparison or a package-framework API dependency.
+- The focused analyzer reports **458 diagnostics in 10 emitted codes**, omits
+  CA1507 and CA2249, and leaves every other diagnostic count unchanged.
+- The Release solution build reports 0 warnings/errors. Direct and instrumented
+  full smoke each pass **233/233** cases. Coverage is Core 37.35%, Inspection
+  69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, and Vision3D 90.97%; all floors
+  pass. The public API matches all **3,295** entries and all 80 local Markdown links
+  resolve.
+- Fixed-commit packages, isolated consumer, and remote CI are pending before
+  closure.
 
 ## PL-0009 work contract
 
@@ -360,19 +420,18 @@ runtimes and redistribution clearance remain outside this completed scope.
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
 PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. PL-0009 removed the 14
-CA1806, CA1816, and CA2208 diagnostics. The exact implementation commit reports
-**499 diagnostics in 12 emitted codes**, with every other code count unchanged.
-Current counts are recorded in
-`PL-0009/final-3117548/integrated-verification-summary.json` under the D-drive
-evidence root and in remote Build run 34790849877. This remains a no-regression gate
-and categorized debt review, not a zero-warning claim.
+CA1806, CA1816, and CA2208 diagnostics. The current PL-0010 implementation
+candidate removes the 41 CA1507 and CA2249 readability diagnostics. Its focused
+analyzer reports **458 diagnostics in 10 emitted codes**, with every other code
+count unchanged. Exact-commit package and remote evidence is still pending. This
+remains a no-regression gate and categorized debt review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
 | Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | Preserve 3.x public names and fields; broad renaming is a separate compatibility migration. |
 | Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
 | Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
-| Readability | CA1507, CA2249 / 41 | Defer unrelated nameof/Contains rewrites. |
+| Readability | CA1507, CA2249 / 0 | All 41 sites were reviewed for framework and comparison equivalence; the ceilings are removed. |
 | Ignored constructed result | CA1806 / 0 | Five TriangleMeshDistance and one Pipeline rejection assertion explicitly discard the constructed value without changing the expected exception. The ceiling is zero. |
 | Dispose/finalizer extensibility | CA1816 / 0 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release their existing owned Mats/results, then suppress finalization for derived instances. The ceiling is zero. |
 | Exception parameter naming | CA2208 / 0 | Four 3D messages retain the invalid option-property name while reporting the actual public `options` argument; the Pipeline helper still reports `parameters`. The ceiling is zero. |
@@ -389,11 +448,12 @@ The CA1305 review covered every prior location:
 | `Vision2DSmokeSuite` evidence writers | 15 | Use invariant decimal text for Auto MPoint and unique-match reproducibility files. |
 
 PL-0009 re-reviewed and corrected the six CA1806 sites, all three Dispose bodies,
-and all five CA2208 call sites after the user requested the next analyzer priority.
-The other remaining groups are still classified by diagnostics; this is not an
-individual correctness certification of all 499 current locations. The CA1305,
-CA1806, CA1816, and CA2208 ceilings are now zero; no other ceiling or coverage
-minimum was relaxed.
+and all five CA2208 call sites. PL-0010 reviewed the four CA1507 argument sites and
+37 CA2249 smoke assertions. The other remaining groups are still classified by
+diagnostics; this is not an individual correctness certification of all 458 current
+locations. CA1305 remains a fixed zero ceiling; CA1507, CA1806, CA1816, CA2208,
+and CA2249 are absent from both output and the maximum-count map. No other ceiling
+or coverage minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

@@ -1367,7 +1367,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 new[] { new ReferenceGridInputPoint(0, 0, 1.0, 0.0, 2.0) },
                 CreateReferenceGridProfile(1, 1, 0.0));
 
-            Require(!result.Success && result.Message.IndexOf("half-open", StringComparison.OrdinalIgnoreCase) >= 0, "Reference-grid upper U boundary must be rejected rather than assigned outside the grid.");
+            Require(!result.Success && result.Message.Contains("half-open", StringComparison.OrdinalIgnoreCase), "Reference-grid upper U boundary must be rejected rather than assigned outside the grid.");
         }
 
         private static void TestReferenceGridInvalidAxes()
@@ -1382,7 +1382,7 @@ namespace OpenVisionLab.Inspection.Smoke
             ReferenceGridRegridResult result = new ReferenceGridRegridTool().Execute(
                 new[] { new ReferenceGridInputPoint(0, 0, 0.0, 0.0, 0.0) }, invalid);
 
-            Require(!result.Success && result.Message.IndexOf("orthonormal", StringComparison.OrdinalIgnoreCase) >= 0, "Reference-grid non-orthonormal axes must be rejected.");
+            Require(!result.Success && result.Message.Contains("orthonormal", StringComparison.OrdinalIgnoreCase), "Reference-grid non-orthonormal axes must be rejected.");
         }
 
         private static void TestDeterministicMedianFilterSpike()
@@ -1518,9 +1518,9 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(!result.Success
                 && result.Values.Count == 0
-                && result.Message.IndexOf(
+                && result.Message.Contains(
                     "unique finite reference samples",
-                    StringComparison.OrdinalIgnoreCase) >= 0,
+                    StringComparison.OrdinalIgnoreCase),
                 "Level Surface must fail closed when unique finite support is insufficient.");
         }
 
@@ -1573,7 +1573,7 @@ namespace OpenVisionLab.Inspection.Smoke
             LevelFrameResult invalid = new LevelFrameTool().Execute(
                 new LevelFramePlane(double.NaN, 0.0, 1.0));
             Require(!invalid.Success
-                && invalid.Message.IndexOf("finite", StringComparison.OrdinalIgnoreCase) >= 0,
+                && invalid.Message.Contains("finite", StringComparison.OrdinalIgnoreCase),
                 "Level Frame must fail closed for non-finite plane parameters.");
 
             CancellationTokenSource cancellation = new CancellationTokenSource();

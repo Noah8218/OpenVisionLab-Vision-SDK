@@ -287,7 +287,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
             if (profile.RowCount <= 0 || profile.ColumnCount <= 0 || checked(profile.RowCount * profile.ColumnCount) > MaximumOutputCellCount)
             {
-                throw new ArgumentOutOfRangeException("profile", "Reference-grid dimensions must be positive and within the deterministic output-cell limit.");
+                throw new ArgumentOutOfRangeException(nameof(profile), "Reference-grid dimensions must be positive and within the deterministic output-cell limit.");
             }
             if (!IsFinite(profile.PitchU) || !IsFinite(profile.PitchV) || profile.PitchU <= 0.0 || profile.PitchV <= 0.0
                 || !IsFinite(profile.MinimumCoverageRatio) || profile.MinimumCoverageRatio < 0.0 || profile.MinimumCoverageRatio > 1.0)

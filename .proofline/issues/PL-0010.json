@@ -1,0 +1,164 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0010",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "가독성 analyzer 계약 정리",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "user-approved analyzer follow-up",
+    "summary": "PL-0009 이후 남은 진단 중 동작과 공개 계약을 바꾸지 않고 제거할 수 있는 CA1507 4건과 CA2249 37건을 전수 검토하고 최소 수정으로 정리한다.",
+    "refs": [
+      "PL-0009"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "41건 등가 치환과 기준선 조정을 완료했고 local Release build 0/0, direct/coverage smoke 233/233, coverage floors, API 3295 exact, analyzer 458/10, Markdown links 80/80가 통과했다. 구현 커밋 고정과 package/consumer/remote CI가 남았다.",
+    "next_action": "구현 변경을 main에 커밋·푸시하고 exact commit의 package/provenance/negative/격리 consumer/native 및 GitHub CI를 검증한다."
+  },
+  "objective": {
+    "summary": "매개변수 이름, 문자열 비교 방식, 실패 메시지 검증과 공개 API를 보존하면서 CA1507과 CA2249를 0으로 낮추고 analyzer 총계를 499에서 458로 줄인다.",
+    "constraints": [
+      "C:\\Git\\OpenVisionLab-Vision-SDK의 main만 수정하고 C:\\Git\\Vision-SDK의 과거 worktree는 변경하지 않는다.",
+      "공개 API 3295개, 예외 종류·ParamName, 실패 메시지 검증 의미와 StringComparison 값을 유지한다.",
+      "netstandard2.0 제품 라이브러리에 지원되지 않는 문자열 API를 추가하지 않는다. CA2249 수정은 net8.0 smoke 프로젝트에만 적용한다.",
+      "공개 이름 호환성 186건과 측정 없는 성능 제안 272건은 이번 범위에 포함하지 않는다.",
+      "새 추상화나 소유자 이동 없이 기존 소유자와 smoke에 최소 수정한다.",
+      "패키지를 게시하지 않고 센서·교정·현장 성능·재배포 승인을 완료로 주장하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "CA1507 4건과 CA2249 37건을 파일, 소유자, 대상 프레임워크와 비교 의미별로 전수 확인한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "네 예외 매개변수 문자열은 동일한 nameof 결과를 내고, 37개 smoke 포함 검사는 동일한 StringComparison과 참 조건을 유지한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "CA1507과 CA2249가 모두 0이고 analyzer 총계가 458이며 나머지 10개 코드 수는 기존 기준과 같다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "공개 API 3295개, Release build, 전체 smoke/coverage, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "41건 소유자·프레임워크·동작 등가성 분류",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "nameof·Contains 최소 수정과 analyzer 기준선 조정",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "analyzer/API/full smoke/coverage 통합 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C3",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "고정 커밋 package·consumer·원격 CI와 durable closure",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0009"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "0b1f88fee7d1806b34ea853ca32170f3c3325766"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "diagnostic inventory",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0010/planning/diagnostics.log"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0010",
+      "summary": "41건 진단 분류, analyzer/API, package consumer와 CI 증거."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "diagnostic inventory and equivalence review",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0010\\planning\\diagnostics.log",
+      "observation": "고정 HEAD analyzer에서 CA1507 4건과 CA2249 37건을 확인했다. CA1507은 Vision3D의 현재 매개변수명과 동일한 리터럴 네 곳이다. CA2249는 모두 net8.0 smoke 다섯 suite의 IndexOf(fragment, StringComparison.Ordinal 또는 OrdinalIgnoreCase) >= 0 형태여서 같은 StringComparison의 Contains로 참 조건을 보존할 수 있다.",
+      "observed_at": "2026-09-14T09:48:15.9010690+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused implementation and analyzer verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0010\\analyzer-fixed\\verify-analyzer.log",
+      "observation": "세 Vision3D 검증 파일의 네 리터럴을 같은 결과의 nameof로 바꾸고, net8.0 smoke 다섯 suite의 37개 positive IndexOf 포함 검사를 동일한 StringComparison의 Contains로 바꿨다. analyzer는 CA1507·CA2249를 방출하지 않으며 CA1051 39, CA1707 145, CA1716 2, CA1805 69, CA1822 68, CA1825 32, CA1843 9, CA1859 11, CA1861 82, CA1869 1의 합계 458건이다.",
+      "observed_at": "2026-09-14T09:51:41.5170578+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "working-tree integrated verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0010\\precommit",
+      "observation": "Release solution build는 경고/오류 0, direct full smoke와 coverage smoke는 각각 233/233, exact public API는 3295, analyzer는 458건/10코드, local Markdown link는 80/80로 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, Vision3D 90.97%로 모두 기준 이상이다. source-equivalence는 IndexOf 37→Contains 37, parameter literal 4→nameof 4와 target framework 경계를 확인한다.",
+      "observed_at": "2026-09-14T09:54:06.2049910+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-09-14T09:48:15.9010690+09:00",
+  "updated_at": "2026-09-14T09:54:06.2049910+09:00"
+}

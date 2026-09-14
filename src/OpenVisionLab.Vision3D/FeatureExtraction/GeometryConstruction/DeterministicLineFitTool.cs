@@ -273,8 +273,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         private static void Validate(IReadOnlyList<DeterministicLineFitPoint> points, DeterministicLineFitOptions options)
         {
-            if (points == null) throw new ArgumentNullException("points");
-            if (options == null) throw new ArgumentNullException("options");
+            if (points == null) throw new ArgumentNullException(nameof(points));
+            if (options == null) throw new ArgumentNullException(nameof(options));
             if (string.IsNullOrWhiteSpace(options.InputHash)) throw new InvalidDataException("Line Fit requires a stable non-empty input hash for deterministic pair scheduling.");
             if (points.Count < 3) throw new InvalidDataException("Line Fit requires at least three EdgePointSet points; received " + points.Count + ".");
             if (!IsFinite(options.MaximumOrthogonalResidual) || options.MaximumOrthogonalResidual <= 0.0)

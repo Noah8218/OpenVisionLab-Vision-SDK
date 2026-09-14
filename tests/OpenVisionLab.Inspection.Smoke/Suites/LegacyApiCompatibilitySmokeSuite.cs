@@ -330,7 +330,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 }
 
                 Require(!legacyResult
-                    && legacyError.ToString().IndexOf("[FAILED]", StringComparison.OrdinalIgnoreCase) >= 0,
+                    && legacyError.ToString().Contains("[FAILED]", StringComparison.OrdinalIgnoreCase),
                     "COpenCVHelper null behavior changed; review the documented migration asymmetry.");
             }
 
@@ -677,7 +677,7 @@ namespace OpenVisionLab.Inspection.Smoke
                     }
 
                     Require(legacy.results.Count == 0
-                        && legacyFailure.IndexOf("features2d_SIFT_create", StringComparison.OrdinalIgnoreCase) >= 0,
+                        && legacyFailure.Contains("features2d_SIFT_create", StringComparison.OrdinalIgnoreCase),
                         "CVSIFT native entry-point failure changed; review the migration contract.");
 
                     VisionToolResult modernOutcome = modern.Execute(blank);

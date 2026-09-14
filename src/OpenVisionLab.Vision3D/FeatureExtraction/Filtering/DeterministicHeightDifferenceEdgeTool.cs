@@ -284,7 +284,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             if (options == null || options.Selection == null)
             {
-                throw new ArgumentNullException("options", "Height Difference Edge options and selection are required.");
+                throw new ArgumentNullException(nameof(options), "Height Difference Edge options and selection are required.");
             }
 
             if (!IsFinite(options.MinimumDelta) || options.MinimumDelta <= 0.0)

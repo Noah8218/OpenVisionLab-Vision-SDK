@@ -399,7 +399,7 @@ namespace OpenVisionLab.Inspection.Smoke
                         "Both repeated candidates must be evaluated and neither may be suggested.");
                     Require(tool.candidates.All(candidate =>
                             !candidate.Accepted
-                            && candidate.RejectReason.IndexOf("UniquenessMargin", StringComparison.Ordinal) >= 0),
+                            && candidate.RejectReason.Contains("UniquenessMargin", StringComparison.Ordinal)),
                         "Repeated patterns must fail specifically at the uniqueness gate.");
 
                     SaveAutoMPointEvidence(
@@ -755,7 +755,7 @@ namespace OpenVisionLab.Inspection.Smoke
                         "Ambiguous execution must retain its state and alternative count.");
                     Require(result.Metrics["UniqueMatch.ScoreMargin"] < result.Metrics["UniqueMatch.MinimumScoreMargin"],
                         "Ambiguous execution must expose the failed normalized score-margin gate.");
-                    Require(result.Message.IndexOf("PlausibleAlternatives=", StringComparison.Ordinal) >= 0,
+                    Require(result.Message.Contains("PlausibleAlternatives=", StringComparison.Ordinal),
                         "Ambiguous execution must expose the exact reject reason.");
                     Require(result.EdgeBasedMatchingDiagnostics != null
                         && result.EdgeBasedMatchingDiagnostics.State == "Ambiguous"
@@ -1482,7 +1482,7 @@ namespace OpenVisionLab.Inspection.Smoke
             }
             catch (ArgumentException exception)
             {
-                serializedDuplicateRejected = exception.Message.IndexOf("duplicated", StringComparison.OrdinalIgnoreCase) >= 0;
+                serializedDuplicateRejected = exception.Message.Contains("duplicated", StringComparison.OrdinalIgnoreCase);
             }
 
             Require(serializedDuplicateRejected,
@@ -1518,7 +1518,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 }
                 catch (InvalidOperationException exception)
                 {
-                    nullRejected = exception.Message.IndexOf("null", StringComparison.OrdinalIgnoreCase) >= 0;
+                    nullRejected = exception.Message.Contains("null", StringComparison.OrdinalIgnoreCase);
                 }
 
                 Require(nullRejected, "A null pipeline step must be rejected before execution.");
@@ -1641,7 +1641,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 }
                 catch (InvalidOperationException exception)
                 {
-                    nonTerminalRejected = exception.Message.IndexOf("final", StringComparison.OrdinalIgnoreCase) >= 0;
+                    nonTerminalRejected = exception.Message.Contains("final", StringComparison.OrdinalIgnoreCase);
                 }
 
                 Require(nonTerminalRejected,
@@ -1678,7 +1678,7 @@ namespace OpenVisionLab.Inspection.Smoke
             catch (ArgumentException exception)
             {
                 rejected = exception.ParamName == "parameters"
-                    && exception.Message.IndexOf(expectedMessage, StringComparison.OrdinalIgnoreCase) >= 0;
+                    && exception.Message.Contains(expectedMessage, StringComparison.OrdinalIgnoreCase);
             }
 
             Require(rejected, $"Invalid pipeline parameter '{expectedMessage}' was not rejected.");
