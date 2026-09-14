@@ -9,8 +9,9 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Completed PL-0015 2D descriptor/model reconstruction, prior closures, and current external prerequisites |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Active PL-0016 priorities 1–4 implementation, prior closures, and current external prerequisites |
 | [SDK direction and capability matrix](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md) | Rule-based kernel boundary, all 15 2D factory contracts, 3D execution coverage, Pipeline artifact/error contracts, and ordered product priorities |
+| [SDK priorities 1–4 implementation analysis](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md) | PL-0016 owner/call-path analysis, alternatives, compatibility decisions, probe evidence, acceptance criteria, and stop gates |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the two remaining redistribution approvals |
 | [Third-party redistribution clearance checklist](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md) | Exact facts, questions, and approval record needed to resolve the two remaining external prerequisites |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |

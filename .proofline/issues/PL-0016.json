@@ -1,0 +1,206 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0016",
+    "aliases": [],
+    "type": "feature",
+    "mode": "composite",
+    "title": "SDK 우선순위 1~4 분석 기반 구현",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user-approved ordered SDK priorities",
+    "summary": "사용자가 SDK 우선순위 1~4를 상세 분석한 뒤 그 증거와 완료 기준에 따라 개발하도록 승인했다.",
+    "refs": [
+      "docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md#ordered-engineering-priorities",
+      "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md",
+      "PL-0015"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "우선순위 1~4의 상세 분석, work contract, owner/call-path proof plan, fixed probe evidence와 stop gate가 문서·원장에 기록되고 링크·diff·ledger 검증을 통과했다. 다음은 M2 독립 3D typed adapter/report 구현이다.",
+    "next_action": "ThreeDToolExecutionRunner와 typed adapter/report를 구현하고 focused/package-consumer 증거를 만든다."
+  },
+  "objective": {
+    "summary": "SDK 우선순위 1~4를 분석으로 먼저 고정하고, 3.x 호환성과 증거 경계를 보존하면서 검증 가능한 순서로 구현한다.",
+    "constraints": [
+      "기존 typed Tool 결과와 CombinedInspectionRunner의 좁은 2D/height-map 계약을 보존한다.",
+      "기존 IVisionTool.Execute(Mat)와 Pipeline 3.x 동작을 보존하고 협력적 취소 능력만 additive하게 노출한다.",
+      "Blob/Contour 관찰 가능 계약을 차등 증거로 고정한 뒤 OpenCvSharp.Blob 의존성과 배포 자산을 제거한다.",
+      "OpenCvSharp4 4.13은 격리된 전체 게이트가 통과하기 전 production vendored bytes로 채택하지 않는다.",
+      "승인된 대표 실측 데이터가 없으면 calibrated 2D public algorithm API를 만들지 않고 fail-closed 데이터 게이트에서 멈춘다.",
+      "UI, acquisition, PLC/MES, OpenCvSharp5/.NET 8, 4.0 breaking changes, NuGet publication, consumer repository changes, release and deployment are out of scope.",
+      "테스트 데이터와 생성 산출물은 D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0016 아래에 둔다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "우선순위 1~4 분석 문서가 현재/의도 소유자, 호출·의존·상태·수명 경로, 대안과 결정, 완료 기준, 검증 및 외부 중단 조건을 고정한다.",
+      "evidence_refs": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "독립 3D adapter/runner가 heterogeneous typed result를 보존하고 execution status를 inspection decision과 분리하며 fault/cancel/ownership 계약을 검증한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "2D Pipeline과 Matching/EdgeBased/AutoMPoint/SIFT가 additive cooperative cancellation을 제공하며 기존 overload, exception, result disposal 계약을 보존한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Blob/Contour의 관찰 가능 결과가 고정된 상태로 OpenCvSharp.Blob source/project/package 의존성과 shipped DLL이 제거되고 package consumer가 통과한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "Blob 제거 후 OpenCvSharp4 4.13을 격리된 build/smoke/package/native-layout 게이트로 평가하고 adoption 또는 retention 결정을 정확한 실패·성공 증거와 함께 기록한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C6",
+      "text": "calibrated 2D representative-data manifest와 fail-closed verifier가 검증되고, 실측 데이터가 없으면 public metrology/golden/color API가 차단된 상태와 exact prerequisite가 기록된다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C7",
+      "text": "완료된 source candidate가 focused/full smoke, Release build, coverage, exact API/analyzer, documentation, provenance, commit-fixed package와 isolated consumer gate를 통과하며 게시·릴리스는 수행되지 않는다.",
+      "evidence_refs": []
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "우선순위 1~4의 detailed analysis, work contract, proof plan과 구현 순서를 현재 문서와 원장에 고정한다.",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "typed 3D adapter, execution-only status/report, sequential runner와 consumer evidence를 구현한다.",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "2D runtime과 네 matching/search Tool에 cooperative cancellation과 lifetime/error proof를 구현한다.",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "Blob/Contour 호환 엔진으로 OpenCvSharp.Blob을 제거하고 OpenCvSharp4 4.13 격리 migration gate를 완료한다.",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C4",
+        "C5"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M5",
+      "summary": "calibrated 2D representative-data 계약과 verifier를 구현하고 실측 prerequisite에 따라 algorithm 경계를 결정한다.",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C6",
+        "C7"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0015"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "implementation analysis",
+      "location": "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md"
+    },
+    {
+      "kind": "3D integration owner",
+      "location": "src/OpenVisionLab.Inspection"
+    },
+    {
+      "kind": "2D execution owners",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV"
+    },
+    {
+      "kind": "Blob public owner",
+      "location": "src/OpenVisionLab.Vision2D.Blob"
+    },
+    {
+      "kind": "verification owner",
+      "location": "tests/OpenVisionLab.Inspection.Smoke"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "A1",
+      "kind": "analysis",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/analysis/BlobContourProbe",
+      "summary": "Fixed Blob/Contour behavior and native-compatibility differential probe outputs."
+    },
+    {
+      "id": "A2",
+      "kind": "analysis",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/analysis/opencvsharp-4.13",
+      "summary": "Signed package downloads, isolated source copy, compile compatibility patch, and runtime observations."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "analysis",
+      "location": "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md",
+      "observation": "Repository-wide owner/call-path inspection plus fixed probes established the minimal boundaries: independent typed 3D orchestration, additive cooperative 2D cancellation, internal Blob/Contour compatibility engines before a 4.13 gate, and a fail-closed calibrated-data prerequisite before physical metrology APIs.",
+      "observed_at": "2026-09-15T01:34:39.4459136+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "verification",
+      "location": "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md",
+      "observation": "git diff --check passed, the four current documentation files had no broken local Markdown links, and PL-0016 validated as a v2 composite ledger after the analysis/current-authority/index updates.",
+      "observed_at": "2026-09-15T01:38:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-15T01:34:39.4459136+09:00",
+      "summary": "Implement priorities in order M2 through M5 using the owners and stop gates in the detailed analysis; keep existing completed owners and 3.x public contracts intact, and stop calibrated algorithms at the representative-data gate when no approved data exists.",
+      "evidence_refs": [
+        "E1"
+      ]
+    }
+  ],
+  "created_at": "2026-09-15T01:34:39.4459136+09:00",
+  "updated_at": "2026-09-15T01:38:00+09:00"
+}

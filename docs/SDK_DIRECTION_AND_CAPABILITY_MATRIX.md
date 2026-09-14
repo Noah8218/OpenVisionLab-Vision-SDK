@@ -1,7 +1,7 @@
 # OpenVisionLab Vision SDK direction and capability matrix
 
 Updated: 2026-09-15
-Work item: `PL-0015`
+Work item: `PL-0016`
 API baseline: `3.0.0`
 
 ## Product direction
@@ -183,6 +183,12 @@ come from an executed Tool's controlled result.
 8. Search the Tool name in `Vision2DSmokeSuite.cs` or the matching 3D smoke suite.
 
 ## Ordered engineering priorities
+
+The pre-implementation owner, call-path, compatibility, proof, and stop-gate review
+is complete in
+[`SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md`](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md).
+Implementation is tracked by `.proofline/issues/PL-0016.json` and proceeds in this
+order:
 
 1. Add opt-in 3D typed adapters and a common execution report while retaining every
    typed result | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`

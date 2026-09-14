@@ -1,14 +1,18 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-15
-Project work item: `PL-0015`
-Overall state: `resolved`
+Project work item: `PL-0016`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
+`.proofline/issues/PL-0016.json` tracks the active, analysis-first implementation of
+ordered SDK priorities 1–4. The complete owner, call-path, compatibility, test, and
+stop-gate analysis is
+[`SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md`](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md).
 `.proofline/issues/PL-0015.json` preserves the completed 2D descriptor and safe model-
 reconstruction work. `.proofline/issues/PL-0014.json` preserves the completed SDK
 direction and Pipeline failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
@@ -60,6 +64,17 @@ contract, and ordered follow-up work are defined in
 [`SDK_DIRECTION_AND_CAPABILITY_MATRIX.md`](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md).
 
 ## Current progress
+
+`PL-0016` has completed the required pre-implementation analysis for priorities
+1–4. It selects an independent typed 3D adapter/report runner, additive cooperative
+2D cancellation, an exact-behavior Blob/Contour replacement before OpenCvSharp4
+4.13 qualification, and a fail-closed calibrated-data gate before any physical-unit
+metrology/golden/color API. Fixed probes passed 1,600/1,600 exact contour sequence
+comparisons and 500/500 exact component comparisons. The isolated 4.13 source build
+passes after one `MatType` cache-key adjustment and passes the first 192 smoke cases;
+the next old-Blob case fails, proving Blob removal is a migration prerequisite.
+Production source has not yet changed for this work item. Implementation proceeds in
+that order under the linked analysis and ledger criteria.
 
 `PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
@@ -131,6 +146,41 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0016 work contract
+
+Status: `In progress`; detailed analysis is complete and production implementation
+has not started.
+
+Scope: add an independent typed 3D execution adapter/report; add additive cooperative
+cancellation to the 2D runtime and four matching/search Tools; replace
+`OpenCvSharp.Blob` while preserving Blob/Contour behavior and then qualify
+OpenCvSharp4 4.13; add a fail-closed calibrated 2D representative-data gate and stop
+public physical metrology/comparison work if no approved data passes it.
+
+Acceptance criteria and proof plan: see
+[`SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md`](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md)
+and `.proofline/issues/PL-0016.json`. Each milestone requires focused evidence; the
+final candidate requires Release build, full smoke/coverage, exact API/analyzer,
+documentation, provenance, commit-fixed package, isolated consumer, and native
+output checks.
+
+Current owner and intended owner: `CombinedInspectionRunner` remains the current
+narrow 2D/height-map owner; new heterogeneous 3D orchestration belongs to a separate
+Inspection adapter/runner. `IVisionTool` legacy execution remains; optional
+cooperative cancellation belongs to an additive Vision2D interface, base execution
+path, Pipeline overloads, and the four matching/search owners. Vision2D will own the
+internal component/contour compatibility engine reused by `ContourTool` and the
+friend Blob package. The host remains the owner of calibration, real data, and final
+acceptance.
+
+Immediate next action: implement and verify the typed 3D adapter/report milestone.
+The remaining ordered project work is 2D cancellation, Blob/Contour dependency
+removal plus the 4.13 gate, then the calibrated-data gate.
+
+Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
+4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,
+deployment, and any production accuracy/Takt claim without approved evidence.
 
 ## PL-0015 work contract
 
@@ -1318,15 +1368,21 @@ another RID or .NET Framework runtime, run real sensors/calibration/Gauge R&R, o
 establish commercial redistribution clearance. The latter remains blocked by the
 prerequisites recorded above.
 
-## Next priority — two external redistribution approvals
+## Active PL-0016 implementation order
 
-Prerequisites: obtain written OpenCvSharp/cvBlob rights-holder clarification of the
-Blob license scope, then obtain project distribution/legal-owner approval of the
-final notice bundle, LGPL source/relinking fulfillment method, Intel conditions, and
-exact distribution workflow. The actionable request and decision template is
-[`THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md`](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
-Until both approvals are retained, another implementation or model run cannot
-establish redistribution clearance, so no model-token recommendation is made.
+1. Typed 3D adapter/report | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+2. Cooperative 2D matching/search cancellation | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+3. Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+4. Calibrated representative-data gate | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+
+Priority 4 public physical metrology/golden/color algorithms remain blocked until a
+manifested and approved real-sensor data set supplies the acquisition, calibration,
+ground-truth uncertainty, tolerance/error policy, and performance prerequisites in
+the detailed analysis. The current two third-party approval questions also remain
+applicable while the old Blob component is shipped. After its verified removal, the
+component-specific question must be retired and the distribution owner must review
+the remaining exact binary/notice bundle. Source changes cannot make that legal
+decision.
 
 ## Historical PL-0002 priority 1 — 2D result-contract correctness
 
