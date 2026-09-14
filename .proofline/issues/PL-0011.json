@@ -1,0 +1,187 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0011",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "3.x 공개 호환성 analyzer 계약 고정",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "user-approved analyzer follow-up",
+    "summary": "PL-0010 이후 남은 공개 호환성 진단 186건을 소유자와 계약 종류별로 전수 검토하고, 3.x 호환성을 보존하면서 새 진단의 유입을 정확히 차단한다.",
+    "refs": [
+      "PL-0010"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "186개 exact 호환성 기준선과 동일 개수 교체 실패 검증을 구현했다. 작업 트리에서 Release 0/0, direct·coverage smoke 233/233, coverage 5개 floor, API 3295 exact, analyzer 458/10 및 186 exact, 문서 링크 86/86이 통과했다. 다음은 구현 커밋을 만들고 그 커밋의 package/provenance/consumer와 원격 CI를 검증하는 것이다.",
+    "next_action": "구현 변경을 main에 커밋·push하고 exact commit package/provenance/negative/격리 consumer/native 및 GitHub Build를 검증한다."
+  },
+  "objective": {
+    "summary": "CA1051, CA1707, CA1716의 186개 공개 호환성 진단을 정확한 3.x 계약으로 고정하여, 총계가 같아도 새 심볼 진단이나 기존 심볼 교체가 검증을 통과하지 못하게 한다.",
+    "constraints": [
+      "C:\\Git\\OpenVisionLab-Vision-SDK의 main만 수정하고 C:\\Git\\Vision-SDK의 과거 worktree는 변경하지 않는다.",
+      "공개 API 3295개와 3.x binary, reflection, source, named-argument 계약을 유지한다.",
+      "공개 필드를 속성으로 바꾸거나 공개 이름·namespace·interface member를 변경하지 않는다.",
+      "호환 별칭, 새 interface member, 전역 analyzer 비활성화, SuppressMessage 대량 추가로 공개 표면이나 숨은 부채를 늘리지 않는다.",
+      "4.0 제거 계획, 소비자 저장소 변경, 패키지 게시, 센서·교정·현장 성능 검증은 범위에 포함하지 않는다.",
+      "성능 제안 272건은 별도 측정 기반 후속 범위로 유지한다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "186건을 규칙, 심볼 종류, 레거시 호환 표면과 현재 3.x 표면별로 전수 분류하고 CA1051 39건이 공개 API 인스턴스 필드 39개와 1:1 일치함을 증명한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "186건을 유지할 3.x 호환성 결정과 규칙별 근거를 저장하고 공개 API exact 3295를 보존한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "analyzer gate가 186개 고유 지문을 정확히 비교하고, 총계가 같은 한 개 지문 교체 기준선으로 실행했을 때 실패한다.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Release build, 전체 smoke/coverage, exact public API, analyzer, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "186건 소유자·계약·공개 API 분류와 공식 규칙 근거 확인",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "정확한 호환성 진단 기준선과 fail-closed 검증기 구현",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "analyzer/API/full smoke/coverage 통합 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C3",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "고정 커밋 package·consumer·원격 CI와 durable closure",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0010"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "811871cc10c25450cd2796a3ba377e4db784fea7"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "3.x compatibility plan",
+      "location": "docs/LEGACY_C_CV_LINEGUAGE_V4_REMOVAL_PLAN_20260805.md"
+    },
+    {
+      "kind": "official rule",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1051"
+    },
+    {
+      "kind": "official rule",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1707"
+    },
+    {
+      "kind": "official rule",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1716"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "planning evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0011/planning",
+      "summary": "고정 HEAD analyzer 원문, 186건 CSV, 규칙·계약 분류, 공개 필드 일치 결과와 기준선 후보."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "diagnostic inventory and compatibility review",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\planning\\compatibility-classification.json",
+      "observation": "고정 HEAD 811871c의 186건은 CA1051 39, CA1707 145, CA1716 2이며 186개 지문이 모두 고유하다. 레거시 호환 표면 46건과 현재 3.x 표면 140건이다. CA1707은 type 7, member 118, parameter 20이고 CA1051 39건은 exact public API 기준선의 공개 인스턴스 필드 39개와 모두 1:1 일치한다. Microsoft 규칙 문서상 세 규칙의 공개 표면 수정은 breaking change이므로 3.x에서는 유지하고 정확한 지문으로 신규 유입을 차단한다.",
+      "observed_at": "2026-09-14T10:38:12.7839328+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "exact compatibility gate positive and negative verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\exact-gate\\verify-analyzer.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\exact-gate-negative\\probe-result.txt",
+      "observation": "정상 기준선은 analyzer 458건/10코드와 CA1051·CA1707·CA1716 186개 고유 지문을 exact로 통과했다. 같은 186개와 동일한 규칙별 개수를 유지하되 한 기대 지문만 교체한 기준선은 실제 지문을 unreviewed로, 가짜 기대 지문을 disappeared or changed로 보고하며 실패했다. -UpdateBaseline 경로도 exact 호환성 검증 이후에만 실행된다.",
+      "observed_at": "2026-09-14T10:44:26.5756111+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "working-tree integrated verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\precommit",
+      "observation": "Release solution build는 경고/오류 0, direct full smoke와 coverage smoke는 각각 233/233, exact public API는 3295, analyzer는 458건/10코드와 186개 exact 호환성 지문, local Markdown/HTML link target은 86/86으로 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, Vision3D 90.97%로 모두 기준 이상이다.",
+      "observed_at": "2026-09-14T11:03:44.7000109+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T10:38:12.7839328+09:00",
+      "summary": "3.x 공개 이름과 필드는 유지한다. 규칙을 전역 억제하거나 별칭을 추가하지 않고, 검토된 186개 진단 지문만 exact 기준선으로 허용한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    }
+  ],
+  "created_at": "2026-09-14T10:38:12.7839328+09:00",
+  "updated_at": "2026-09-14T11:03:44.7000109+09:00"
+}

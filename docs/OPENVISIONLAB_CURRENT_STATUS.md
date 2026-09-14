@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0010`
-Overall state: `resolved`
+Project work item: `PL-0011`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0010.json` records the completed readability-focused analyzer
-follow-up. `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
+`.proofline/issues/PL-0011.json` records the active 3.x public-compatibility analyzer
+review. `.proofline/issues/PL-0010.json` preserves the completed readability-focused
+follow-up, `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
 review, and `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
 and `.proofline/issues/PL-0007.json` preserves the preceding culture-conversion
 closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
@@ -54,10 +55,17 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-`PL-0010` reviewed all 41 readability diagnostics. The implementation uses
-`nameof` at four existing Vision3D argument checks and the same `StringComparison`
-with `Contains` at 37 .NET 8 smoke assertions. The analyzer and all local,
-exact-commit package-consumer, and remote gates pass at 458 diagnostics in 10 codes.
+`PL-0011` has classified all 186 public field and naming diagnostics into 46
+legacy-compatibility and 140 current 3.x locations. All 39 CA1051 diagnostics map
+one-to-one to the exact public API baseline's 39 visible instance fields. The
+working-tree analyzer gate accepts the reviewed 186 identities and rejects a
+same-count one-identity replacement. Release build, full smoke/coverage, exact API,
+analyzer, and documentation checks pass locally; exact-commit package and remote
+verification are still pending. `PL-0010` reviewed all 41 readability diagnostics.
+The implementation uses `nameof` at four existing Vision3D argument checks and the
+same `StringComparison` with `Contains` at 37 .NET 8 smoke assertions. The analyzer
+and all local, exact-commit package-consumer, and remote gates pass at 458
+diagnostics in 10 codes.
 `PL-0009` reviewed the 14 remaining exception-parameter, Dispose/finalizer, and
 intentional-construction diagnostics. The implementation reports the
 public `options` argument while retaining the invalid 3D option-property name,
@@ -78,6 +86,72 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0011 work contract
+
+Status: `Doing` on the working tree based on source commit
+`811871cc10c25450cd2796a3ba377e4db784fea7`.
+
+Implement now: retain the 3.x public contract, record every CA1051, CA1707, and
+CA1716 symbol as a reviewed compatibility identity, and extend the existing analyzer
+gate so an unreviewed or one-for-one replacement identity fails even when all rule
+counts remain unchanged.
+
+Review later: the remaining 272 allocation, static-member, empty-array, dispatch,
+and reuse suggestions need measured hot-path evidence before code changes. Sensor-
+backed accuracy and redistribution clearance still require the external prerequisites
+listed below.
+
+Out of scope: public field-to-property conversion, public type/member/parameter or
+namespace renaming, compatibility aliases, global or per-symbol suppression,
+interface expansion, a 4.0 migration, speculative performance work, package
+publication, consumer-repository mutation, UI, native-binary replacement, and
+sensor/calibration qualification.
+
+`eng/analyzer-compatibility-baseline.json` owns the reviewed 3.x exception set.
+`eng/Verify-AnalyzerBaseline.ps1` owns extraction of stable rule/kind/symbol
+identities and exact-set comparison before the existing aggregate no-regression
+check. The 39 field identities are derived from namespace, declaring type, and field
+name at the analyzer location; the 147 naming identities use the analyzer's fully
+qualified public symbol or method/parameter contract. The product owners, callers,
+mutable state, public API, and lifetime paths do not move.
+
+Shortest review order: the rule decisions and counts at the top of
+`eng/analyzer-compatibility-baseline.json`, representative legacy and current entries,
+the two identity functions and set comparison in `eng/Verify-AnalyzerBaseline.ps1`,
+then this section. The complete source inventory and CA1051-to-public-API mapping are
+under `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0011\planning`.
+
+Acceptance: all 186 identities are unique and classified; CA1051 39 maps exactly to
+the 39 public instance fields; the normal analyzer run passes at 458 diagnostics in
+10 codes; a baseline with one replaced identity fails while retaining all counts;
+public API remains exactly 3,295 entries; and all local, exact-commit package-
+consumer, and remote gates pass.
+
+### PL-0011 current evidence
+
+- The fixed-source inventory reports CA1051 39, CA1707 145, and CA1716 2. The 186
+  identities divide into 46 legacy-compatibility and 140 current 3.x entries;
+  CA1707 divides into 7 type, 118 member, and 20 parameter names.
+- Microsoft classifies fixes to [CA1051](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1051),
+  [CA1707](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1707),
+  and [CA1716](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1716)
+  on a public surface as breaking changes. The 3.x decision therefore retains the
+  existing surface without hiding the diagnostics through analyzer suppression.
+- The working-tree analyzer reports 458 diagnostics in 10 codes and passes all 186
+  exact identities. A copied baseline with one identity replaced, but all counts
+  unchanged, fails with both an unreviewed identity and a missing reviewed identity.
+- Release build reports 0 warnings/errors; direct and coverage smoke each pass
+  233/233; all five coverage floors pass; exact public API is 3,295; analyzer is
+  458/10 with 186 exact compatibility identities; and all 86 checked local document
+  targets resolve. Exact-commit packaging, isolated consumption, and remote CI remain
+  to be recorded before closure.
+
+| Rule | Legacy compatibility | Current 3.x | Reviewed decision |
+| --- | ---: | ---: | --- |
+| CA1051 | 13 | 26 | Keep all 39 public fields in 3.x; field-to-property conversion changes binary and reflection access. |
+| CA1707 | 33 | 112 | Keep all 145 public names in 3.x; renaming changes type/member lookup or named-argument source compatibility. |
+| CA1716 | 0 | 2 | Retain the namespace and interface member in 3.x while recording their cross-language usability limitation. |
 
 ## PL-0010 work contract
 
@@ -434,15 +508,16 @@ runtimes and redistribution clearance remain outside this completed scope.
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
 PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. PL-0009 removed the 14
 CA1806, CA1816, and CA2208 diagnostics. PL-0010 removed the 41 CA1507 and CA2249
-readability diagnostics. The exact implementation commit reports **458 diagnostics
-in 10 emitted codes**, with every other code count unchanged. Current counts are
-recorded in `PL-0010/final-8e65d29/integrated-verification-summary.json` under the
-D-drive evidence root and in remote Build run 34794211675. This remains a
-no-regression gate and categorized debt review, not a zero-warning claim.
+readability diagnostics. PL-0011 has now reviewed every one of the 186 retained
+CA1051, CA1707, and CA1716 identities and added an exact compatibility gate on top
+of the aggregate ceilings. The working tree still reports **458 diagnostics in 10
+emitted codes**, with every code count unchanged. Exact-commit and remote evidence
+are pending. This remains a no-regression gate and categorized debt review, not a
+zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
-| Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | Preserve 3.x public names and fields; broad renaming is a separate compatibility migration. |
+| Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | All identities are reviewed and exact-locked: 39 fields, 7 types, 118 members, 20 parameters, one namespace, and one interface member. Preserve the 3.x contract; any identity change requires explicit compatibility review. |
 | Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
 | Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
 | Readability | CA1507, CA2249 / 0 | All 41 sites were reviewed for framework and comparison equivalence; the ceilings are removed. |
@@ -463,11 +538,12 @@ The CA1305 review covered every prior location:
 
 PL-0009 re-reviewed and corrected the six CA1806 sites, all three Dispose bodies,
 and all five CA2208 call sites. PL-0010 reviewed the four CA1507 argument sites and
-37 CA2249 smoke assertions. The other remaining groups are still classified by
-diagnostics; this is not an individual correctness certification of all 458 current
-locations. CA1305 remains a fixed zero ceiling; CA1507, CA1806, CA1816, CA2208,
-and CA2249 are absent from both output and the maximum-count map. No other ceiling
-or coverage minimum was relaxed.
+37 CA2249 smoke assertions. PL-0011 reviewed the 186 compatibility identities and
+retains them only because correcting the public field/name shape would break the 3.x
+contract. The 272 performance suggestions remain classified rather than individually
+promoted to code changes; they need measured evidence. CA1305 remains a fixed zero
+ceiling; CA1507, CA1806, CA1816, CA2208, and CA2249 are absent from both output and
+the maximum-count map. No analyzer ceiling or coverage minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

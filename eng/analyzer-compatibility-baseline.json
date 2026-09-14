@@ -1,0 +1,968 @@
+{
+  "schemaVersion": 1,
+  "analysisLevel": "latest-recommended",
+  "analysisMode": "All",
+  "contract": "OpenVisionLab 3.x public API compatibility",
+  "sourceCommit": "811871cc10c25450cd2796a3ba377e4db784fea7",
+  "expectedWarningsByCode": {
+    "CA1051": 39,
+    "CA1707": 145,
+    "CA1716": 2
+  },
+  "reviewedClassification": {
+    "legacyCompatibility": 46,
+    "current3x": 140,
+    "CA1707Type": 7,
+    "CA1707Member": 118,
+    "CA1707Parameter": 20
+  },
+  "ruleDecisions": [
+    {
+      "code": "CA1051",
+      "decision": "retain-in-3.x",
+      "rationale": "All 39 diagnostics are exact public instance fields. Replacing a field with a property changes the binary and reflection contract."
+    },
+    {
+      "code": "CA1707",
+      "decision": "retain-in-3.x",
+      "rationale": "The 145 diagnostics identify public type, member, or parameter names. Renaming changes binary, reflection, source, or named-argument compatibility."
+    },
+    {
+      "code": "CA1716",
+      "decision": "retain-in-3.x",
+      "rationale": "The namespace and interface member keyword conflicts affect cross-language usability, but renaming either contract is a breaking 3.x change."
+    }
+  ],
+  "diagnostics": [
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Blob.BlobTool.candidates",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D.Blob/BlobTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Blob.BlobTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D.Blob/BlobTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Blob.BlobTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D.Blob/BlobTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Blob.CVBlob.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D.Blob/CVBlob.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Blob.CVBlob.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D.Blob/CVBlob.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Property.COpenCVAlgorithmBase.swTaktTimems",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/COpenCVAlgorithmBase.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase.swTaktTimems",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/OpenCvAlgorithmBase.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.AffineTransformTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/AffineTransformTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.AutoMPointTool.candidates",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/AutoMPointTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.AutoMPointTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/AutoMPointTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.AutoMPointTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/AutoMPointTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.ContourTool.candidates",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.ContourTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.ContourTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CornerTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CornerTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CornerTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CornerTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVContour.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVContour.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVContour.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVContour.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVCorner.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVCorner.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVCorner.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVCorner.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVMatching.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVMatching.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVMatching.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVMatching.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVMean.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVMean.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVMean.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVMean.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVSIFT.property",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVSIFT.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.CVSIFT.results",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/CVSIFT.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeDetectionTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.FilterTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/FilterTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.MatchingTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/MatchingTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.MatchingTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/MatchingTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.MeanTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/MeanTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.MeanTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/MeanTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.MorphologyTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/MorphologyTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.RotateScaleTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/RotateScaleTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.SiftTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/SiftTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.SiftTool.results",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/SiftTool.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.ThresholdTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/ThresholdTool.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.CFormula.PROJECTION_DIR.X_LTOR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.CFormula.PROJECTION_DIR.X_RTOL",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.CFormula.PROJECTION_DIR.Y_BTOT",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.CFormula.PROJECTION_DIR.Y_TTOB",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR.X_LTOR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR.X_RTOL",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR.Y_BTOT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR.Y_TTOB",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob.MAX_AREA",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D.Blob/IOpenCVPropertyBlob.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob.MIN_AREA",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D.Blob/IOpenCVPropertyBlob.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.ADAPTIVE_THRESHOLD",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.ADAPTIVE_THRESHOLD_ALGORITHM",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.ADAPTIVE_THRESHOLD_TYPES",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.THRESHOLD_TYPES",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.USE_ADAPTIVE_THRESHOLD",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.USE_BITWISENOT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.USE_MULTI_ROI",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.USE_ROI",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase.USE_THRESHOLD",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyBase.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyContour.MAX_AREA",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyContour.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyContour.MIN_AREA",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyContour.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyContour.USE_APPROXPOLYDP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyContour.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyContour.USE_DRAW_IMAGE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyContour.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.ALLOW_GLOBAL_POLARITY_REVERSAL",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.CANNY_APERTURE_SIZE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.CANNY_HIGH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.CANNY_LOW",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.COARSE_ANGLE_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.COARSE_ANGLE_TOP_K",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.CONTOUR_APPROXIMATION_MODE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.CONTOUR_RETRIEVAL_MODE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_ANGLE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_ANGLE_MAX",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_ANGLE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_SCALE_MAX",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_SCALE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.FIND_SCALE_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.HYBRID_VERIFY_IMAGE_WEIGHT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.HYBRID_VERIFY_TOP_N",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.MAX_TEMPLATE_POINTS",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.MIN_GRADIENT_MAGNITUDE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.NUM_MATCH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.PATTERN_PATH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.PYRAMID_POSITION_MIN_SCORE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.PYRAMID_POSITION_TOP_N",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.SCORE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.SEARCH_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.UNIQUE_MATCH_MIN_SCORE_MARGIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_COARSE_TO_FINE_ANGLE_SEARCH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_DRAW_IMAGE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_FIND_ANGLE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_FIND_SCALE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_HYBRID_VERIFY",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_L2_GRADIENT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_POSITION_REFINE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_PYRAMID_POSITION_PROPOSAL",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_SUBPIXEL_REFINE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching.USE_UNIQUE_MATCH_VALIDATION",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyEdgeBasedTemplateMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT.PATTERN_PATH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyFeatureSIFT.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT.RANSAC_REPROJ_THRESHOLD",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyFeatureSIFT.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT.SCORE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyFeatureSIFT.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.EXTEND_FIT_LINE_VALUE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.MANUAL_ANGLE_VALUE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.POINT_RANGE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.PRJ_PORALITY",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.SAMPLING_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.SHOW_CONTOUR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.SHOW_EDGE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.SHOW_FITLINE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.SHOW_VERTICAL_LINE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.USE_EXTEND_FIT_LINE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.USE_MANUAL_ANGLE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge.VER_PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCvPropertyLineGauge.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.EXTEND_FIT_LINE_VALUE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.MANUAL_ANGLE_VALUE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.POINT_RANGE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.PRJ_PORALITY",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.SAMPLING_STEP",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.SHOW_CONTOUR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.SHOW_EDGE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.SHOW_FITLINE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.SHOW_VERTICAL_LINE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.USE_EXTEND_FIT_LINE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.USE_MANUAL_ANGLE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyLineGuage.VER_PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyLineGuage.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.CANNY_HIGH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.CANNY_LOW",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.COARSE_ANGLE_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.COARSE_ANGLE_TOP_K",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_ANGLE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_ANGLE_MAX",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_ANGLE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_SCALE_MAX",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_SCALE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.FIND_SCALE_STEP",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.MATCH_MODE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.NUM_MATCH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.PATTERN_PATH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.PYRAMID_POSITION_MIN_SCORE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.PYRAMID_POSITION_TOP_N",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.SCORE_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_CANNY",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_COARSE_TO_FINE_ANGLE_SEARCH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_FIND_ANGLE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_FIND_SCALE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_PADDING_COLOR_WHITE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMatching.USE_PYRAMID_POSITION_PROPOSAL",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMatching.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMean.MEAN_MAX",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMean.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMean.MEAN_MIN",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMean.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMean.MEAN_TYPES",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMean.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty.MAX_HEIGHT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IVisionObjectFilterProperty.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty.MAX_WIDTH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IVisionObjectFilterProperty.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty.MIN_HEIGHT",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IVisionObjectFilterProperty.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty.MIN_WIDTH",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IVisionObjectFilterProperty.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Result.CVLineGuage_Result.Results_List",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Resultt.cs"
+    },
+    {
+      "identity": "CA1707|member|OpenVisionLab.Vision2D.Result.LineGaugeResult.Results_List",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeResults.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineFitting.GetFitLine(System.Collections.Generic.List<OpenCvSharp.Point>, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineFitting.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineFitting.GetFitLineExtend(System.Collections.Generic.List<OpenCvSharp.Point>, int, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineFitting.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetIntersectionLines(OpenVisionLab.Core.Geometry2D.CLine, OpenVisionLab.Core.Geometry2D.CLine)|Lines_L",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetIntersectionLines(OpenVisionLab.Core.Geometry2D.CLine, OpenVisionLab.Core.Geometry2D.CLine)|Lines_R",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetIntersectionLines(System.Collections.Generic.List<OpenVisionLab.Core.Geometry2D.CLine>, System.Collections.Generic.List<OpenCvSharp.Point>)|ver_Lines",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetVerticalLines(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, int, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|POINT_RANGE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetVerticalLines(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, int, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|VER_PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetVerticalLinesManual(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, double, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|MANUAL_ANGLE_VALUE",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.CLineVertical.GetVerticalLinesManual(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, double, OpenVisionLab.Core.CFormula.PROJECTION_DIR)|VER_PRJ_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/Line/CLineVertical.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.LineFitting.GetFitLine(System.Collections.Generic.List<OpenCvSharp.Point>, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/LineFitting.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.LineFitting.GetFitLineExtend(System.Collections.Generic.List<OpenCvSharp.Point>, int, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/LineFitting.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetIntersectionLines(OpenVisionLab.Core.Geometry2D.LineSegment2D, OpenVisionLab.Core.Geometry2D.LineSegment2D)|Lines_L",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetIntersectionLines(OpenVisionLab.Core.Geometry2D.LineSegment2D, OpenVisionLab.Core.Geometry2D.LineSegment2D)|Lines_R",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetIntersectionLines(System.Collections.Generic.List<OpenVisionLab.Core.Geometry2D.LineSegment2D>, System.Collections.Generic.List<OpenCvSharp.Point>)|ver_Lines",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetVerticalLines(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, int, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|POINT_RANGE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetVerticalLines(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, int, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|VER_PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetVerticalLinesManual(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, double, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|MANUAL_ANGLE_VALUE",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator.GetVerticalLinesManual(System.Collections.Generic.List<OpenCvSharp.Point>, int, int, double, OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR)|VER_PRJ_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/Line/VerticalLineCalculator.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Vision2D.Result.CVLineGuage_Result.CVLineGuage_Result(System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.CVLineGuage_Edge>, OpenVisionLab.Core.Geometry2D.CLine)|Results_List",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Resultt.cs"
+    },
+    {
+      "identity": "CA1707|parameter|OpenVisionLab.Vision2D.Result.LineGaugeResult.LineGaugeResult(System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.LineGaugeEdge>, OpenVisionLab.Core.Geometry2D.LineSegment2D, int)|Results_List",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeResults.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Core.CFormula.PROJECTION_DIR",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Core.CFormula.PROJECTION_POLARITY",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Core/CFormula.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Core.FormulaUtil.PROJECTION_DIR",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Core.FormulaUtil.PROJECTION_POLARITY",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Core/FormulaUtil.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Vision2D.Result.CVLineGuage_Result",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Resultt.cs"
+    },
+    {
+      "identity": "CA1707|type|OpenVisionLab.Vision2D.Result.CVLineGuage_VerticalLines",
+      "contractGroup": "legacy-compatibility",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Resultt.cs"
+    },
+    {
+      "identity": "CA1716|interface-member|IOpenCVPropertyMorphology.Operator",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/IOpenCVPropertyMorphology.cs"
+    },
+    {
+      "identity": "CA1716|namespace|OpenVisionLab.Vision2D.Property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/AffineTransformToolProperty.cs"
+    }
+  ]
+}
