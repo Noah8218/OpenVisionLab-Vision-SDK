@@ -194,14 +194,14 @@ is complete in
 Implementation is tracked by `.proofline/issues/PL-0016.json` and proceeds in this
 order:
 
-1. Add opt-in 3D typed adapters and a common execution report while retaining every
-   typed result | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
-2. Add cooperative cancellation first to long-running matching/search loops |
-   Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-3. Characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
+1. **Complete (`PL-0016` M2):** add opt-in 3D typed adapters and a common execution
+   report while retaining every typed result.
+2. **Active (`PL-0016` M3):** add cooperative cancellation first to long-running
+   matching/search loops | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+3. **Pending (`PL-0016` M4):** characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
    OpenCvSharp4 4.13 migration. Treat OpenCvSharp5/.NET 8 as a separate 4.0 decision
    | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-4. After the contract and representative-data gates exist, add calibrated 2D
+4. **Pending (`PL-0016` M5):** after the contract and representative-data gates exist, add calibrated 2D
    fixture/metrology, gauge primitives, golden comparison and color inspection |
    Recommended model: `gpt-6-astra` | Reasoning effort: `high`
 

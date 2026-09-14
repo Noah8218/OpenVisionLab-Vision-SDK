@@ -73,11 +73,13 @@ metrology/golden/color API. Fixed probes passed 1,600/1,600 exact contour sequen
 comparisons and 500/500 exact component comparisons. The isolated 4.13 source build
 passes after one `MatType` cache-key adjustment and passes the first 192 smoke cases;
 the next old-Blob case fails, proving Blob removal is a migration prerequisite.
-The M2 source candidate now adds the separate typed 3D adapter/report owner. Its
-eight focused cases, full 245-case Smoke/coverage, 3,389-entry exact API, and
-411-diagnostic analyzer contract pass locally. Commit-fixed package consumption is
-still required before M2 is closed. The remaining implementation proceeds in the
-documented order.
+M2 is complete at implementation commit
+`b3c31a9a0df6909fcdd73c16717c412d1af71c84`. The separate typed 3D
+adapter/report owner passed eight focused cases, full 245-case Smoke/coverage, the
+3,389-entry exact API, and the unchanged 411-diagnostic analyzer contract. Five
+commit-fixed packages at `3.0.1-pl0016.m2.b3c31a9.1` passed provenance, and a copied
+package-only consumer running physically on `D:` preserved the typed result and
+contained exactly one native DLL. M3 cooperative 2D cancellation is now active.
 
 `PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
@@ -152,8 +154,7 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0016 work contract
 
-Status: `In progress`; detailed analysis and the M2 source candidate are complete,
-with commit-fixed package verification pending.
+Status: `In progress`; detailed analysis and M2 typed 3D execution are complete.
 
 Scope: add an independent typed 3D execution adapter/report; add additive cooperative
 cancellation to the 2D runtime and four matching/search Tools; replace
@@ -177,10 +178,15 @@ internal component/contour compatibility engine reused by `ContourTool` and the
 friend Blob package. The host remains the owner of calibration, real data, and final
 acceptance.
 
-Immediate next action: verify the typed 3D adapter/report through a commit-fixed
-isolated package consumer and close M2. The remaining ordered project work is 2D
-cancellation, Blob/Contour dependency removal plus the 4.13 gate, then the
-calibrated-data gate.
+Immediate next action: implement and verify M3 cooperative 2D cancellation. The
+remaining ordered project work is Blob/Contour dependency removal plus the 4.13
+gate, then the calibrated-data gate.
+
+M2 durable evidence: source and coverage summary under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M2`; exact package and
+isolated-consumer evidence under `M2\final-b3c31a9-a1`. The final validation summary
+has SHA-256
+`8C563EA988CB12B9653C93516A8876C10293A103922ADCEBE4A364B878DDDF47`.
 
 Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
 4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,
