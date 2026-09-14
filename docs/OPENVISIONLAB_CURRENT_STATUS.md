@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0011`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0011.json` records the active 3.x public-compatibility analyzer
+`.proofline/issues/PL-0011.json` records the completed 3.x public-compatibility analyzer
 review. `.proofline/issues/PL-0010.json` preserves the completed readability-focused
 follow-up, `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
 review, and `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
@@ -60,8 +60,8 @@ legacy-compatibility and 140 current 3.x locations. All 39 CA1051 diagnostics ma
 one-to-one to the exact public API baseline's 39 visible instance fields. The
 working-tree analyzer gate accepts the reviewed 186 identities and rejects a
 same-count one-identity replacement. Release build, full smoke/coverage, exact API,
-analyzer, and documentation checks pass locally; exact-commit package and remote
-verification are still pending. `PL-0010` reviewed all 41 readability diagnostics.
+analyzer, documentation, exact-commit packages, isolated consumption, and remote CI
+all pass. `PL-0010` reviewed all 41 readability diagnostics.
 The implementation uses `nameof` at four existing Vision3D argument checks and the
 same `StringComparison` with `Contains` at 37 .NET 8 smoke assertions. The analyzer
 and all local, exact-commit package-consumer, and remote gates pass at 458
@@ -89,8 +89,8 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0011 work contract
 
-Status: `Doing` on the working tree based on source commit
-`811871cc10c25450cd2796a3ba377e4db784fea7`.
+Status: `Complete` at implementation commit
+`fba68a115936fda14a7a545daef70d23d9183c7b` on `origin/main`.
 
 Implement now: retain the 3.x public contract, record every CA1051, CA1707, and
 CA1716 symbol as a reviewed compatibility identity, and extend the existing analyzer
@@ -128,7 +128,7 @@ the 39 public instance fields; the normal analyzer run passes at 458 diagnostics
 public API remains exactly 3,295 entries; and all local, exact-commit package-
 consumer, and remote gates pass.
 
-### PL-0011 current evidence
+### PL-0011 verification and closure
 
 - The fixed-source inventory reports CA1051 39, CA1707 145, and CA1716 2. The 186
   identities divide into 46 legacy-compatibility and 140 current 3.x entries;
@@ -144,14 +144,30 @@ consumer, and remote gates pass.
 - Release build reports 0 warnings/errors; direct and coverage smoke each pass
   233/233; all five coverage floors pass; exact public API is 3,295; analyzer is
   458/10 with 186 exact compatibility identities; and all 86 checked local document
-  targets resolve. Exact-commit packaging, isolated consumption, and remote CI remain
-  to be recorded before closure.
+  targets resolve.
+- Five exact-commit packages at `3.0.1-dev.1789351693937` pass provenance, three
+  fail-closed mutation probes, isolated `net8.0/win-x64` consumption, and the
+  one-native-copy check. The D-drive `dotnet run --artifacts-path` invocation built
+  correctly but tried the default repository executable path, so the same D-drive
+  DLL was executed directly; the standard workflow invocation also passed remotely.
+- GitHub Actions [Build run 34798108229](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34798108229)
+  completed successfully for the exact implementation commit, including build,
+  smoke/coverage, API, 186-identity analyzer, package, provenance, negative,
+  consumer, and native gates.
 
 | Rule | Legacy compatibility | Current 3.x | Reviewed decision |
 | --- | ---: | ---: | --- |
 | CA1051 | 13 | 26 | Keep all 39 public fields in 3.x; field-to-property conversion changes binary and reflection access. |
 | CA1707 | 33 | 112 | Keep all 145 public names in 3.x; renaming changes type/member lookup or named-argument source compatibility. |
 | CA1716 | 0 | 2 | Retain the namespace and interface member in 3.x while recording their cross-language usability limitation. |
+
+Reusable exact-commit evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0011\final-fba68a1`.
+`integrated-verification-summary.json` has SHA-256
+`DFC91D5DE58BADF328C33F23A5679C22763EC413FA7AAFB920EC287DB254A087`.
+No package was published and no consumer repository was changed. This does not
+prove real-sensor accuracy, calibration, false accept/reject rates, production
+latency, another native runtime, or commercial redistribution clearance.
 
 ## PL-0010 work contract
 
@@ -510,9 +526,10 @@ PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. PL-0009 removed the 14
 CA1806, CA1816, and CA2208 diagnostics. PL-0010 removed the 41 CA1507 and CA2249
 readability diagnostics. PL-0011 has now reviewed every one of the 186 retained
 CA1051, CA1707, and CA1716 identities and added an exact compatibility gate on top
-of the aggregate ceilings. The working tree still reports **458 diagnostics in 10
-emitted codes**, with every code count unchanged. Exact-commit and remote evidence
-are pending. This remains a no-regression gate and categorized debt review, not a
+of the aggregate ceilings. The implementation commit reports **458 diagnostics in 10
+emitted codes**, with every code count unchanged. Exact-commit evidence is recorded
+under `PL-0011/final-fba68a1` on the D-drive evidence root and in remote Build run
+34798108229. This remains a no-regression gate and categorized debt review, not a
 zero-warning claim.
 
 | Category | Codes / count | Review decision |

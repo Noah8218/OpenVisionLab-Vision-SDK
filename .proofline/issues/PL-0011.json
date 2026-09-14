@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "186개 exact 호환성 기준선과 동일 개수 교체 실패 검증을 구현했다. 작업 트리에서 Release 0/0, direct·coverage smoke 233/233, coverage 5개 floor, API 3295 exact, analyzer 458/10 및 186 exact, 문서 링크 86/86이 통과했다. 다음은 구현 커밋을 만들고 그 커밋의 package/provenance/consumer와 원격 CI를 검증하는 것이다.",
-    "next_action": "구현 변경을 main에 커밋·push하고 exact commit package/provenance/negative/격리 consumer/native 및 GitHub Build를 검증한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 fba68a115936fda14a7a545daef70d23d9183c7b을 origin/main에 반영했다. 186개 공개 호환성 진단을 46 legacy/140 current 3.x와 39 CA1051·145 CA1707·2 CA1716의 exact 지문으로 고정했고 동일 개수 한 지문 교체를 차단한다. Release 0/0, smoke/coverage 233/233, API 3295 exact, analyzer 458/10·호환 지문 186, 문서 86/86, 패키지 5개/provenance/negative 3/격리 consumer/native 1개 및 원격 CI 34798108229가 통과했다. 패키지 게시, 성능 272건의 측정 검토, 센서·교정·현장 성능·재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "CA1051, CA1707, CA1716의 186개 공개 호환성 진단을 정확한 3.x 계약으로 고정하여, 총계가 같아도 새 심볼 진단이나 기존 심볼 교체가 검증을 통과하지 못하게 한다.",
@@ -60,7 +59,8 @@
       "id": "C4",
       "text": "Release build, 전체 smoke/coverage, exact public API, analyzer, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4"
       ]
     }
   ],
@@ -101,7 +101,7 @@
     {
       "id": "M4",
       "summary": "고정 커밋 package·consumer·원격 CI와 durable closure",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4"
@@ -169,6 +169,13 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\precommit",
       "observation": "Release solution build는 경고/오류 0, direct full smoke와 coverage smoke는 각각 233/233, exact public API는 3295, analyzer는 458건/10코드와 186개 exact 호환성 지문, local Markdown/HTML link target은 86/86으로 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, Vision3D 90.97%로 모두 기준 이상이다.",
       "observed_at": "2026-09-14T11:03:44.7000109+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "exact implementation commit packages and remote CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0011\\final-fba68a1\\integrated-verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34798108229",
+      "observation": "구현 커밋 fba68a115936fda14a7a545daef70d23d9183c7b의 5개 package 3.0.1-dev.1789351693937이 provenance와 3개 fail-closed probe를 통과했고 격리 net8.0/win-x64 consumer 및 output-root native DLL 1개가 실행됐다. 로컬 dotnet run --artifacts-path는 D 출력 빌드 후 기본 C 실행 경로를 선택해 실패했으나 같은 D 출력 DLL 직접 실행이 통과했고, 원격 Build 34798108229의 표준 dotnet run 포함 14개 필수 workflow step도 exact commit에서 success였다. 통합 요약 SHA256은 DFC91D5DE58BADF328C33F23A5679C22763EC413FA7AAFB920EC287DB254A087이다.",
+      "observed_at": "2026-09-14T11:12:17.9705997+09:00"
     }
   ],
   "events": [
@@ -180,8 +187,16 @@
       "evidence_refs": [
         "E1"
       ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T11:12:17.9705997+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 구현 커밋 fba68a115936fda14a7a545daef70d23d9183c7b을 origin/main에 반영했다. 186개 공개 호환성 진단을 46 legacy/140 current 3.x와 39 CA1051·145 CA1707·2 CA1716의 exact 지문으로 고정했고 동일 개수 한 지문 교체를 차단한다. Release 0/0, smoke/coverage 233/233, API 3295 exact, analyzer 458/10·호환 지문 186, 문서 86/86, 패키지 5개/provenance/negative 3/격리 consumer/native 1개 및 원격 CI 34798108229가 통과했다. 패키지 게시, 성능 272건의 측정 검토, 센서·교정·현장 성능·재배포 승인은 별도 경계다."
     }
   ],
   "created_at": "2026-09-14T10:38:12.7839328+09:00",
-  "updated_at": "2026-09-14T11:03:44.7000109+09:00"
+  "updated_at": "2026-09-14T11:12:17.9705997+09:00"
 }
