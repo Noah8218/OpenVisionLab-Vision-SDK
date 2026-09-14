@@ -19,7 +19,7 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "우선순위 1~4의 상세 분석, work contract, owner/call-path proof plan, fixed probe evidence와 stop gate가 문서·원장에 기록되고 링크·diff·ledger 검증을 통과했다. 다음은 M2 독립 3D typed adapter/report 구현이다.",
+    "current_summary": "우선순위 1~4의 상세 분석과 구현 순서가 main에 기록됐다. 최초 staged whitespace 검사에서 문서 hard-break 공백 2개를 발견해 제거했고 fresh diff/ledger 검증으로 분석 checkpoint를 정정했다. 다음은 M2 독립 3D typed adapter/report 구현이다.",
     "next_action": "ThreeDToolExecutionRunner와 typed adapter/report를 구현하고 focused/package-consumer 증거를 만든다."
   },
   "objective": {
@@ -40,7 +40,8 @@
       "text": "우선순위 1~4 분석 문서가 현재/의도 소유자, 호출·의존·상태·수명 경로, 대안과 결정, 완료 기준, 검증 및 외부 중단 조건을 고정한다.",
       "evidence_refs": [
         "E1",
-        "E2"
+        "E2",
+        "E3"
       ]
     },
     {
@@ -188,6 +189,16 @@
       "location": "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md",
       "observation": "git diff --check passed, the four current documentation files had no broken local Markdown links, and PL-0016 validated as a v2 composite ledger after the analysis/current-authority/index updates.",
       "observed_at": "2026-09-15T01:38:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "verification",
+      "location": "docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md",
+      "observation": "The first staged whitespace check exposed two trailing Markdown hard-break spaces that an earlier tracked-only diff check did not cover. Both were removed; a fresh git diff --check and PL-0016 schema validation passed. This supersedes E2''s overbroad diff-check statement while preserving its link and ledger observations.",
+      "observed_at": "2026-09-15T01:41:00+09:00",
+      "supersedes": [
+        "E2"
+      ]
     }
   ],
   "events": [
@@ -202,5 +213,5 @@
     }
   ],
   "created_at": "2026-09-15T01:34:39.4459136+09:00",
-  "updated_at": "2026-09-15T01:38:00+09:00"
+  "updated_at": "2026-09-15T01:41:00+09:00"
 }

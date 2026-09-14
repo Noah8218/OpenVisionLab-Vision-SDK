@@ -1,7 +1,7 @@
 # SDK priorities 1–4: implementation analysis and proof plan
 
-Updated: 2026-09-15  
-Work item: `PL-0016`  
+Updated: 2026-09-15
+Work item: `PL-0016`
 Decision state: analysis complete; implementation is authorized and proceeds in the
 order defined here.
 
