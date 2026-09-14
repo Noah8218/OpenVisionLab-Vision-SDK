@@ -1,1 +1,4 @@
-src/OpenVisionLab.Core/ThirdParty/** text eol=lf
+src/OpenVisionLab.Core/ThirdParty/NOTICE.md text eol=lf
+src/OpenVisionLab.Core/ThirdParty/provenance.json text eol=lf
+src/OpenVisionLab.Core/ThirdParty/licenses/** -text whitespace=-trailing-space
+src/OpenVisionLab.Core/ThirdParty/evidence/** -text whitespace=-trailing-space

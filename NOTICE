@@ -9,9 +9,9 @@ redistributing copies or substantial portions of those portions, preserve the
 copyright notice, license text, and this attribution notice.
 
 OpenVisionLab.Core also packages three vendored OpenCvSharp/OpenCV binaries.
-Their exact mixed-version provenance, preserved upstream license evidence, and
-unresolved redistribution blockers are recorded in
+Their exact mixed-version provenance, preserved upstream license evidence, and two
+remaining redistribution approvals are recorded in
 src/OpenVisionLab.Core/ThirdParty/NOTICE.md and provenance.json; the Core NuGet
 package carries the same files under third-party/. The repository MIT license
-does not replace third-party terms. This provisional evidence is not legal advice
-or approval to publish or commercially redistribute those bundled binaries.
+does not replace third-party terms. This evidence is not legal advice or approval
+to publish or commercially redistribute those bundled binaries.

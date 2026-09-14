@@ -1,17 +1,19 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0012`
-Overall state: `resolved`
+Project work item: `PL-0013`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0012.json` records the completed measured-performance analyzer
-review. `.proofline/issues/PL-0011.json` preserves the completed 3.x public-
-compatibility analyzer review, `.proofline/issues/PL-0010.json` preserves the
+`.proofline/issues/PL-0013.json` records the current third-party redistribution-
+evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
+measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
+the completed 3.x public-compatibility analyzer review, while
+`.proofline/issues/PL-0010.json` preserves the
 completed readability-focused follow-up, `.proofline/issues/PL-0009.json` preserves
 the completed correctness-focused review, and `.proofline/issues/PL-0008.json`
 preserves the completed CA1305 review. `.proofline/issues/PL-0007.json` and
@@ -55,7 +57,11 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 `PL-0002`, `PL-0003`, and `PL-0004` are resolved for their approved functional,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
-redistribution; that separate clearance remains blocked by the prerequisites below.
+redistribution. PL-0013 has now confirmed exact official sources for the Blob
+`LGPL-3.0-or-later` version, IPPICV 2020 redistribution terms, and ittnotify's BSD
+selection. Those texts and the other identified OpenCV 4.3 third-party notices are
+being fixed into the Core package and fail-closed manifest. Commercial clearance
+remains blocked by the two approvals below.
 `PL-0012` has classified all 272 performance suggestions by rule, owner, project
 layer, access, and call behavior. Thirty-two zero-length allocations now use
 `Array.Empty<T>()`, and nine single-task `Task.WaitAll` calls now use `Task.Wait()`;
@@ -98,6 +104,60 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0013 work contract
+
+Status: `In progress`.
+
+Implement now: preserve exact official license/notice evidence for the bundled
+OpenCvSharp/OpenCV bytes; replace the three publicly resolvable unknowns with their
+exact source, version, and hashes; package the evidence only in Core; and keep the
+remaining clearance state fail closed.
+
+Review later: written OpenCvSharp/cvBlob rights-holder clarification must define the
+scope relationship between the package/top-level BSD declaration, the Blob ReadMe,
+and the seven `LGPL-3.0-or-later` source headers. The project's distribution/legal
+owner must then approve the final notices and LGPL fulfillment method. Use
+[`THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md`](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md)
+for the exact request and approval record.
+
+Out of scope: a legal determination, package publication, stable version, tag,
+release, deployment, consumer-repository mutation, third-party binary replacement,
+API changes, analyzer refactoring, and sensor/calibration qualification.
+
+The evidence owner is `src/OpenVisionLab.Core/ThirdParty`. The package call path is
+`OpenVisionLab.Core.csproj` to `Verify-ThirdPartyBinaries.ps1` to
+`Verify-PackageProvenance.ps1`; other packages must continue rejecting Core's
+vendored binaries and `third-party/` tree. No runtime mutable state, public contract,
+or lifetime owner changes.
+
+Exact findings:
+
+- OpenCV commit `d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba` pins IPPICV
+  commit `a56b6ac6f030c312b2dce17430eef13aed9af274`, archive MD5
+  `879741A7946B814455EEE6C6FFDE2984`. A fresh official download is byte-identical
+  to the prior evidence and has SHA-256
+  `E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7`.
+  Its April 2018 Intel Simplified Software License permits unmodified
+  redistribution subject to its conditions, and its third-party declaration lists
+  no separately licensed programs.
+- The exact ittnotify header has SHA-256
+  `5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80`
+  and permits either BSD or GPLv2; this evidence bundle selects BSD and preserves
+  the exact license.
+- At exact OpenCvSharp managed source commit
+  `daa955c6e0263a7ba201404e5aa72f4c1bd144ae`, seven cvBlob-derived files specify
+  LGPL version 3 or later. The full LGPL 3.0 and incorporated GPL 3.0 texts are
+  preserved. The remaining question is license scope, not version.
+- Exact OpenCV 4.3 source notices for DNN Torch import, Jasper, libjpeg-turbo/IJG,
+  libpng, libtiff, libwebp, OpenEXR/IlmImf, protobuf, quirc, SoftFloat, and zlib are
+  included in the reviewed document set.
+
+Acceptance criteria: exact official-source linkage and hashes; 25 manifest-owned
+evidence documents; Core-only package inclusion; fail-closed source/package drift
+checks; consistent consumer and current-status documentation; fresh focused,
+package, isolated-consumer, and remote CI verification. Completion evidence will be
+recorded here and in `.proofline/issues/PL-0013.json` after those checks run.
 
 ## PL-0012 work contract
 
@@ -849,11 +909,12 @@ Acceptance criteria:
 
 - C1/C2 — Pass. `src/OpenVisionLab.Core/ThirdParty/provenance.json` fixes each local
   byte, Git blob, managed/native identity, official container/entry, and exact-match
-  evidence; unknown license terms remain explicitly unknown.
+  evidence; license questions still open at that historical checkpoint remained
+  explicit.
 - C3 — Pass. Root/Core notices and consumer documentation distinguish the project MIT
   scope, third-party evidence, mixed upstream identity, and non-legal-advice boundary.
-  Core packages the manifest, notice, three official BSD texts, and Blob conflict
-  ReadMe.
+  At that checkpoint Core packaged the manifest, notice, three official BSD texts,
+  and Blob conflict ReadMe; PL-0013 expands the current evidence set.
 - C4 — Pass. Shared verifiers lock the canonical manifest, source binaries, Core
   package paths and bytes, non-Core absence, evidence files, duplicate/unsafe ZIP
   paths, and renamed exact binary bytes. The CI regression harness rejects all three
@@ -901,13 +962,12 @@ Evidence:
   package manifest, remote-CI JSON, logs, negative-probe results, coverage, packages,
   and isolated consumer output are under the same root.
 
-Boundary / next dependency: no package publication, stable version, tag, release,
-deployment, consumer-repository change, other RID, .NET Framework runtime, real
-sensor, calibration, or production-metrology qualification was performed.
-Redistribution clearance remains blocked by the Blob BSD/LGPL conflict and missing
-LGPL version/full text, authoritative redistribution terms for the exact IPPICV 2020
-archive, the ittnotify license selection, and final project distribution/legal-owner
-approval.
+Historical boundary at PL-0004 completion: no package publication, stable version,
+tag, release, deployment, consumer-repository change, other RID, .NET Framework
+runtime, real sensor, calibration, or production-metrology qualification was
+performed. PL-0013 supersedes that work item's four then-open redistribution
+questions: it resolves the LGPL version, exact IPPICV terms, and ittnotify selection
+from official sources while retaining the two current approval prerequisites.
 
 ## PL-0005 — audit finding remediation
 
@@ -995,12 +1055,15 @@ another RID or .NET Framework runtime, run real sensors/calibration/Gauge R&R, o
 establish commercial redistribution clearance. The latter remains blocked by the
 prerequisites recorded above.
 
-## Next priority — external redistribution-clearance evidence
+## Next priority — two external redistribution approvals
 
-Prerequisite: obtain the four written items named above from authoritative rights
-holders and the project's distribution/legal owner. Until those materials exist,
-another implementation or model run cannot establish redistribution clearance, so
-no model-token recommendation is made.
+Prerequisites: obtain written OpenCvSharp/cvBlob rights-holder clarification of the
+Blob license scope, then obtain project distribution/legal-owner approval of the
+final notice bundle, LGPL source/relinking fulfillment method, Intel conditions, and
+exact distribution workflow. The actionable request and decision template is
+[`THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md`](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
+Until both approvals are retained, another implementation or model run cannot
+establish redistribution clearance, so no model-token recommendation is made.
 
 ## Historical PL-0002 priority 1 — 2D result-contract correctness
 
@@ -1198,11 +1261,13 @@ Do not describe `PL-0002` completion as production metrology qualification.
 - NuGet publication, a stable `3.0.1` release, consumer package/hash updates, tag
   creation, and deployment remain separate authorization boundaries.
 - Vendored OpenCvSharp/OpenCV binary bytes now have exact official artifact
-  provenance and provisional notice evidence. Commercial redistribution is still
-  blocked by the unresolved Blob BSD/LGPL conflict, unspecified LGPL version,
-  incomplete exact IPPICV redistribution terms, unconfirmed ittnotify license
-  selection, and the absence of project distribution/legal-owner approval for the
-  final notice bundle. This repository audit did not make a legal determination.
+  provenance. Exact official evidence identifies the Blob source offer as
+  `LGPL-3.0-or-later`, the applicable IPPICV 2020 archive license, and ittnotify's
+  selectable BSD terms; the Core package preserves those and the other identified
+  OpenCV 4.3 third-party notices. Commercial redistribution remains blocked until
+  the OpenCvSharp/cvBlob rights holder clarifies Blob scope and the project
+  distribution/legal owner approves the final notice and fulfillment plan. This
+  repository audit did not make a legal determination.
 
 ## PL-0002 completion record
 

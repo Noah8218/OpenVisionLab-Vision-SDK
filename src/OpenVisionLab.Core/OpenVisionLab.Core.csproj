@@ -31,9 +31,29 @@
     <None Include="ThirdParty\provenance.json" Pack="true" PackagePath="third-party\" />
     <None Include="ThirdParty\NOTICE.md" Pack="true" PackagePath="third-party\" />
     <None Include="ThirdParty\licenses\OpenCvSharp-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCvSharp.Blob-GPL-3.0.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCvSharp.Blob-LGPL-3.0.txt" Pack="true" PackagePath="third-party\licenses\" />
     <None Include="ThirdParty\licenses\OpenCV-4.3-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
     <None Include="ThirdParty\licenses\OpenCV-Contrib-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-dnn-torch-COPYRIGHT.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-ittnotify-BSD-3-Clause.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libjasper-copyright.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libjasper-LICENSE.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libjpeg-turbo-LICENSE.md" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\README.ijg" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libpng-LICENSE.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libtiff-COPYRIGHT.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-libwebp-COPYING.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-openexr-LICENSE.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-protobuf-LICENSE.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-quirc-LICENSE.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-SoftFloat-COPYING.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\OpenCV-zlib-README.txt" Pack="true" PackagePath="third-party\licenses\" />
+    <None Include="ThirdParty\licenses\Intel-IPPICV-2020-Simplified-Software-License.rtf" Pack="true" PackagePath="third-party\licenses\" />
     <None Include="ThirdParty\evidence\OpenCvSharp.Blob-ReadMe.txt" Pack="true" PackagePath="third-party\evidence\" />
+    <None Include="ThirdParty\evidence\OpenCvSharp.Blob-LGPL-3.0-or-later-header.txt" Pack="true" PackagePath="third-party\evidence\" />
+    <None Include="ThirdParty\evidence\OpenCV-ittnotify-dual-license-header.txt" Pack="true" PackagePath="third-party\evidence\" />
+    <None Include="ThirdParty\evidence\Intel-IPPICV-2020-third-party-programs.txt" Pack="true" PackagePath="third-party\evidence\" />
   </ItemGroup>
 
 </Project>

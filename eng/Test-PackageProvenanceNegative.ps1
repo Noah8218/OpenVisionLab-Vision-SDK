@@ -56,13 +56,21 @@ function Add-ZipBytes {
     param(
         [Parameter(Mandatory = $true)][string] $ZipPath,
         [Parameter(Mandatory = $true)][string] $EntryPath,
-        [Parameter(Mandatory = $true)][byte[]] $Bytes
+        [Parameter(Mandatory = $true)][byte[]] $Bytes,
+        [switch] $ReplaceExisting
     )
 
     $archive = [System.IO.Compression.ZipFile]::Open(
         $ZipPath,
         [System.IO.Compression.ZipArchiveMode]::Update)
     try {
+        if ($ReplaceExisting) {
+            $existingEntry = $archive.GetEntry($EntryPath)
+            if ($null -eq $existingEntry) {
+                throw "Cannot replace missing package entry '$EntryPath'."
+            }
+            $existingEntry.Delete()
+        }
         $entry = $archive.CreateEntry($EntryPath, [System.IO.Compression.CompressionLevel]::Optimal)
         $stream = $entry.Open()
         try {
@@ -99,7 +107,10 @@ function Invoke-NegativeProbe {
         $output,
         [System.Text.UTF8Encoding]::new($false))
     $joinedOutput = $output -join [Environment]::NewLine
-    if ($exitCode -eq 0 -or -not $joinedOutput.Contains($ExpectedDiagnostic, [StringComparison]::Ordinal)) {
+    $normalizedOutput = [regex]::Replace($joinedOutput, '\s*\|\s*', ' ')
+    $normalizedOutput = [regex]::Replace($normalizedOutput, '\s+', ' ')
+    $normalizedDiagnostic = [regex]::Replace($ExpectedDiagnostic, '\s+', ' ')
+    if ($exitCode -eq 0 -or -not $normalizedOutput.Contains($normalizedDiagnostic, [StringComparison]::Ordinal)) {
         throw "Negative probe '$Name' did not fail with '$ExpectedDiagnostic'. See $logPath."
     }
     $null = $results.Add([ordered] @{
@@ -130,6 +141,18 @@ Invoke-NegativeProbe `
             -ZipPath (Get-PackagePath $packages 'OpenVisionLab.Core') `
             -EntryPath 'third-party\escape.txt' `
             -Bytes ([System.Text.Encoding]::UTF8.GetBytes('unsafe'))
+    }
+
+Invoke-NegativeProbe `
+    -Name 'third-party-license-drift' `
+    -ExpectedDiagnostic 'OpenVisionLab.Core third-party/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf SHA-256' `
+    -Mutate {
+        param($packages)
+        Add-ZipBytes `
+            -ZipPath (Get-PackagePath $packages 'OpenVisionLab.Core') `
+            -EntryPath 'third-party/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf' `
+            -Bytes ([System.Text.Encoding]::UTF8.GetBytes('mutated')) `
+            -ReplaceExisting
     }
 
 Invoke-NegativeProbe `

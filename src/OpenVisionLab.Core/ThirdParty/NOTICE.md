@@ -1,32 +1,68 @@
 # OpenVisionLab.Core third-party binary provenance and notice status
 
-Updated: 2026-08-31
+Updated: 2026-09-14
 
 This is a technical provenance record, not legal advice or redistribution
 clearance. `OpenVisionLab.Core` contains three vendored OpenCvSharp/OpenCV binary
 files. The repository-wide MIT license covers OpenVisionLab-authored code; it does
 not replace the terms that apply to these third-party files.
 
-## Redistribution status: blocked
+## Redistribution status: blocked pending two approvals
 
-The exact upstream bytes are identified, but the minimum complete redistribution
-notice set is not yet authoritative:
+Exact official evidence now identifies the previously uncertain LGPL version,
+IPPICV redistribution terms, and ittnotify license choice. Commercial
+redistribution is still blocked because two decisions require authoritative human
+approval:
 
-- the official `OpenCvSharp4 4.4.0.20200915` package and repository top-level
-  license declare `BSD-3-Clause`, while the same source revision's
-  `OpenCvSharp.Blob/ReadMe.txt` says that cvblob and OpenCvSharp use `LGPL` without
-  naming an LGPL version or providing its complete text;
-- the exact native build statically reports Intel IPP/IW 2020.0.0 and other
-  third-party components, but the exact IPPICV archive does not contain an
-  authoritative complete redistribution license; and
-- the applicable ittnotify license choice has not been confirmed.
+1. Obtain written OpenCvSharp/cvBlob rights-holder clarification of the scope
+   relationship between the NuGet/top-level `BSD-3-Clause` declaration, the Blob
+   ReadMe's broad LGPL statement, and the seven cvBlob-derived source files marked
+   `LGPL-3.0-or-later`.
+2. Have the project's distribution/legal owner approve the final notice bundle and
+   the chosen LGPL source/relinking fulfillment method, Intel notice conditions,
+   and distribution workflow.
 
-Do not use this provisional evidence set as approval to publish or commercially
-redistribute the bundled binaries. Unblocking requires written clarification from
-the applicable OpenCvSharp/cvblob rights holder for the Blob BSD/LGPL conflict and
-LGPL version, authoritative Intel/OpenCV confirmation of redistribution rights for
-the exact IPPICV 2020 archive, confirmation of the ittnotify license selection, and
-approval of the final notice bundle by the project's distribution/legal owner.
+Use the [repository clearance checklist](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/blob/main/docs/THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md)
+to request and retain both decisions against the exact binaries and source commits.
+
+Do not use this evidence set as approval to publish or commercially redistribute
+the bundled binaries. Changing `redistributionClearance` from `blocked` requires a
+separate reviewed decision after both approvals are retained by the project.
+
+## Questions resolved by exact official evidence
+
+### OpenCvSharp.Blob LGPL version
+
+The two managed assemblies exactly match official NuGet package `OpenCvSharp4
+4.4.0.20200915` and report source commit
+`daa955c6e0263a7ba201404e5aa72f4c1bd144ae`. At that exact commit,
+`BlobRenderer.cs`, `CvBlobs.cs`, `CvContourChainCode.cs`,
+`CvContourPolygon.cs`, `CvTrack.cs`, `CvTracks.cs`, and `Labeller.cs` each state
+that their cvBlob-derived code is offered under LGPL version 3 or any later
+version. The package now preserves that header, LGPL 3.0, and the incorporated GPL
+3.0 text. This resolves the missing-version question; it does not resolve the
+rights-scope question named above.
+
+### Intel IPPICV/IW 2020
+
+Exact OpenCV core commit `d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba`
+pins OpenCV third-party commit `a56b6ac6f030c312b2dce17430eef13aed9af274`
+and MD5 `879741A7946B814455EEE6C6FFDE2984` for
+`ippicv_2020_win_intel64_20191018_general.zip`. A fresh download from that
+official URL is byte-identical to the PL-0004 archive and has SHA-256
+`E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7`.
+The archive contains the Intel Simplified Software License, version April 2018,
+which permits unmodified redistribution subject to its stated conditions. It also
+contains `third-party-programs.txt`, which reports no separately licensed Third
+Party Programs for that IPPICV package. Both exact files are preserved here.
+
+### ittnotify
+
+The exact OpenCV 4.3 source header `3rdparty/ittnotify/include/ittnotify.h` has
+SHA-256 `5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80`
+and explicitly permits selection of either BSD or GPLv2. This evidence bundle
+selects the BSD terms and preserves both the selection header and the exact BSD
+license text.
 
 ## Exact binary inventory
 
@@ -52,6 +88,11 @@ Official containers:
   `1639AF0E08245F7A50D3A299636EF36ACC527CA5CCFFB1F97CEC861C774D97EB`).
   GitHub exposed no publisher digest for asset ID `22677192`, so this container
   hash is an observed download hash, not an upstream checksum or signature.
+- Exact IPPICV archive:
+  <https://raw.githubusercontent.com/opencv/opencv_3rdparty/a56b6ac6f030c312b2dce17430eef13aed9af274/ippicv/ippicv_2020_win_intel64_20191018_general.zip>
+  (35,798,082 bytes; OpenCV-pinned MD5
+  `879741A7946B814455EEE6C6FFDE2984`; observed SHA-256
+  `E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7`).
 
 The managed assemblies carry product version
 `1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae`. That revision is an official
@@ -64,18 +105,34 @@ The native DLL reports OpenCV 4.3.0, core revision
 Intel IPP/IW 2020.0.0, and non-free algorithms enabled. Its exact official release
 tag commit is `206eba074db5e85b09843ae1f9275ef192969e1c`.
 
-## Preserved official license evidence
+## Preserved official evidence
 
-The package preserves these exact upstream texts while the conflict is unresolved:
+The Core package carries every file below under `third-party/`:
 
-- `licenses/OpenCvSharp-BSD-3-Clause.txt` from the managed source revision;
-- `licenses/OpenCV-4.3-BSD-3-Clause.txt` from the exact OpenCV core revision;
-- `licenses/OpenCV-Contrib-BSD-3-Clause.txt` from the exact contrib revision; and
-- `evidence/OpenCvSharp.Blob-ReadMe.txt`, which preserves the conflicting LGPL
-  statement without inventing a license version.
+- OpenCvSharp and OpenCV core/contrib BSD license texts from the exact source
+  revisions;
+- the exact Blob ReadMe, representative `LGPL-3.0-or-later` source header, and
+  complete LGPL 3.0 plus GPL 3.0 texts;
+- the exact IPPICV 2020 EULA and its `third-party-programs.txt` declaration;
+- the exact ittnotify dual-license header and selected BSD license; and
+- the exact OpenCV 4.3 source notices for DNN Torch import, Jasper,
+  libjpeg-turbo/IJG, libpng, libtiff, libwebp, OpenEXR/IlmImf, protobuf, quirc,
+  SoftFloat, and zlib.
 
-The native build also reports `ittnotify`, `libprotobuf`, `zlib`,
-`libjpeg-turbo`, `libwebp`, `libpng`, `libtiff`, `libjasper`, `IlmImf`, `quirc`,
-`ippiw`, and `ippicv`. Their official source notices were inspected during PL-0004,
-but this package does not label that inspected collection as the final applicable
-license set while the Blob, IPPICV, and ittnotify questions remain open.
+The native build reports `ittnotify`, `libprotobuf`, `zlib`, `libjpeg-turbo`,
+`libwebp`, `libpng`, `libtiff`, `libjasper`, `IlmImf`, `quirc`, `ippiw`, and
+`ippicv`. The manifest records the exact source URL, size, and SHA-256 for each
+preserved document. Inclusion records provenance and terms; it is not a legal
+determination that the final commercial distribution method satisfies them.
+
+## Distribution-owner approval checklist
+
+- Retain the written OpenCvSharp/cvBlob scope clarification with the release
+  evidence.
+- Select and document the LGPL source/relinking fulfillment method for the exact
+  unmodified Blob assembly.
+- Confirm the Intel notice and no-modification conditions against the bytes being
+  released.
+- Review the final `third-party/` contents and package hashes.
+- Record explicit distribution/legal-owner approval before changing the blocked
+  manifest state or publishing a package.

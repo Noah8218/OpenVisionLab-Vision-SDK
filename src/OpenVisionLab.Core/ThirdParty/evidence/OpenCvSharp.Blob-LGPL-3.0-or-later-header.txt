@@ -1,0 +1,26 @@
+Source commit: daa955c6e0263a7ba201404e5aa72f4c1bd144ae
+Representative source: src/OpenCvSharp.Blob/BlobRenderer.cs
+Source URL: https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/src/OpenCvSharp.Blob/BlobRenderer.cs
+Source file SHA-256: 5FAB4C425363DF975466DD20A50256102464096016EE4C3D1F87E53BC5BDBD5B
+
+The same LGPL-3.0-or-later notice was observed in BlobRenderer.cs, CvBlobs.cs,
+CvContourChainCode.cs, CvContourPolygon.cs, CvTrack.cs, CvTracks.cs, and Labeller.cs.
+The exact representative header follows.
+
+// Copyright (C) 2007 by Cristóbal Carnero Liñán
+// grendel.ccl@gmail.com
+//
+// This file is part of cvBlob.
+//
+// cvBlob is free software: you can redistribute it and/or modify
+// it under the terms of the Lesser GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// cvBlob is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// Lesser GNU General Public License for more details.
+//
+// You should have received a copy of the Lesser GNU General Public License
+// along with cvBlob.  If not, see <http://www.gnu.org/licenses/>.

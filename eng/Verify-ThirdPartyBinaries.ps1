@@ -53,7 +53,7 @@ if ([string]::IsNullOrWhiteSpace($ProvenancePath)) {
     $ProvenancePath = Join-Path $repositoryRoot 'src/OpenVisionLab.Core/ThirdParty/provenance.json'
 }
 $provenanceFile = (Resolve-Path -LiteralPath $ProvenancePath).Path
-$expectedProvenanceSha256 = 'C53975A07ECEF70441BF25BC381062923F97D3D9BEC7E533A71733B30FC6CE32'
+$expectedProvenanceSha256 = '0E8DC840D5D41A6B732401477A225C7C6C36D22C31C3C76F899FEE8D5F6DD164'
 $actualProvenanceSha256 = Get-Sha256 $provenanceFile
 if (-not [string]::Equals(
         $actualProvenanceSha256,
@@ -68,19 +68,34 @@ if ($provenance.schemaVersion -ne 1) {
 }
 if (-not [string]::Equals(
         [string] $provenance.licenseEvidence.status,
-        'unresolved',
+        'partially-resolved',
         [StringComparison]::Ordinal)) {
-    throw "Third-party license evidence must remain unresolved until the documented prerequisites are approved."
+    throw "Third-party license evidence must preserve the reviewed partially-resolved state."
 }
 if (-not [string]::Equals(
         [string] $provenance.licenseEvidence.redistributionClearance,
         'blocked',
         [StringComparison]::Ordinal)) {
-    throw "Third-party redistribution clearance must remain blocked until separately approved."
+    throw "Third-party redistribution clearance must remain blocked until the two remaining approvals are retained."
 }
-if (@($provenance.licenseEvidence.conflicts).Count -lt 3 -or
+if (@($provenance.licenseEvidence.resolvedFindings).Count -ne 3 -or
+    @($provenance.licenseEvidence.remainingQuestions).Count -ne 2 -or
     [string]::IsNullOrWhiteSpace([string] $provenance.licenseEvidence.unblockCondition)) {
-    throw "Third-party license evidence must preserve the known conflicts and unblock condition."
+    throw "Third-party license evidence must preserve three resolved findings, two remaining approvals, and the unblock condition."
+}
+$blobFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'OpenCvSharp.Blob')
+$ippFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'Intel IPPICV/IW 2020')
+$ittFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'ittnotify')
+if ($blobFinding.Count -ne 1 -or
+    -not [string]::Equals([string] $blobFinding[0].offeredLicense, 'LGPL-3.0-or-later', [StringComparison]::Ordinal) -or
+    -not [string]::Equals([string] $blobFinding[0].representativeSourceSha256, '5FAB4C425363DF975466DD20A50256102464096016EE4C3D1F87E53BC5BDBD5B', [StringComparison]::Ordinal) -or
+    $ippFinding.Count -ne 1 -or
+    -not [string]::Equals([string] $ippFinding[0].archiveMd5, '879741A7946B814455EEE6C6FFDE2984', [StringComparison]::Ordinal) -or
+    -not [string]::Equals([string] $ippFinding[0].archiveSha256, 'E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7', [StringComparison]::Ordinal) -or
+    $ittFinding.Count -ne 1 -or
+    -not [string]::Equals([string] $ittFinding[0].selectedLicense, 'BSD-3-Clause', [StringComparison]::Ordinal) -or
+    -not [string]::Equals([string] $ittFinding[0].sourceSha256, '5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80', [StringComparison]::Ordinal)) {
+    throw "Third-party license evidence does not match the reviewed Blob, IPPICV, and ittnotify resolutions."
 }
 
 $expectedBinaries = @{
@@ -261,9 +276,29 @@ foreach ($sourcePath in $expectedBinaries.Keys) {
 $expectedDocumentPaths = @(
     'src/OpenVisionLab.Core/ThirdParty/NOTICE.md',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp-BSD-3-Clause.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-GPL-3.0.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-LGPL-3.0.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-4.3-BSD-3-Clause.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-Contrib-BSD-3-Clause.txt',
-    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-ReadMe.txt'
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-dnn-torch-COPYRIGHT.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-ittnotify-BSD-3-Clause.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjasper-copyright.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjasper-LICENSE.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjpeg-turbo-LICENSE.md',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/README.ijg',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libpng-LICENSE.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libtiff-COPYRIGHT.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libwebp-COPYING.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-openexr-LICENSE.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-protobuf-LICENSE.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-quirc-LICENSE.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-SoftFloat-COPYING.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-zlib-README.txt',
+    'src/OpenVisionLab.Core/ThirdParty/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf',
+    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-LGPL-3.0-or-later-header.txt',
+    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-ReadMe.txt',
+    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCV-ittnotify-dual-license-header.txt',
+    'src/OpenVisionLab.Core/ThirdParty/evidence/Intel-IPPICV-2020-third-party-programs.txt'
 )
 $documents = @($provenance.documents)
 if ($documents.Count -ne $expectedDocumentPaths.Count) {
@@ -299,13 +334,16 @@ foreach ($sourcePath in $expectedDocumentPaths) {
 $noticePath = Get-RepositoryPath -Root $repositoryRoot -RelativePath 'src/OpenVisionLab.Core/ThirdParty/NOTICE.md'
 $notice = Get-Content -LiteralPath $noticePath -Raw
 $requiredNoticeValues = @(
-    'Redistribution status: blocked',
+    'Redistribution status: blocked pending two approvals',
     '4.4.0.20200915',
     '4.3.0.20200708',
     'BSD-3-Clause',
-    'LGPL',
+    'LGPL-3.0-or-later',
     'IPPICV',
-    'ittnotify'
+    'ittnotify',
+    'E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7',
+    '5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80',
+    'distribution/legal owner'
 ) + @($expectedBinaries.Values | ForEach-Object { $_.sha256 })
 foreach ($value in $requiredNoticeValues) {
     if (-not $notice.Contains([string] $value, [StringComparison]::Ordinal)) {
@@ -313,4 +351,4 @@ foreach ($value in $requiredNoticeValues) {
     }
 }
 
-Write-Host "Third-party binary provenance passed: $($binaries.Count) exact binaries, $($documents.Count) evidence documents; redistribution clearance remains blocked."
+Write-Host "Third-party binary provenance passed: $($binaries.Count) exact binaries, $($documents.Count) evidence documents; public evidence is partially resolved and redistribution clearance remains blocked."

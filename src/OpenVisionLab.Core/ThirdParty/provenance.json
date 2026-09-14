@@ -2,14 +2,52 @@
   "schemaVersion": 1,
   "scope": "Vendored third-party binaries packaged only by OpenVisionLab.Core",
   "licenseEvidence": {
-    "status": "unresolved",
+    "status": "partially-resolved",
     "redistributionClearance": "blocked",
-    "conflicts": [
-      "OpenCvSharp4 4.4.0.20200915 declares BSD-3-Clause, while its OpenCvSharp.Blob ReadMe declares LGPL without a version or full license text.",
-      "The exact native build reports Intel IPP/IW 2020.0.0, but the exact IPPICV archive does not contain an authoritative complete redistribution license.",
-      "The applicable ittnotify license choice has not been confirmed."
+    "resolvedFindings": [
+      {
+        "component": "OpenCvSharp.Blob",
+        "finding": "Seven cvBlob-derived files at the managed assembly source commit carry LGPL-3.0-or-later headers; the missing LGPL version is resolved, while package-wide scope remains for rights-holder review.",
+        "sourceCommit": "daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
+        "sourceFiles": [
+          "BlobRenderer.cs",
+          "CvBlobs.cs",
+          "CvContourChainCode.cs",
+          "CvContourPolygon.cs",
+          "CvTrack.cs",
+          "CvTracks.cs",
+          "Labeller.cs"
+        ],
+        "representativeSourceSha256": "5FAB4C425363DF975466DD20A50256102464096016EE4C3D1F87E53BC5BDBD5B",
+        "offeredLicense": "LGPL-3.0-or-later",
+        "preservedLicenseSelection": "LGPL-3.0"
+      },
+      {
+        "component": "Intel IPPICV/IW 2020",
+        "finding": "The exact OpenCV-pinned archive contains Intel Simplified Software License (April 2018), which permits unmodified redistribution subject to its conditions, and declares that this package contains no separately licensed Third Party Programs.",
+        "openCvSourceCommit": "d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba",
+        "thirdPartyCommit": "a56b6ac6f030c312b2dce17430eef13aed9af274",
+        "archiveName": "ippicv_2020_win_intel64_20191018_general.zip",
+        "archiveSize": 35798082,
+        "archiveMd5": "879741A7946B814455EEE6C6FFDE2984",
+        "archiveSha256": "E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7",
+        "licenseEntry": "ippicv_win/EULA.rtf",
+        "thirdPartyProgramsEntry": "ippicv_win/third-party-programs.txt"
+      },
+      {
+        "component": "ittnotify",
+        "finding": "The exact OpenCV source header offers either BSD or GPLv2 for use and redistribution; this evidence bundle selects and preserves the BSD terms.",
+        "sourceCommit": "d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba",
+        "sourcePath": "3rdparty/ittnotify/include/ittnotify.h",
+        "sourceSha256": "5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80",
+        "selectedLicense": "BSD-3-Clause"
+      }
     ],
-    "unblockCondition": "Obtain written rights-holder clarification for the Blob BSD/LGPL conflict and LGPL version, authoritative redistribution terms for the exact IPPICV 2020 archive, confirmation of the ittnotify license selection, and project distribution/legal-owner approval of the final notice bundle."
+    "remainingQuestions": [
+      "Written OpenCvSharp/cvBlob rights-holder clarification is required for the scope relationship between the NuGet/top-level BSD-3-Clause declaration, the Blob ReadMe LGPL statement, and the seven LGPL-3.0-or-later source headers.",
+      "The project distribution/legal owner must approve the final notice bundle and the chosen LGPL source/relinking fulfillment method, Intel conditions, and distribution workflow."
+    ],
+    "unblockCondition": "Retain the written OpenCvSharp/cvBlob scope clarification and project distribution/legal-owner approval of the final notice, LGPL fulfillment, Intel conditions, and exact release workflow before changing redistributionClearance."
   },
   "binaries": [
     {
@@ -158,11 +196,11 @@
   ],
   "documents": [
     {
-      "role": "provisional-notice-and-boundary",
+      "role": "current-notice-and-clearance-boundary",
       "sourcePath": "src/OpenVisionLab.Core/ThirdParty/NOTICE.md",
       "packagePath": "third-party/NOTICE.md",
-      "size": 4637,
-      "sha256": "CD5082119AEA73B697191C14D56A8FCF13A96E2AA837402E4549E25E8CF1C9CC"
+      "size": 7458,
+      "sha256": "EB6600079C349354D30A0D5627A6991E2377797F0A1A5CC64C30EB07B964A3F5"
     },
     {
       "role": "official-license-evidence",
@@ -171,6 +209,22 @@
       "size": 1506,
       "sha256": "073ED4C2934A375D1FEE5ABBCC8B79D965512379A084B2E92FF4E6D9E624B214",
       "sourceUrl": "https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-GPL-3.0.txt",
+      "packagePath": "third-party/licenses/OpenCvSharp.Blob-GPL-3.0.txt",
+      "size": 35149,
+      "sha256": "3972DC9744F6499F0F9B2DBF76696F2AE7AD8AF9B23DDE66D6AF86C9DFB36986",
+      "sourceUrl": "https://www.gnu.org/licenses/gpl-3.0.txt"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-LGPL-3.0.txt",
+      "packagePath": "third-party/licenses/OpenCvSharp.Blob-LGPL-3.0.txt",
+      "size": 7652,
+      "sha256": "E3A994D82E644B03A792A930F574002658412F62407F5FEE083F2555C5F23118",
+      "sourceUrl": "https://www.gnu.org/licenses/lgpl-3.0.txt"
     },
     {
       "role": "official-license-evidence",
@@ -189,12 +243,158 @@
       "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv_contrib/0d92fd8041ae36d855ca40dd444b2102e754bfe3/LICENSE"
     },
     {
+      "role": "official-third-party-notice",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-dnn-torch-COPYRIGHT.txt",
+      "packagePath": "third-party/licenses/OpenCV-dnn-torch-COPYRIGHT.txt",
+      "size": 2046,
+      "sha256": "C5CED63019EFECF865D6E65D33495507BA5E744FB9D648F2A2F142A169CAFAE5",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/modules/dnn/src/torch/COPYRIGHT.txt"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-ittnotify-BSD-3-Clause.txt",
+      "packagePath": "third-party/licenses/OpenCV-ittnotify-BSD-3-Clause.txt",
+      "size": 1481,
+      "sha256": "77CF47AA88DF151FABA9DB8BBBFCFF8E83DBE5F0FF0DAC3EF76E63217F579A55",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/ittnotify/src/ittnotify/LICENSE.BSD"
+    },
+    {
+      "role": "official-third-party-notice",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjasper-copyright.txt",
+      "packagePath": "third-party/licenses/OpenCV-libjasper-copyright.txt",
+      "size": 3042,
+      "sha256": "86C11BD7B94D24D6C372BD95F8D8998B8A69C7D82A91DD0247878B28223FEABE",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libjasper/copyright"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjasper-LICENSE.txt",
+      "packagePath": "third-party/licenses/OpenCV-libjasper-LICENSE.txt",
+      "size": 2744,
+      "sha256": "EDF9F4257CC33A1F396F9B062CA4A01DCA7C79747C7D85B8947E603E5166760E",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libjasper/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libjpeg-turbo-LICENSE.md",
+      "packagePath": "third-party/licenses/OpenCV-libjpeg-turbo-LICENSE.md",
+      "size": 5209,
+      "sha256": "69E570A251515CED17D4492256D57C89DB77ED949652F88A44C80C1CA9607920",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libjpeg-turbo/LICENSE.md"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/README.ijg",
+      "packagePath": "third-party/licenses/README.ijg",
+      "size": 13687,
+      "sha256": "82FECE2BFF2669C476495F0FE70096B154E8BC5B40916A64E99836D9A01C3110",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libjpeg-turbo/README.ijg"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libpng-LICENSE.txt",
+      "packagePath": "third-party/licenses/OpenCV-libpng-LICENSE.txt",
+      "size": 5345,
+      "sha256": "BF5E22B9DCE8464064AE17A48EA1133C3369AC9E1D80EF9E320E5219AA14EA9B",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libpng/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libtiff-COPYRIGHT.txt",
+      "packagePath": "third-party/licenses/OpenCV-libtiff-COPYRIGHT.txt",
+      "size": 1146,
+      "sha256": "FBD6FED7938541D2C809C0826225FC85E551FDBFA8732B10F0C87E0847ACAFD7",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libtiff/COPYRIGHT"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-libwebp-COPYING.txt",
+      "packagePath": "third-party/licenses/OpenCV-libwebp-COPYING.txt",
+      "size": 1496,
+      "sha256": "5AEC868F669E384A22372A4E8A1A6CD7D44C64CD451F960CA69CC170D1E13ACF",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/libwebp/COPYING"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-openexr-LICENSE.txt",
+      "packagePath": "third-party/licenses/OpenCV-openexr-LICENSE.txt",
+      "size": 1697,
+      "sha256": "14EBA5F05238F57C77E94F0EBD29A0B3736BA0456FF990CDA16E21B6903AC453",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/openexr/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-protobuf-LICENSE.txt",
+      "packagePath": "third-party/licenses/OpenCV-protobuf-LICENSE.txt",
+      "size": 2133,
+      "sha256": "AF67C58DE2E18677A0B8CB5FFFBE2232AABB8EB2930E8CD684769CEF3D74A262",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/protobuf/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-quirc-LICENSE.txt",
+      "packagePath": "third-party/licenses/OpenCV-quirc-LICENSE.txt",
+      "size": 790,
+      "sha256": "F64A0D2030DD3BB501F303EB66097ED92CD0C63F824E515B1116DAFBCE5346FE",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/quirc/LICENSE"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-SoftFloat-COPYING.txt",
+      "packagePath": "third-party/licenses/OpenCV-SoftFloat-COPYING.txt",
+      "size": 1732,
+      "sha256": "0C5B08365136DA52639D777F1EBFC03988B0169D80655C90C59F1B3FA3E526A2",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/modules/core/3rdparty/SoftFloat/COPYING.txt"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-zlib-README.txt",
+      "packagePath": "third-party/licenses/OpenCV-zlib-README.txt",
+      "size": 5187,
+      "sha256": "7960B6B1CC63E619ABB77ACAEA5427159605AFEE8C8B362664F4EFFC7D7F7D15",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/zlib/README"
+    },
+    {
+      "role": "official-license-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf",
+      "packagePath": "third-party/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf",
+      "size": 65324,
+      "sha256": "6465EE550062E93B6A57B301517532991666241E0702263A4CB6392455305D07",
+      "sourceContainerUrl": "https://raw.githubusercontent.com/opencv/opencv_3rdparty/a56b6ac6f030c312b2dce17430eef13aed9af274/ippicv/ippicv_2020_win_intel64_20191018_general.zip",
+      "sourceEntry": "ippicv_win/EULA.rtf"
+    },
+    {
+      "role": "official-license-header-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-LGPL-3.0-or-later-header.txt",
+      "packagePath": "third-party/evidence/OpenCvSharp.Blob-LGPL-3.0-or-later-header.txt",
+      "size": 1318,
+      "sha256": "2F8BDC7E0430241FC824A95E1FDAA9F192955A29E1C0397B5C740FF90CCD4AF8",
+      "sourceUrl": "https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/src/OpenCvSharp.Blob/BlobRenderer.cs"
+    },
+    {
       "role": "conflicting-license-evidence",
       "sourcePath": "src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-ReadMe.txt",
       "packagePath": "third-party/evidence/OpenCvSharp.Blob-ReadMe.txt",
       "size": 184,
       "sha256": "32FC160242CC3921D8E47D4BFFF6AB3CB0E0C99B9AAE33E39F1B84317D68FCAA",
       "sourceUrl": "https://raw.githubusercontent.com/shimat/opencvsharp/daa955c6e0263a7ba201404e5aa72f4c1bd144ae/src/OpenCvSharp.Blob/ReadMe.txt"
+    },
+    {
+      "role": "official-license-header-evidence",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/evidence/OpenCV-ittnotify-dual-license-header.txt",
+      "packagePath": "third-party/evidence/OpenCV-ittnotify-dual-license-header.txt",
+      "size": 3127,
+      "sha256": "B3D485B36EB729580254D1C4A849B5403D1EB83205794FA9D48761312E9BC48B",
+      "sourceUrl": "https://raw.githubusercontent.com/opencv/opencv/d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba/3rdparty/ittnotify/include/ittnotify.h"
+    },
+    {
+      "role": "official-package-declaration",
+      "sourcePath": "src/OpenVisionLab.Core/ThirdParty/evidence/Intel-IPPICV-2020-third-party-programs.txt",
+      "packagePath": "third-party/evidence/Intel-IPPICV-2020-third-party-programs.txt",
+      "size": 248,
+      "sha256": "35DB695CB1145D308036D312ECBDDC5BF7E5F1F73FD3A156D5C0C278571F9EB2",
+      "sourceContainerUrl": "https://raw.githubusercontent.com/opencv/opencv_3rdparty/a56b6ac6f030c312b2dce17430eef13aed9af274/ippicv/ippicv_2020_win_intel64_20191018_general.zip",
+      "sourceEntry": "ippicv_win/third-party-programs.txt"
     }
   ]
 }

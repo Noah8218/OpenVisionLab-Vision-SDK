@@ -1,0 +1,114 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0013",
+    "aliases": [],
+    "type": "research",
+    "mode": "simple",
+    "title": "번들 바이너리 재배포 증빙 재검증",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user request",
+    "summary": "2026-09-14 사용자가 완료된 analyzer 작업 다음 우선순위 진행을 승인했고, 현재 권위 문서가 외부 redistribution-clearance evidence를 다음 우선순위로 지정한다.",
+    "refs": [
+      "docs/OPENVISIONLAB_CURRENT_STATUS.md#next-priority--external-redistribution-clearance-evidence"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "Exact 2020 upstream 자료 재검증에서 IPPICV archive의 Intel Simplified Software License, ittnotify의 BSD/GPLv2 선택 조항, OpenCvSharp.Blob 소스의 LGPL-3.0-or-later 헤더가 확인됐다. 이 공식 근거를 저장소와 Core package에 고정하고 남는 외부 승인 경계를 정확히 축소한다.",
+    "next_action": "공식 원문과 source linkage를 ThirdParty manifest/NOTICE/package에 반영하고, fail-closed verifier와 문서·패키지·CI 검증을 완료한다."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "현재 NOTICE는 exact IPPICV archive에 재배포 라이선스가 없고 ittnotify 선택과 Blob LGPL 버전이 미확정이라고 기록하지만, exact 공식 자료에는 이 세 항목을 구체화하는 근거가 존재한다.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "공식 근거를 누락하면 실제로 해소 가능한 세 불확실성이 상업 재배포 차단 사유로 계속 남고, package consumer가 적용 조건과 원문을 확인할 수 없다."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "IPPICV, ittnotify, Blob 각각의 exact source/version/license 연결과 해시가 공식 1차 자료 및 로컬 재현 증빙으로 기록된다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Core ThirdParty bundle, provenance manifest, csproj packaging과 verifier가 필요한 원문을 정확히 포함하고 drift를 fail closed한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "README, NOTICE, current status가 해소된 공개 증빙과 아직 필요한 외부 권리/내부 승인을 일관되게 구분하며 법적 승인으로 과장하지 않는다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "focused third-party gate, documentation gate, five-package provenance, negative probes와 isolated consumer가 fresh D: 경로에서 통과한다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "origin/main의 exact commit에 대한 GitHub Actions Build가 통과하거나 실패 원인이 기록된다.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0004"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "third-party evidence owner",
+      "location": "src/OpenVisionLab.Core/ThirdParty"
+    },
+    {
+      "kind": "package and verification call path",
+      "location": "src/OpenVisionLab.Core/OpenVisionLab.Core.csproj; eng/Verify-ThirdPartyBinaries.ps1; eng/Verify-PackageProvenance.ps1"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "official source recheck",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\official-recheck-20260914",
+      "summary": "Exact upstream downloads, extracted IPPICV EULA, source headers, hashes and comparisons."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "official primary-source recheck",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\official-recheck-20260914",
+      "observation": "OpenCV commit d40fe356 pins ippicv archive a56b6ac6 with MD5 879741A7946B814455EEE6C6FFDE2984; the freshly downloaded exact archive SHA-256 E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7 contains Intel Simplified Software License (April 2018), which expressly permits unmodified redistribution subject to its conditions, and a third-party-programs.txt stating no Third Party Programs are included. Exact ittnotify.h SHA-256 5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80 states the file is dual BSD/GPLv2 and may be redistributed under either license; the exact BSD text SHA-256 is 77CF47AA88DF151FABA9DB8BBBFCFF8E83DBE5F0FF0DAC3EF76E63217F579A55. Exact OpenCvSharp source commit daa955c6 has seven Blob source files whose headers specify LGPL version 3 or later; the packaged managed assembly reports that commit as ProductVersion.",
+      "observed_at": "2026-09-14T13:25:38.3379798+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T13:25:38.3379798+09:00",
+      "summary": "PL-0004의 technical provenance 완료 경계를 유지한다. 새 공식 근거로 IPPICV와 ittnotify 조건 및 Blob LGPL 버전을 보완하되, Blob 라이선스 범위와 프로젝트 distribution/legal-owner 승인은 외부 결정으로 남긴다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    }
+  ],
+  "created_at": "2026-09-14T13:25:38.3379798+09:00",
+  "updated_at": "2026-09-14T13:25:38.3379798+09:00"
+}

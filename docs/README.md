@@ -9,8 +9,9 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0012 measured performance-analyzer review, exact retained-diagnostic contracts, prior API evidence, and blocked redistribution-clearance prerequisite |
-| [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0013 third-party evidence revalidation, PL-0012 measured analyzer closure, prior API evidence, and current external prerequisites |
+| [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the two remaining redistribution approvals |
+| [Third-party redistribution clearance checklist](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md) | Exact facts, questions, and approval record needed to resolve the two remaining external prerequisites |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
 | [Affine Transform 2D](AFFINE_TRANSFORM_2D.md) | Current 2D affine Tool and Pipeline contract |

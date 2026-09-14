@@ -253,7 +253,7 @@ The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It perf
 3. Execute all 2D/3D smoke cases while enforcing the five-assembly line-coverage baseline.
 4. Compare all five assemblies to the exact reviewed public-API baseline.
 5. Run the `latest-recommended`/`All` analyzer no-regression baseline.
-6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, internal dependency declarations, vendored binary hashes, and provisional third-party evidence to that checkout. Exercise the duplicate-path, unsafe-path, and renamed non-Core binary guards with `eng/Test-PackageProvenanceNegative.ps1`.
+6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, internal dependency declarations, vendored binary hashes, and reviewed third-party evidence to that checkout. Exercise the duplicate-path, unsafe-path, third-party license-drift, and renamed non-Core binary guards with `eng/Test-PackageProvenanceNegative.ps1`.
 7. Restore and run the `net8.0`/`win-x64` package-only consumer from the packed output and an isolated NuGet cache.
 8. Require exactly one `OpenCvSharpExtern.dll` directly at the package consumer output root.
 
@@ -268,20 +268,24 @@ Copyright (c) 2026 Noah Choi (최노아)
 
 - Full license: [LICENSE](LICENSE)
 - Attribution notices: [NOTICE](NOTICE)
-- Core third-party provenance and provisional notices:
+- Core third-party provenance, notices, and approval boundary:
   [src/OpenVisionLab.Core/ThirdParty/NOTICE.md](src/OpenVisionLab.Core/ThirdParty/NOTICE.md)
 - Machine-readable binary lock:
   [src/OpenVisionLab.Core/ThirdParty/provenance.json](src/OpenVisionLab.Core/ThirdParty/provenance.json)
 
 `OpenVisionLab.Core` currently mixes official OpenCvSharp managed binaries from
 `4.4.0.20200915` with an official native binary from `4.3.0.20200708`. Their exact
-bytes are proven, but redistribution clearance remains blocked by the documented
-Blob BSD/LGPL conflict and unresolved IPPICV/ittnotify terms. Do not treat the
-repository's MIT license or the provisional evidence bundle as approval to publish
-or commercially redistribute those binaries.
+bytes are proven. Exact official sources now establish `LGPL-3.0-or-later` for
+seven cvBlob-derived source files, the Intel IPPICV 2020 redistribution terms, and
+the ittnotify BSD/GPLv2 choice; the Core package preserves those texts and the
+other identified OpenCV third-party notices. Redistribution clearance remains
+blocked until the OpenCvSharp/cvBlob rights holder clarifies the Blob license scope
+and the project's distribution/legal owner approves the final notice and LGPL
+fulfillment plan. Do not treat the repository's MIT license or this evidence bundle
+as approval to publish or commercially redistribute those binaries.
 
 Run `pwsh -File ./eng/Verify-ThirdPartyBinaries.ps1` to check the reviewed source bytes,
-managed/native identities, exact official-artifact lock, and provisional evidence.
+managed/native identities, exact official-artifact lock, and reviewed evidence.
 The package provenance verifier runs the same check and additionally compares every
 Core `third-party/` and vendored-binary entry with the repository source.
 
@@ -1144,8 +1148,8 @@ asset to the output root. `buildTransitive/OpenVisionLab.Core.targets` is a
 `.NET Framework` fallback only; its source contract is reviewed, but no .NET
 Framework runtime consumer has been executed.
 
-The Core package also carries `third-party/provenance.json`, the provisional
-`third-party/NOTICE.md`, and the exact upstream license/conflict evidence named by
+The Core package also carries `third-party/provenance.json`, the current
+`third-party/NOTICE.md`, and the exact upstream license/scope evidence named by
 that manifest. The package provenance verifier requires those files and all three
 vendored DLLs to be byte-identical to the reviewed repository sources; the other
 four packages must not contain Core's vendored DLL or `third-party/` entries. This
