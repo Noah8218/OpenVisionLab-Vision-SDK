@@ -37,6 +37,20 @@ namespace OpenVisionLab.Vision2D.Pipeline
         /// </summary>
         public VisionPipelineRunResult Run(VisionPipeline pipeline, VisionPipelineContext context)
         {
+            return RunCore(pipeline, context, false);
+        }
+
+        /// <summary>
+        /// Runs the configured steps and converts missing layers, factory failures, and thrown or null Tool results
+        /// into failed step results. Invalid Pipeline definitions are still rejected before execution.
+        /// </summary>
+        public VisionPipelineRunResult RunWithFailureResults(VisionPipeline pipeline, VisionPipelineContext context)
+        {
+            return RunCore(pipeline, context, true);
+        }
+
+        private VisionPipelineRunResult RunCore(VisionPipeline pipeline, VisionPipelineContext context, bool captureStepFailures)
+        {
             if (pipeline == null)
             {
                 throw new ArgumentNullException(nameof(pipeline));
@@ -67,42 +81,107 @@ namespace OpenVisionLab.Vision2D.Pipeline
                         continue;
                     }
 
-                    IVisionTool tool = toolFactory(step);
-                    if (tool == null)
-                    {
-                        throw new InvalidOperationException($"Vision tool factory returned null for step '{step?.Name}'.");
-                    }
+                    IVisionTool tool = null;
+                    Mat input = null;
 
                     try
                     {
-                        using (Mat input = context.GetLayer(step.InputLayer))
+                        if (captureStepFailures)
                         {
-                            VisionToolResult toolResult = tool.Execute(input);
-                            VisionPipelineAcceptanceResult acceptance = VisionPipelineAcceptanceEvaluator.Evaluate(step, toolResult);
-
-                            VisionPipelineStepResult stepResult = new VisionPipelineStepResult
+                            input = context.GetLayer(step.InputLayer);
+                            if (input == null)
                             {
-                                Step = step,
-                                ToolResult = toolResult,
-                                AcceptancePassed = acceptance.Passed,
-                                AcceptanceMessage = acceptance.Message
-                            };
-                            runResult.StepResults.Add(stepResult);
+                                AddFailureResult(
+                                    runResult,
+                                    step,
+                                    VisionToolErrorCode.InputLayerMissing,
+                                    $"Input layer '{step.InputLayer}' was not found.");
+                                break;
+                            }
+                        }
 
-                            if (!stepResult.Success)
+                        try
+                        {
+                            tool = toolFactory(step);
+                        }
+                        catch (Exception exception) when (captureStepFailures)
+                        {
+                            AddFailureResult(
+                                runResult,
+                                step,
+                                VisionToolErrorCode.ToolFactoryFailed,
+                                $"Vision tool creation failed for step '{step.Name}': {exception.Message}",
+                                exception);
+                            break;
+                        }
+
+                        if (tool == null)
+                        {
+                            string message = $"Vision tool factory returned null for step '{step.Name}'.";
+                            if (captureStepFailures)
                             {
+                                AddFailureResult(runResult, step, VisionToolErrorCode.ToolFactoryFailed, message);
                                 break;
                             }
 
-                            if (toolResult.ResultImage != null
-                                && !string.IsNullOrWhiteSpace(step.OutputLayer))
-                            {
-                                context.SetLayer(step.OutputLayer, toolResult.ResultImage);
-                            }
+                            throw new InvalidOperationException(message);
+                        }
+
+                        if (!captureStepFailures)
+                        {
+                            input = context.GetLayer(step.InputLayer);
+                        }
+
+                        VisionToolResult toolResult;
+                        try
+                        {
+                            toolResult = tool.Execute(input);
+                        }
+                        catch (Exception exception) when (captureStepFailures)
+                        {
+                            AddFailureResult(
+                                runResult,
+                                step,
+                                VisionToolErrorCode.ToolExecutionException,
+                                $"Vision tool execution failed for step '{step.Name}': {exception.Message}",
+                                exception);
+                            break;
+                        }
+
+                        if (captureStepFailures && toolResult == null)
+                        {
+                            AddFailureResult(
+                                runResult,
+                                step,
+                                VisionToolErrorCode.ToolExecutionException,
+                                $"Vision tool returned no result for step '{step.Name}'.");
+                            break;
+                        }
+
+                        VisionPipelineAcceptanceResult acceptance = VisionPipelineAcceptanceEvaluator.Evaluate(step, toolResult);
+                        VisionPipelineStepResult stepResult = new VisionPipelineStepResult
+                        {
+                            Step = step,
+                            ToolResult = toolResult,
+                            AcceptancePassed = acceptance.Passed,
+                            AcceptanceMessage = acceptance.Message
+                        };
+                        runResult.StepResults.Add(stepResult);
+
+                        if (!stepResult.Success)
+                        {
+                            break;
+                        }
+
+                        if (toolResult.ResultImage != null
+                            && !string.IsNullOrWhiteSpace(step.OutputLayer))
+                        {
+                            context.SetLayer(step.OutputLayer, toolResult.ResultImage);
                         }
                     }
                     finally
                     {
+                        input?.Dispose();
                         if (disposeCreatedTools && tool is IDisposable disposableTool)
                         {
                             disposableTool.Dispose();
@@ -117,6 +196,22 @@ namespace OpenVisionLab.Vision2D.Pipeline
             }
 
             return runResult;
+        }
+
+        private static void AddFailureResult(
+            VisionPipelineRunResult runResult,
+            VisionPipelineStep step,
+            VisionToolErrorCode errorCode,
+            string message,
+            Exception exception = null)
+        {
+            runResult.StepResults.Add(new VisionPipelineStepResult
+            {
+                Step = step,
+                ToolResult = VisionToolResult.Failed(errorCode, message, TimeSpan.Zero, exception),
+                AcceptancePassed = false,
+                AcceptanceMessage = message
+            });
         }
 
         private static void ValidatePipeline(VisionPipeline pipeline)

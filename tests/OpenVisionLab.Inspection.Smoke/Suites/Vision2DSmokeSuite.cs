@@ -49,6 +49,8 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("2D tool and result disposal release only owned images", TestVisionToolResourceOwnership);
             yield return new SmokeCase("Pipeline runtime honors tool, input, result, and layer ownership", TestVisionPipelineResourceOwnership);
             yield return new SmokeCase("Pipeline routes only non-null images to named output layers", TestVisionPipelineOptionalOutputContract);
+            yield return new SmokeCase("Pipeline XML preserves versioned settings and rejects unsupported input", TestVisionPipelineSerialization);
+            yield return new SmokeCase("Pipeline failure-result execution classifies infrastructure failures", TestVisionPipelineFailureResults);
             yield return new SmokeCase("Pipeline factory creates every built-in tool from valid parameters", TestVisionPipelineFactoryBuiltIns);
             yield return new SmokeCase("Pipeline factory rejects malformed, unknown, and duplicate parameters", TestVisionPipelineFactoryRejectsInvalidParameters);
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
@@ -1398,6 +1400,175 @@ namespace OpenVisionLab.Inspection.Smoke
                         && Cv2.Mean(preserved).Val0 == 23d,
                         "A null pipeline result image must not replace the existing named output layer.");
                 }
+            }
+        }
+
+        private static void TestVisionPipelineSerialization()
+        {
+            VisionPipeline pipeline = new VisionPipeline { Name = "Serialized fixture" };
+            pipeline.Steps.Add(new VisionPipelineStep
+            {
+                Name = "Threshold",
+                ToolType = "threshold",
+                Enabled = true,
+                InputLayer = "input",
+                OutputLayer = "binary",
+                UseAcceptance = true,
+                ExpectedSuccess = true,
+                MaxElapsedMilliseconds = 12.5,
+                AcceptanceMetricName = "Coverage",
+                UseAcceptanceMetricMinimum = true,
+                AcceptanceMetricMinimum = 0.75
+            });
+            pipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] = "123.5";
+            pipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Invert)] = "true";
+
+            string serialized = VisionPipelineSerializer.Serialize(pipeline);
+            Require(serialized.Contains("schemaVersion=\"1\"", StringComparison.Ordinal)
+                && !serialized.Contains("xmlns", StringComparison.Ordinal),
+                "Pipeline serialization did not publish the current schema without default namespaces.");
+
+            VisionPipeline restored = VisionPipelineSerializer.Deserialize(serialized);
+            Require(restored.SchemaVersion == 1
+                && restored.Name == pipeline.Name
+                && restored.Steps.Count == 1
+                && restored.Steps[0].Name == "Threshold"
+                && restored.Steps[0].InputLayer == "input"
+                && restored.Steps[0].OutputLayer == "binary"
+                && restored.Steps[0].UseAcceptance
+                && restored.Steps[0].MaxElapsedMilliseconds == 12.5
+                && restored.Steps[0].AcceptanceMetricMinimum == 0.75
+                && restored.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] == "123.5"
+                && restored.Steps[0].Parameters[nameof(ThresholdToolProperty.Invert)] == "true",
+                "Pipeline serialization did not preserve the semantic contract.");
+
+            string legacyXml = serialized.Replace(" schemaVersion=\"1\"", string.Empty);
+            Require(VisionPipelineSerializer.Deserialize(legacyXml).SchemaVersion == 1,
+                "Unversioned original Pipeline XML must load as schema version 1.");
+
+            string futureXml = serialized.Replace("schemaVersion=\"1\"", "schemaVersion=\"2\"");
+            RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Deserialize(futureXml));
+
+            string duplicateXml = serialized.Replace(
+                "</Parameters>",
+                "<Parameter><Key>threshold</Key><Value>20</Value></Parameter></Parameters>");
+            RequireThrows<InvalidOperationException>(() => VisionPipelineSerializer.Deserialize(duplicateXml));
+
+            string dtdXml = "<!DOCTYPE VisionPipeline [<!ENTITY injected 'blocked'>]>" + serialized;
+            RequireThrows<InvalidOperationException>(() => VisionPipelineSerializer.Deserialize(dtdXml));
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Deserialize(" "));
+
+            pipeline.SchemaVersion = 2;
+            RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Serialize(pipeline));
+        }
+
+        private static void TestVisionPipelineFailureResults()
+        {
+            VisionPipeline pipeline = new VisionPipeline { Name = "Failure-result fixture" };
+            pipeline.Steps.Add(CreatePipelineStep("threshold"));
+
+            using (Mat successSource = new Mat(2, 2, MatType.CV_8UC1, Scalar.All(1)))
+            using (VisionPipelineContext successContext = new VisionPipelineContext())
+            {
+                successContext.SetLayer("input", successSource);
+                using (VisionPipelineRunResult success = new VisionPipelineRuntime(_ => new ImageReturningVisionTool())
+                    .RunWithFailureResults(pipeline, successContext))
+                using (Mat output = successContext.GetLayer("output"))
+                {
+                    Require(success.Success && output != null && !output.Empty(),
+                        "Failure-result execution did not preserve the normal output path.");
+                }
+            }
+
+            VisionPipeline missingPipeline = new VisionPipeline { Name = "Missing-layer fixture" };
+            VisionPipelineStep missingStep = CreatePipelineStep("threshold");
+            missingStep.UseAcceptance = true;
+            missingStep.ExpectedSuccess = false;
+            missingPipeline.Steps.Add(missingStep);
+
+            bool factoryCalled = false;
+            using (VisionPipelineContext missingContext = new VisionPipelineContext())
+            using (VisionPipelineRunResult missing = new VisionPipelineRuntime(_ =>
+            {
+                factoryCalled = true;
+                return new PassThroughVisionTool();
+            }).RunWithFailureResults(missingPipeline, missingContext))
+            {
+                Require(!missing.Success
+                    && !factoryCalled
+                    && missing.StepResults.Count == 1
+                    && !missing.StepResults[0].AcceptancePassed
+                    && missing.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.InputLayerMissing
+                    && missing.StepResults[0].ToolResult.ResultStatus == VisionToolResultStatus.InvalidInput
+                    && missing.StepResults[0].ToolResult.Exception == null,
+                    "A missing Pipeline layer was not returned as a typed infrastructure failure.");
+            }
+
+            using (Mat source = new Mat(2, 2, MatType.CV_8UC1, Scalar.All(1)))
+            using (VisionPipelineContext context = new VisionPipelineContext())
+            {
+                context.SetLayer("input", source);
+                pipeline.Steps[0].UseAcceptance = true;
+                pipeline.Steps[0].ExpectedSuccess = false;
+                InvalidOperationException factoryException = new InvalidOperationException("Controlled factory failure.");
+                using (VisionPipelineRunResult factoryFailure = new VisionPipelineRuntime(_ => throw factoryException)
+                    .RunWithFailureResults(pipeline, context))
+                {
+                    Require(!factoryFailure.Success
+                        && !factoryFailure.StepResults[0].AcceptancePassed
+                        && factoryFailure.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.ToolFactoryFailed
+                        && factoryFailure.StepResults[0].ToolResult.ResultStatus == VisionToolResultStatus.ConfigurationError
+                        && ReferenceEquals(factoryFailure.StepResults[0].ToolResult.Exception, factoryException),
+                        "A Pipeline factory exception was not preserved as ToolFactoryFailed.");
+                }
+
+                using (VisionPipelineRunResult nullTool = new VisionPipelineRuntime(_ => null)
+                    .RunWithFailureResults(pipeline, context))
+                {
+                    Require(!nullTool.Success
+                        && !nullTool.StepResults[0].AcceptancePassed
+                        && nullTool.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.ToolFactoryFailed
+                        && nullTool.StepResults[0].ToolResult.Exception == null,
+                        "A null factory result was not preserved as ToolFactoryFailed.");
+                }
+
+                using (VisionPipelineRunResult nullResult = new VisionPipelineRuntime(_ => new NullResultVisionTool())
+                    .RunWithFailureResults(pipeline, context))
+                {
+                    Require(!nullResult.Success
+                        && !nullResult.StepResults[0].AcceptancePassed
+                        && nullResult.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.ToolExecutionException
+                        && nullResult.StepResults[0].ToolResult.ResultStatus == VisionToolResultStatus.Exception
+                        && nullResult.StepResults[0].ToolResult.Exception == null,
+                        "A null Tool execution result was not preserved as ToolExecutionException.");
+                }
+
+                ThrowingDisposableVisionTool throwingTool = new ThrowingDisposableVisionTool();
+                using (VisionPipelineRunResult executionFailure = new VisionPipelineRuntime(_ => throwingTool, true)
+                    .RunWithFailureResults(pipeline, context))
+                {
+                    Require(!executionFailure.Success
+                        && !executionFailure.StepResults[0].AcceptancePassed
+                        && executionFailure.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.ToolExecutionException
+                        && executionFailure.StepResults[0].ToolResult.ResultStatus == VisionToolResultStatus.Exception
+                        && executionFailure.StepResults[0].ToolResult.Exception is InvalidOperationException
+                        && throwingTool.WasDisposed
+                        && throwingTool.LastSource != null
+                        && throwingTool.LastSource.IsDisposed,
+                        "A thrown Tool failure did not preserve its typed result and owned lifetimes.");
+                }
+
+                bool existingRunThrew = false;
+                try
+                {
+                    new VisionPipelineRuntime(_ => throw factoryException).Run(pipeline, context);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    existingRunThrew = ReferenceEquals(exception, factoryException);
+                }
+
+                Require(existingRunThrew, "The existing Run factory-exception contract changed.");
             }
         }
 

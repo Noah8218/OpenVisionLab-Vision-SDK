@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0014",
+    "aliases": [],
+    "type": "feature",
+    "mode": "composite",
+    "title": "SDK 방향·Pipeline artifact·실패 결과 계약",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "explicit user-approved implementation",
+    "summary": "2026-09-14 전수 조사에서 확인한 SDK 조합성 공백을 문서에 고정하고 첫 P0 개발 배치를 진행하라는 사용자 요청.",
+    "refs": [
+      "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/Audit-20260914/OPENVISIONLAB_VISION_SDK_FULL_AUDIT.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "SDK 방향·capability/error 계약과 additive versioned Pipeline/failure-result 구현이 완료되었다. 모든 인프라 실패는 ExpectedSuccess=false로 승인되지 않으며 최종 working-tree focused/통합 검증이 통과했다. 커밋 고정 패키지와 원격 CI가 남아 있다.",
+    "next_action": "최종 staged diff를 검토해 main에 커밋·push한 뒤 정확한 커밋으로 package provenance/negative/isolated consumer/native copy와 원격 CI를 검증한다."
+  },
+  "objective": {
+    "summary": "개발자가 2D/3D Tool의 현재 조합 가능 범위와 책임 경계를 한 문서에서 찾고, 2D Pipeline을 버전된 XML로 안전하게 왕복하며 missing layer/factory/tool exception을 typed step result로 선택적으로 처리할 수 있게 한다.",
+    "constraints": [
+      "기존 VisionPipelineRuntime.Run의 throw/ownership/acceptance 동작과 3.x 공개 API를 보존하고 additive API만 추가한다.",
+      "SDK는 XML schema와 algorithm artifact 계약만 소유하며 host의 파일·DB·recipe lifecycle, UI, camera, PLC를 소유하지 않는다.",
+      "StepTimeout과 StepCanceled는 실제 cooperative execution contract가 생기기 전까지 reserved로 명시하고 가짜 timeout을 구현하지 않는다.",
+      "새 외부 dependency, UI framework, global registry, reflection-based factory를 추가하지 않는다.",
+      "NuGet 게시, consumer repository 변경, native DLL 변경, 실센서·교정·생산 적합성 주장은 범위 밖이다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "현재 권위 문서와 capability matrix가 SDK/host 경계, 15개 2D Tool의 Pipeline 상태, 62개 3D Tool의 실행 계층, 오류 producer/reserved 상태와 다음 우선순위를 명시한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "VisionPipeline은 schema version을 보존하고 SDK serializer가 current·legacy-unversioned XML을 semantic round-trip하며 future version, duplicate parameter, DTD 입력을 fail closed한다.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E6"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "기존 Run은 호환 동작을 유지하고 additive 실행 경로가 missing layer, factory exception, null/throwing Tool execution을 각각 typed failed step result로 반환하며 owned Tool/Mat/result lifetime을 보존한다.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E6"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "새 public API가 XML documentation과 exact API baseline에 기록되고 source/package consumer가 실제 사용 예제를 가진다.",
+      "evidence_refs": [
+        "E3",
+        "E5",
+        "E7"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Release build, focused/full smoke, coverage, public API, analyzer, document links, commit-fixed packages/provenance/negative probes/isolated consumer/native-copy와 exact remote CI가 통과한다.",
+      "evidence_refs": [
+        "E3",
+        "E5",
+        "E7"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "제품 방향, capability와 오류/artifact 계약 문서화",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "Versioned Pipeline serializer와 additive failure-result 실행 경로 구현",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C2",
+        "C3",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "통합·패키지·원격 검증과 durable closure",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0013"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "pipeline owner",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineRuntime.cs"
+    },
+    {
+      "kind": "pipeline model",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipeline.cs"
+    },
+    {
+      "kind": "error contract",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Tool/VisionToolResult.cs"
+    },
+    {
+      "kind": "focused regression owner",
+      "location": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSmokeSuite.cs"
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "document inspection",
+      "location": "docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md",
+      "observation": "현재 문서는 SDK/host 소유 경계, 15개 2D Tool의 Pipeline 상태, 62개 3D Tool의 공통/typed 실행 계층, 오류 producer/reserved 상태, artifact v1 계약과 순서화된 후속 우선순위를 한 경로에 명시한다.",
+      "observed_at": "2026-09-14T21:50:32.8796051+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/focused-3",
+      "observation": "Release build가 경고/오류 0건이고 Pipeline 9/9가 통과했다. v1/legacy round-trip, future/duplicate/DTD 거부, 삽입순서 독립 XML, 정상 routing, missing/factory/null-result/throwing Tool 분류, 기존 Run 예외와 Mat/Tool lifetime을 검증했다.",
+      "observed_at": "2026-09-14T21:50:32.8796552+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "integrated local verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/precommit-1",
+      "observation": "Release build 경고/오류 0, Smoke 235/235, 5개 coverage floor, public API 3300 exact, analyzer 417 exact-contract, Markdown 26개/로컬 링크 88개/누락 0이 통과했다.",
+      "observed_at": "2026-09-14T21:50:32.8796704+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "focused test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/focused-4",
+      "observation": "최종 범위의 Release build가 경고/오류 0건이고 Pipeline 9/9가 통과했다. v1/legacy semantic round-trip, future/duplicate/DTD 거부, 정상 routing, missing/factory/null-result/throwing Tool 분류, 기존 Run 예외와 Mat/Tool lifetime을 검증했다.",
+      "observed_at": "2026-09-14T21:53:21.4657908+09:00",
+      "supersedes": [
+        "E2"
+      ]
+    },
+    {
+      "id": "E5",
+      "kind": "integrated local verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/precommit-2",
+      "observation": "최종 working tree에서 Release build 경고/오류 0, Smoke 235/235, 5개 coverage floor, public API 3300 exact, analyzer 417 exact-contract, Markdown 26개/로컬 링크 88개/누락 0이 통과했다.",
+      "observed_at": "2026-09-14T21:53:21.4657908+09:00",
+      "supersedes": [
+        "E3"
+      ]
+    },
+    {
+      "id": "E6",
+      "kind": "focused test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/focused-5",
+      "observation": "최종 Release build가 경고/오류 0건이고 Pipeline 9/9가 통과했다. v1/legacy semantic round-trip과 future/duplicate/DTD 거부, 정상 routing, 기존 Run 예외/lifetime을 검증했으며 missing layer, factory exception/null, Tool exception/null result가 ExpectedSuccess=false인 경우에도 AcceptancePassed=false로 유지됨을 직접 검증했다.",
+      "observed_at": "2026-09-14T21:58:18.7268396+09:00",
+      "supersedes": [
+        "E4"
+      ]
+    },
+    {
+      "id": "E7",
+      "kind": "integrated local verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/precommit-3",
+      "observation": "최종 working tree에서 Release build 경고/오류 0, Smoke 235/235, coverage Core 37.35/Inspection 69.92/Vision2D 74.72/Vision2D.Blob 69.17/Vision3D 90.97, public API 3300 exact, analyzer 417 exact-contract, Markdown 26개/로컬 링크 88개/누락 0이 통과했다.",
+      "observed_at": "2026-09-14T21:58:18.7268396+09:00",
+      "supersedes": [
+        "E5"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T21:33:07.5811888+09:00",
+      "summary": "첫 배치는 기존 Run을 바꾸지 않고 versioned XML serializer와 RunWithFailureResults를 additive하게 제공한다. 3D mega-interface, timeout 가장, factory reflection과 외부 serialization dependency는 도입하지 않는다.",
+      "evidence_refs": []
+    }
+  ],
+  "created_at": "2026-09-14T21:33:07.5811888+09:00",
+  "updated_at": "2026-09-14T21:58:18.7268396+09:00"
+}

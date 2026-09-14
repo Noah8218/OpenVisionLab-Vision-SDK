@@ -1,6 +1,7 @@
 using OpenCvSharp;
 using OpenVisionLab.Inspection;
 using OpenVisionLab.Vision2D.Blob;
+using OpenVisionLab.Vision2D.Pipeline;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
 using OpenVisionLab.Vision2D.Tool;
@@ -214,6 +215,36 @@ if (!blobResult.Success
         $"Blob package example failed: {blobResult.ErrorName}: {blobResult.Message}");
 }
 
+VisionPipeline serializedPipeline = new VisionPipeline { Name = "Package pipeline" };
+serializedPipeline.Steps.Add(new VisionPipelineStep
+{
+    Name = "Threshold",
+    ToolType = "threshold",
+    InputLayer = "input",
+    OutputLayer = "binary"
+});
+serializedPipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] = "50";
+string pipelineXml = VisionPipelineSerializer.Serialize(serializedPipeline);
+VisionPipeline restoredPipeline = VisionPipelineSerializer.Deserialize(pipelineXml);
+if (restoredPipeline.SchemaVersion != 1
+    || restoredPipeline.Steps.Count != 1
+    || restoredPipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] != "50")
+{
+    throw new InvalidOperationException("Versioned Pipeline package round-trip failed.");
+}
+
+using (VisionPipelineContext missingLayerContext = new VisionPipelineContext())
+using (VisionPipelineRunResult missingLayerResult = new VisionPipelineRuntime()
+    .RunWithFailureResults(restoredPipeline, missingLayerContext))
+{
+    if (missingLayerResult.Success
+        || missingLayerResult.StepResults.Count != 1
+        || missingLayerResult.StepResults[0].ToolResult.ErrorCode != VisionToolErrorCode.InputLayerMissing)
+    {
+        throw new InvalidOperationException("Pipeline package failure-result contract failed.");
+    }
+}
+
 using ContourTool contour = new ContourTool();
 contour.SetProperty(new ContourToolProperty
 {
@@ -344,4 +375,4 @@ if (!comparison.Success
 }
 
 Console.WriteLine(
-    "OpenVisionLab package-only 2D properties, tools, Blob, 3D crop, connected-region presence and fill-height, surface-match, and mesh consumer passed.");
+    "OpenVisionLab package-only 2D properties, tools, Pipeline, Blob, 3D crop, connected-region presence and fill-height, surface-match, and mesh consumer passed.");

@@ -93,6 +93,16 @@ namespace OpenVisionLab.Inspection.Smoke
         }
     }
 
+    internal sealed class NullResultVisionTool : IVisionTool
+    {
+        public string Name => "Null-result 2D";
+
+        public VisionToolResult Execute(Mat source)
+        {
+            return null;
+        }
+    }
+
     internal sealed class ThrowingThreeDTool : IThreeDInspectionTool
     {
         public string Name => "Throwing 3D";

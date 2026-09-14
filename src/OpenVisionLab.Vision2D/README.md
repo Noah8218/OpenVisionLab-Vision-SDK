@@ -133,6 +133,20 @@ unknown, or duplicate step parameters. Its `ParamName` is `parameters`, while th
 message identifies the invalid key and expected value type. Use `ParamName` to find
 the public input and the message to correct the individual recipe value.
 
+`VisionPipeline.SchemaVersion` defaults to 1. Use
+`VisionPipelineSerializer.Serialize` and `Deserialize` for the SDK-owned in-memory
+XML contract. Original XML without the attribute loads as version 1; unknown
+versions, duplicate parameter names, and DTD input fail closed. The host owns file
+or database persistence, recipe lifecycle, and any later model-artifact resolver.
+Loading a Pipeline never runs it.
+
+`VisionPipelineRuntime.Run` preserves the original 3.x exception behavior.
+`RunWithFailureResults` instead returns `InputLayerMissing`, `ToolFactoryFailed`, or
+`ToolExecutionException` step results for missing layers, factory failures, and
+throwing/null custom Tool results. Invalid Pipeline definitions still throw before
+execution. `StepTimeout` and `StepCanceled` remain reserved until a real cooperative
+execution contract exists.
+
 ```csharp
 // After using VisionToolResult result = tool.Execute(source):
 if (!result.Success)

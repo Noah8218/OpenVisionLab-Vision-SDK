@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0013`
-Overall state: `resolved`
+Project work item: `PL-0014`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0013.json` records the completed third-party redistribution-
-evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
+`.proofline/issues/PL-0014.json` records the current SDK direction and Pipeline
+artifact/failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
+third-party redistribution-evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
 measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
 the completed 3.x public-compatibility analyzer review, while
 `.proofline/issues/PL-0010.json` preserves the
@@ -52,7 +53,22 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 - Existing `C*`, `CV*`, and `LineGuage` compatibility types remain available
   throughout 3.x. Their removal is a separately gated 4.0 change.
 
+The product direction is a deterministic 2D/3D rule-based inspection kernel, not an
+application host. The current Tool composition coverage, Pipeline artifact/error
+contract, and ordered follow-up work are defined in
+[`SDK_DIRECTION_AND_CAPABILITY_MATRIX.md`](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md).
+
 ## Current progress
+
+`PL-0014` is implementing the first product-direction batch identified by the
+2026-09-14 full audit. The approved scope keeps the existing `Run` behavior and
+typed Tool APIs, adds an SDK-owned versioned in-memory Pipeline XML contract, and
+adds a separate failure-result execution path for host orchestration. It does not
+add a generic 3D mega-interface, a global registry, a serialization dependency, or
+a fake timeout. The current implementation and verification state is recorded in
+the work contract below. The current working tree passes 235/235 Smoke cases, all
+five coverage floors, the exact 3,300-entry public API, the 417-diagnostic analyzer
+contract, and 88 checked local documentation targets.
 
 `PL-0002`, `PL-0003`, and `PL-0004` are resolved for their approved functional,
 package-source traceability, and exact third-party technical-provenance scopes.
@@ -104,6 +120,65 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0014 work contract
+
+Status: `Doing`.
+
+Scope: document the UI-independent rule-based kernel direction and current Tool
+composition boundary; add versioned Pipeline XML serialization; and add an optional
+execution boundary that returns typed step failures for missing input layers,
+factory failures, and thrown/null custom Tool results.
+
+Implement now: `VisionPipeline.SchemaVersion`, `VisionPipelineSerializer`,
+`VisionPipelineRuntime.RunWithFailureResults`, focused/package consumer examples,
+public API baseline, and the capability/error matrix.
+
+Review later: complete the model-backed 2D factory, add machine-readable Tool
+descriptors, add 3D typed adapters/common execution reports, and propagate real
+cooperative cancellation through long-running Tools.
+
+Out of scope: UI, camera/sensor acquisition, host recipe storage, PLC/MES, native
+binary replacement, NuGet publication, 4.0 breaking changes, and production
+accuracy/Takt claims.
+
+Current owner and intended owner: `VisionPipeline`/`VisionPipelineStep` retain
+serialized state; `VisionPipelineSerializer` owns schema validation and XML
+round-trip; `VisionPipelineRuntime` retains execution and failure conversion;
+`VisionPipelineContext` retains mutable layer writes; `VisionPipelineRunResult`
+retains result release. No responsibility moves to a UI or file-system owner.
+
+Actual call paths:
+
+- compatibility: host -> `VisionPipelineRuntime.Run` -> factory -> input clone ->
+  `IVisionTool.Execute` -> acceptance -> output-layer clone;
+- failure result: host -> `RunWithFailureResults` -> input presence -> factory ->
+  `IVisionTool.Execute` -> typed step result -> acceptance/output on success;
+- artifact: host persistence -> XML string -> `VisionPipelineSerializer.Deserialize`
+  -> schema/DTD/parameter validation -> inert `VisionPipeline`; execution remains an
+  explicit separate call.
+
+Existing binding/public contract: `Run`, custom-factory ownership overloads,
+`IVisionTool`, typed Tool properties/results, XML names, and all 3.x compatibility
+identities remain. The new members are additive and require an explicit public API
+baseline update.
+
+Shortest review order: `SDK_DIRECTION_AND_CAPABILITY_MATRIX.md`,
+`VisionPipeline.cs`, `VisionPipelineSerializer.cs`, `VisionPipelineRuntime.cs`,
+`VisionToolResult.cs`, then the Pipeline cases in `Vision2DSmokeSuite.cs` and the
+package-only consumer.
+
+Acceptance criteria: see `PL-0014` C1-C5. Completion requires focused and full
+Smoke/coverage, exact API/analyzer/document checks, commit-fixed package provenance,
+negative probes, isolated consumer/native copy, and exact remote CI. Runtime/UI,
+sensor, calibration, production error rates and Takt remain unverified.
+
+Working-tree checkpoint: the Pipeline-focused suite passes 9/9; Release build has
+zero warnings and errors; full Smoke passes 235/235; coverage is Core 37.35%,
+Inspection 69.92%, Vision2D 74.72%, Vision2D.Blob 69.17%, and Vision3D 90.97%;
+public API matches 3,300 entries; analyzer remains at 417 reviewed diagnostics; and
+all 88 checked local documentation targets resolve. Commit-fixed package and remote
+CI evidence still remain before closure.
 
 ## PL-0013 work contract
 

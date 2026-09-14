@@ -9,6 +9,9 @@ Developers opening the source can follow [Start Here](docs/README.md#start-here)
 for the solution, executable checks and code-reading order. Consumers can use the
 [2D input/error/lifetime contracts](src/OpenVisionLab.Vision2D/README.md#input-and-option-contracts)
 and [3D execution/outcome contracts](docs/three-d-inspection.md#execution-failure-and-lifetime-boundaries).
+The [SDK direction and capability matrix](docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md)
+records the current rule-based product boundary, Tool composition coverage, artifact
+contract, and ordered engineering priorities.
 
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
@@ -646,10 +649,15 @@ The default `VisionPipelineToolFactory` currently creates the following tools.
 
 Pipeline configuration fails closed:
 
+- `VisionPipeline.SchemaVersion` defaults to version 1. Use
+  `VisionPipelineSerializer.Serialize` and `Deserialize` for the SDK-owned in-memory
+  XML contract; the host owns file or database persistence.
 - Omitted built-in tool parameters use documented defaults. Supplied values must be finite and valid for their declared type.
 - Unknown, empty, or case-insensitive duplicate parameter names are rejected with `ArgumentException` before tool execution.
 - Empty and disabled-only pipelines return `Success == false`; a pipeline must execute at least one enabled step to pass.
 - `UseAcceptance = true` makes the acceptance contract authoritative. Metric values and active metric/time limits must be finite; `ExpectedSuccess = false` is supported only on the final enabled step and never creates a synthetic output layer.
+- `MaxElapsedMilliseconds` is a post-execution acceptance limit. It does not abort a
+  Tool call.
 
 Example:
 
@@ -676,6 +684,8 @@ threshold.Parameters[nameof(ThresholdToolProperty.Threshold)] = "120";
 threshold.Parameters[nameof(ThresholdToolProperty.MaxValue)] = "255";
 
 pipeline.Steps.Add(threshold);
+string pipelineXml = VisionPipelineSerializer.Serialize(pipeline);
+pipeline = VisionPipelineSerializer.Deserialize(pipelineXml);
 
 using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Color))
 using (VisionPipelineContext context = new VisionPipelineContext())
@@ -683,7 +693,7 @@ using (VisionPipelineContext context = new VisionPipelineContext())
     context.SetLayer("input", source);
 
     VisionPipelineRuntime runtime = new VisionPipelineRuntime();
-    using VisionPipelineRunResult runResult = runtime.Run(pipeline, context);
+    using VisionPipelineRunResult runResult = runtime.RunWithFailureResults(pipeline, context);
 
     if (!runResult.Success)
     {
@@ -697,6 +707,12 @@ using (VisionPipelineContext context = new VisionPipelineContext())
     }
 }
 ```
+
+`Run` preserves the original 3.x exception contract. `RunWithFailureResults` is the
+additive host boundary: a missing layer, factory exception/null return, or throwing/
+null custom Tool result becomes a typed failed step. Invalid Pipeline definitions
+still throw before execution. See the
+[capability and error producer matrix](docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md#pipeline-execution-choices).
 
 ## Native Image Resource Ownership
 

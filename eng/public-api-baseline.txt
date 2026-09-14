@@ -857,7 +857,10 @@ M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext|D
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext|GetLayer|OpenCvSharp.Mat|(System.String name)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext|SetLayer|System.Void|(System.String name,OpenCvSharp.Mat image)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRunResult|Dispose|System.Void|()|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRuntime|RunWithFailureResults|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRunResult|(OpenVisionLab.Vision2D.Pipeline.VisionPipeline pipeline,OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext context)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRuntime|Run|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRunResult|(OpenVisionLab.Vision2D.Pipeline.VisionPipeline pipeline,OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext context)|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineSerializer|Deserialize|OpenVisionLab.Vision2D.Pipeline.VisionPipeline|(System.String xml)|static
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineSerializer|Serialize|System.String|(OpenVisionLab.Vision2D.Pipeline.VisionPipeline pipeline)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|Create|OpenVisionLab.Vision2D.Tool.IVisionTool|(OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep step)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.COpenCVAlgorithmBase|Run|System.Void|()|abstract
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.COpenCVAlgorithmBase|SetSourceImage|System.Void|(OpenCvSharp.Mat Image)|virtual
@@ -1124,6 +1127,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep|UseA
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep|UseAcceptance|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep|XmlParameters|OpenVisionLab.Vision2D.Pipeline.VisionPipelineParameter[]|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipeline|Name|System.String|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipeline|SchemaVersion|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipeline|Steps|System.Collections.Generic.List<OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep>|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AffineTransformToolProperty|BorderType|OpenCvSharp.BorderTypes|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AffineTransformToolProperty|BorderValue|System.Double|index=|get,set|
@@ -2920,6 +2924,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineContext|c
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineParameter|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRunResult|class||base=System.Object|interfaces=System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineRuntime|class||base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineSerializer|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineStepResult|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineStep|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
