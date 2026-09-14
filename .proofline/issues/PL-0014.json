@@ -1,0 +1,152 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0014",
+    "aliases": [],
+    "type": "research",
+    "mode": "simple",
+    "title": "OpenCvSharp.Blob 재배포 권리 범위 확인",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user request",
+    "summary": "PL-0013 기술 증빙 완료 후 사용자가 다음 우선순위인 OpenCvSharp/cvBlob 권리자 확인 진행을 승인했다.",
+    "refs": [
+      "docs/OPENVISIONLAB_CURRENT_STATUS.md#next-priority--upstream-answer-then-project-approval",
+      "docs/THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md#1-opencvsharpcvblob-rights-holder-clarification"
+    ]
+  },
+  "state": {
+    "status": "blocked",
+    "current_summary": "OpenCvSharp의 관련 과거 이슈 #1200과 Blob 제거 PR #1201을 검토한 뒤, exact 4.4.0.20200915 Blob assembly의 범위와 조건을 묻는 공식 이슈 #2136을 제출했다. 게시 본문은 로컬 초안과 정확히 일치하며 현재 답변이 없다.",
+    "next_action": "OpenCvSharp 이슈 #2136에 권한 있는 답변이 등록되면 원문을 보존하고 다섯 질문별 충족 여부를 평가한 뒤, 프로젝트 distribution/legal owner의 승인 결정을 기록한다.",
+    "blocker": "OpenCvSharp/cvBlob 권리 범위를 설명할 수 있는 유지관리자 또는 권리자의 서면 답변이 아직 없다.",
+    "unblock_condition": "이슈 #2136 또는 연결된 권리자 기록이 exact commit과 binary에 대한 다섯 질문을 명시적으로 답하고, 그 원문을 보존·인용할 수 있어야 한다. 그 다음 프로젝트 distribution/legal owner가 최종 notice와 LGPL fulfillment 방법을 승인해야 한다."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "OpenCvSharp4 4.4.0.20200915의 exact OpenCvSharp.Blob.dll에 대해 top-level/NuGet BSD-3-Clause, Blob ReadMe의 LGPL 문구, 7개 LGPL-3.0-or-later file header 사이의 assembly 적용 범위와 downstream fulfillment 조건이 기존 공개 기록에 명시되어 있지 않다.",
+        "evidence_refs": [
+          "E1"
+        ]
+      },
+      {
+        "id": "P2",
+        "state": "confirmed",
+        "text": "다섯 exact-scope 질문을 담은 공식 upstream 이슈 #2136이 제출됐으나 현재 권한 있는 답변이 없다.",
+        "evidence_refs": [
+          "E2"
+        ]
+      }
+    ],
+    "impact": "적용 범위를 추정하면 상업 NuGet 재배포 조건을 누락하거나 과장할 수 있으므로, 권리자 답변과 그 뒤의 프로젝트 배포 책임자 결정 전에는 redistribution clearance를 확정할 수 없다."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "공식 OpenCvSharp 문의 경로, exact issue template, 관련 공개 이슈 #1200과 제거 PR #1201을 검토하고 기존 기록이 exact 2020 assembly의 범위와 fulfillment 조건을 해결하지 못함을 증빙한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "exact package, commit, binary hash, 상충 문구와 다섯 질문을 포함한 요청이 공식 공개 경로에 제출되고 본문·작성자·날짜·URL·해시가 보존된다.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "권한 있는 답변이 다섯 질문을 exact binary와 commit 기준으로 명시적으로 해결하며 완전한 원문과 안정 URL 또는 export가 보존된다.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "C3 근거 이후 프로젝트 distribution/legal owner가 final notices, LGPL source/relinking fulfillment, Intel 조건과 exact 배포 흐름을 승인·거절·추가증빙요청 중 하나로 서명 또는 불변 기록에 남긴다.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0013"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "clearance request and approval template",
+      "location": "docs/THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md"
+    },
+    {
+      "kind": "third-party evidence owner",
+      "location": "src/OpenVisionLab.Core/ThirdParty"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "public upstream request",
+      "location": "https://github.com/shimat/opencvsharp/issues/2136",
+      "summary": "Exact Blob license-scope clarification request; currently open."
+    },
+    {
+      "kind": "submission evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0014",
+      "summary": "Request draft, public issue snapshot, upstream history, body comparison and hashes."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "official upstream route and history review",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0014\\submission-verification.json; https://github.com/shimat/opencvsharp/issues/1200; https://github.com/shimat/opencvsharp/pull/1201",
+      "observation": "OpenCvSharp is active, enables issues, has no Discussions, and its exact commit issue template accepts wrapper-specific reports. Issue #1200 identified the Blob/top-level license difference; owner shimat replied that Blob would be removed, and merged PR #1201 deleted the Blob project in commit 1c6a50ccd099d5eb08c008b898d1b8f991e0086c. Those records do not state whether LGPL covers seven files or the full exact 2020 assembly, nor its downstream fulfillment conditions.",
+      "observed_at": "2026-09-14T14:59:02.0700062+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "public clarification request submission",
+      "location": "https://github.com/shimat/opencvsharp/issues/2136; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0014\\submission-verification.json",
+      "observation": "GitHub user Noah8218 submitted issue #2136 at 2026-09-14T05:56:12Z and updated it to cite #1200/#1201. The open issue asks all five exact-scope questions for OpenCvSharp4 4.4.0.20200915, commit daa955c6, and Blob DLL SHA-256 E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54. The fetched public body exactly matches local draft SHA-256 3524C621DCA8ECA50B544182B482D929661A63F3C0748B99101BCF427DC67343 and currently has zero comments.",
+      "observed_at": "2026-09-14T14:59:02.0700062+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "tracking documentation verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0014\\documentation-links.json; repository working-tree diff",
+      "observation": "PL-0014 ledger를 포함한 14개 v2 issue가 유효하고, git diff --check가 통과했으며, tracked Markdown 25개에서 확인한 local target 91개가 모두 존재한다. documentation-links.json SHA-256은 2B2C297E44EFC2213FD778B2B3232699C5823C5D0FABAAB15B6DA59B7D67D889다.",
+      "observed_at": "2026-09-14T15:03:42.7408174+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T14:59:02.0700062+09:00",
+      "summary": "OpenCvSharp wrapper/package 범위는 active upstream repository의 공식 issue tracker에서 유지관리자에게 질의하고, original cvBlob header의 명시적 LGPL-3.0-or-later 조건은 보존하되 package/assembly 범위를 추정하지 않는다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "D2",
+      "kind": "decision",
+      "at": "2026-09-14T14:59:02.0700062+09:00",
+      "summary": "과거 #1200/#1201은 라이선스 차이 인지와 후속 제거를 입증하지만 exact 2020 assembly의 범위 답변은 아니다. 새 #2136 답변 전까지 redistribution clearance와 내부 승인을 보류한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    }
+  ],
+  "created_at": "2026-09-14T14:59:02.0700062+09:00",
+  "updated_at": "2026-09-14T15:05:04.5946554+09:00"
+}
