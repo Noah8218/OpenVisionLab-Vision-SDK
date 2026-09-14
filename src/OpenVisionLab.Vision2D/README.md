@@ -113,6 +113,74 @@ after that validation. Representative executable calls live in
 [`Vision2DSmokeSuite`](../../tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSmokeSuite.cs)
 and the [isolated package consumer](../../tests/OpenVisionLab.PackageConsumer.Smoke/Program.cs).
 
+## Pipeline descriptors and Tool reconstruction
+
+`VisionPipelineToolFactory.Descriptors` is the immutable machine-readable catalog
+for the 14 Tools owned by this package. Each `VisionPipelineToolDescriptor` exposes
+the canonical `ToolType`, documented aliases, package and CLR type identity,
+parameter names/defaults/value kinds, and required artifacts. Use
+`TryGetDescriptor` to validate a selected Tool ID without constructing it. The Blob
+package's `VisionPipelineBlobToolFactory.Descriptors` composes `BlobTool` into the
+same contract for all 15 non-legacy 2D Tools.
+
+Factory parameter values are invariant text. Integers and finite numbers use
+invariant culture; Booleans use `true`/`false`; enums use a named value or a valid
+named flags combination; rectangles use `x,y,width,height`; rectangle lists use
+semicolon-separated rectangles; and colors use `#RRGGBB` or `#AARRGGBB`. Unknown,
+empty, duplicate, malformed, non-finite, or undefined enum values fail with
+`ArgumentException` before Tool execution. `LineGaugeTool` requires `CvROI`.
+
+`MatchingTool`, `EdgeBasedTemplateMatchingTool`, and `SiftTool` require a schema 2
+template reference. The Pipeline stores a stable host ID, `encoded-image` format
+version 1, and SHA-256; it never stores a host path or the bytes. The host resolver
+returns encoded PNG/JPEG/etc. bytes for that ID:
+
+```csharp
+using System;
+using System.IO;
+using System.Security.Cryptography;
+using OpenVisionLab.Vision2D.Pipeline;
+using OpenVisionLab.Vision2D.Tool;
+
+byte[] encodedTemplate = File.ReadAllBytes("part-a-template.png"); // Host-owned storage.
+string sha256;
+using (SHA256 hash = SHA256.Create())
+{
+    sha256 = BitConverter.ToString(hash.ComputeHash(encodedTemplate)).Replace("-", string.Empty);
+}
+
+VisionPipelineStep step = new VisionPipelineStep { ToolType = "matching" };
+step.Artifacts.Add(new VisionPipelineArtifactReference(
+    VisionPipelineToolFactory.TemplateArtifactRole,
+    "parts/part-a/template",
+    VisionPipelineToolFactory.EncodedImageArtifactFormat,
+    VisionPipelineToolFactory.EncodedImageArtifactFormatVersion,
+    sha256));
+
+using MatchingTool tool = (MatchingTool)VisionPipelineToolFactory.Create(step, artifact =>
+{
+    if (artifact.Id != "parts/part-a/template")
+    {
+        throw new InvalidOperationException($"Unknown template ID '{artifact.Id}'.");
+    }
+
+    return encodedTemplate;
+});
+```
+
+The factory validates artifact metadata before calling the resolver, validates the
+returned bytes against SHA-256 before decoding, copies the decoded template into
+the Tool, and releases its temporary `Mat`. The host continues to own the byte
+array. The caller owns and disposes the returned Tool. `PATTERN_PATH` is excluded
+from model-backed Pipeline descriptors and is rejected if supplied.
+
+`VisionPipeline.SchemaVersion` defaults to 2. `VisionPipelineSerializer` round-trips
+schema 2 artifact references, still reads explicit schema 1 and original XML with
+no version attribute, and rejects artifacts in schema 1. Invalid/future versions,
+invalid artifact metadata, duplicate parameters, and DTD input fail closed.
+Deserialization is inert: it never calls a resolver or executes a Tool. The host
+owns file/database persistence and maps stable artifact IDs to its storage.
+
 ## Results, errors and recovery
 
 | Observation | Meaning and caller action |
@@ -128,17 +196,12 @@ template loading and direct helpers can throw; the built-in `Execute` boundary
 captures execution exceptions in `VisionToolResult`. Custom `IVisionTool`
 implementations may throw and need a host boundary.
 
-`VisionPipelineToolFactory.Create` throws `ArgumentException` for malformed,
-unknown, or duplicate step parameters. Its `ParamName` is `parameters`, while the
-message identifies the invalid key and expected value type. Use `ParamName` to find
-the public input and the message to correct the individual recipe value.
-
-`VisionPipeline.SchemaVersion` defaults to 1. Use
-`VisionPipelineSerializer.Serialize` and `Deserialize` for the SDK-owned in-memory
-XML contract. Original XML without the attribute loads as version 1; unknown
-versions, duplicate parameter names, and DTD input fail closed. The host owns file
-or database persistence, recipe lifecycle, and any later model-artifact resolver.
-Loading a Pipeline never runs it.
+`VisionPipelineToolFactory.Create` reports malformed step parameters with
+`ArgumentException` and `ParamName == "parameters"`; its message identifies the
+invalid key and expected representation. Unsupported Tool/artifact versions use
+`NotSupportedException`. Missing resolvers, hash mismatches, empty bytes, and image
+decode failures use `InvalidOperationException`. `RunWithFailureResults` converts
+any of these factory failures to `ToolFactoryFailed` and preserves the exception.
 
 `VisionPipelineRuntime.Run` preserves the original 3.x exception behavior.
 `RunWithFailureResults` instead returns `InputLayerMissing`, `ToolFactoryFailed`, or

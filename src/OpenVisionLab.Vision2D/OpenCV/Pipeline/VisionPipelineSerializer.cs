@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -9,7 +10,6 @@ namespace OpenVisionLab.Vision2D.Pipeline
     /// <summary>Serializes and validates the supported Vision Pipeline XML schema.</summary>
     public static class VisionPipelineSerializer
     {
-        private const int SupportedSchemaVersion = 1;
         private static readonly XmlSerializer Serializer = new XmlSerializer(typeof(VisionPipeline));
 
         /// <summary>Serializes a supported pipeline to indented XML text.</summary>
@@ -20,7 +20,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 throw new ArgumentNullException(nameof(pipeline));
             }
 
-            EnsureSupportedSchemaVersion(pipeline.SchemaVersion);
+            VisionPipelineArtifactValidation.ValidatePipeline(pipeline);
 
             StringBuilder output = new StringBuilder();
             XmlWriterSettings settings = new XmlWriterSettings
@@ -43,8 +43,9 @@ namespace OpenVisionLab.Vision2D.Pipeline
         }
 
         /// <summary>
-        /// Deserializes Pipeline XML, rejects DTD processing, and accepts only the current schema version.
-        /// XML without a schemaVersion attribute is treated as the original version 1 contract.
+        /// Deserializes Pipeline XML, rejects DTD processing, and accepts schema versions 1 through the current version.
+        /// XML without a schemaVersion attribute is treated as the original version 1 contract. Loading never resolves
+        /// an artifact or executes a Tool.
         /// </summary>
         public static VisionPipeline Deserialize(string xml)
         {
@@ -63,7 +64,21 @@ namespace OpenVisionLab.Vision2D.Pipeline
             using (StringReader input = new StringReader(xml))
             using (XmlReader reader = XmlReader.Create(input, settings))
             {
+                try
+                {
+                    reader.MoveToContent();
+                }
+                catch (XmlException exception)
+                {
+                    throw new InvalidOperationException("Serialized vision pipeline XML could not be read.", exception);
+                }
+
+                int declaredSchemaVersion = ReadDeclaredSchemaVersion(reader);
                 pipeline = Serializer.Deserialize(reader) as VisionPipeline;
+                if (pipeline != null)
+                {
+                    pipeline.SchemaVersion = declaredSchemaVersion;
+                }
             }
 
             if (pipeline == null)
@@ -71,17 +86,24 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 throw new InvalidOperationException("Serialized XML did not contain a VisionPipeline.");
             }
 
-            EnsureSupportedSchemaVersion(pipeline.SchemaVersion);
+            VisionPipelineArtifactValidation.ValidatePipeline(pipeline);
             return pipeline;
         }
 
-        private static void EnsureSupportedSchemaVersion(int schemaVersion)
+        private static int ReadDeclaredSchemaVersion(XmlReader reader)
         {
-            if (schemaVersion != SupportedSchemaVersion)
+            string value = reader.GetAttribute("schemaVersion");
+            if (value == null)
             {
-                throw new NotSupportedException(
-                    $"Vision pipeline schema version '{schemaVersion}' is not supported. Supported version: {SupportedSchemaVersion}.");
+                return 1;
             }
+
+            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int schemaVersion))
+            {
+                throw new NotSupportedException($"Vision pipeline schema version '{value}' is not valid.");
+            }
+
+            return schemaVersion;
         }
     }
 }

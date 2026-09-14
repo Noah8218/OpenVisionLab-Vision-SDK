@@ -9,8 +9,8 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0014 Pipeline artifact/failure-result closure, prior closures, and current external prerequisites |
-| [SDK direction and capability matrix](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md) | Rule-based kernel boundary, 2D/3D execution coverage, Pipeline artifact/error contracts, and ordered product priorities |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0015 2D descriptor/model-reconstruction work, prior closures, and current external prerequisites |
+| [SDK direction and capability matrix](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md) | Rule-based kernel boundary, all 15 2D factory contracts, 3D execution coverage, Pipeline artifact/error contracts, and ordered product priorities |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the two remaining redistribution approvals |
 | [Third-party redistribution clearance checklist](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md) | Exact facts, questions, and approval record needed to resolve the two remaining external prerequisites |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
@@ -108,7 +108,7 @@ Analyzer results are compared by diagnostic code so existing debt cannot grow
 silently. CA1051, CA1707, and CA1716 are also compared against all 186 reviewed
 rule/kind/symbol identities in `eng/analyzer-compatibility-baseline.json`. The seven
 performance rules are compared against their exact reviewed counts, including zero
-for CA1825 and CA1843, and all 231 retained identities in
+for CA1825 and CA1843, and all 225 retained identities in
 `eng/analyzer-performance-baseline.json`. A same-count replacement therefore fails
 until its compatibility or performance effect is reviewed explicitly.
 

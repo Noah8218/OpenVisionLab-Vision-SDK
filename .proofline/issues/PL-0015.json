@@ -1,0 +1,110 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0015",
+    "aliases": [],
+    "type": "feature",
+    "mode": "simple",
+    "title": "2D Pipeline Tool 설명자와 안전한 모델 복원",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "user-approved ordered SDK priority",
+    "summary": "PL-0014 capability matrix priority 1 was explicitly approved for implementation.",
+    "refs": [
+      "docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md#ordered-engineering-priorities",
+      "PL-0014"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "The existing factory covers 6 of 15 public 2D Tools and discovers valid parameter names with reflection; model-backed Tools have no serialized artifact reference or integrity-checked host resolver.",
+    "next_action": "Implement explicit descriptors, reflection-free factories, versioned artifact references, focused tests, consumer guidance, and exact verification."
+  },
+  "objective": {
+    "summary": "Make every public non-legacy 2D Tool discoverable and safely reconstructible through package-owned Pipeline factories, including integrity-checked host-resolved templates.",
+    "constraints": [
+      "Preserve direct typed Tool APIs and VisionPipelineRuntime.Run behavior.",
+      "Do not persist host file paths, use reflection-based construction/discovery, or introduce global registration.",
+      "Keep Vision2D independent of Vision2D.Blob; compose Blob support in the Blob package.",
+      "Preserve version 1 and unversioned Pipeline XML readability while versioning the new artifact contract.",
+      "Keep UI, acquisition, PLC/MES, NuGet publication, consumer-repository changes, and production qualification out of scope."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Machine-readable descriptors expose canonical IDs, aliases, property identity, parameters/defaults/types, and artifact requirements for all 15 public non-legacy 2D Tools across their owning packages.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "Package-owned factories construct all 15 Tools from invariant validated parameters without reflection or global registration, and reject unsupported or malformed values deterministically.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "Matching, edge-based matching, and SIFT templates are reconstructed from host-resolved encoded bytes only after stable ID, format version, and SHA-256 validation; decoded Mats and created Tools have explicit release ownership.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Pipeline schema version 2 round-trips artifact references, version 1 and unversioned fixtures remain readable, invalid artifact metadata fails closed, and deserialization does not invoke the resolver or execute a Tool.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "Focused/full smoke, Release build, exact API/analyzer/document gates, commit-fixed packages, isolated package consumer/native-copy checks, and exact remote CI pass with reusable evidence and updated current documentation.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0014"
+    }
+  ],
+  "context": [
+    {
+      "kind": "implementation context",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
+    },
+    {
+      "kind": "implementation context",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineStep.cs"
+    },
+    {
+      "kind": "implementation context",
+      "location": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineSerializer.cs"
+    },
+    {
+      "kind": "implementation context",
+      "location": "src/OpenVisionLab.Vision2D.Blob"
+    },
+    {
+      "kind": "implementation context",
+      "location": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSmokeSuite.cs"
+    },
+    {
+      "kind": "implementation context",
+      "location": "tests/OpenVisionLab.PackageConsumer.Smoke/Program.cs"
+    },
+    {
+      "kind": "implementation context",
+      "location": "docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md"
+    }
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T23:37:04.5555776+09:00",
+      "summary": "Reuse VisionPipelineToolFactory as the Vision2D owner, add a Blob-package composite factory, represent model inputs as host-resolved encoded bytes, and freeze version 1 while introducing schema version 2.",
+      "evidence_refs": []
+    }
+  ],
+  "created_at": "2026-09-14T23:37:04.5555776+09:00",
+  "updated_at": "2026-09-14T23:37:04.5555776+09:00"
+}

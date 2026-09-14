@@ -9,7 +9,7 @@
     "CA1822": 68,
     "CA1825": 0,
     "CA1843": 0,
-    "CA1859": 11,
+    "CA1859": 5,
     "CA1861": 82,
     "CA1869": 1
   },
@@ -17,11 +17,11 @@
     "inputTotal": 272,
     "resolvedDeterministicAllocations": 32,
     "resolvedSingleTaskWaits": 9,
-    "retainedTotal": 231,
+    "retainedTotal": 225,
     "retainedExplicitDefaults": 69,
     "retainedPublicInstanceContracts": 61,
     "retainedUnmeasuredPrivateStaticCandidates": 7,
-    "retainedConcreteTypeSuggestions": 11,
+    "retainedConcreteTypeSuggestions": 5,
     "retainedOneShotMutableArrays": 82,
     "retainedOneShotJsonOptions": 1
   },
@@ -49,7 +49,7 @@
     {
       "code": "CA1859",
       "decision": "retain",
-      "rationale": "The eleven concrete-type suggestions affect setup, collection construction, smoke, or report parsing paths; no measured dispatch bottleneck justifies tighter local contracts."
+      "rationale": "The five remaining concrete-type suggestions affect collection construction, smoke, or report parsing paths; no measured dispatch bottleneck justifies tighter local contracts."
     },
     {
       "code": "CA1861",
@@ -747,36 +747,6 @@
       "identity": "CA1822|src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool|Execute|public PointPairDimensionsInspectionResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateThresholdTool|private static IVisionTool CreateThresholdTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateMorphologyTool|private static IVisionTool CreateMorphologyTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateFilterTool|private static IVisionTool CreateFilterTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateEdgeDetectionTool|private static IVisionTool CreateEdgeDetectionTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateRotateScaleTool|private static IVisionTool CreateRotateScaleTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineToolFactory|CreateAffineTransformTool|private static IVisionTool CreateAffineTransformTool(IDictionary<string, string> parameters)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs"
     },
     {
       "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs|OpenVisionLab.Vision2D.Tool.ContourTool|AddContourChain|ICollection<OpenCvSharp.Point[]> destination,|occurrence=1",

@@ -8,6 +8,7 @@ using OpenVisionLab.Vision2D.Tool;
 using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.Vision3D.Geometry;
 using OpenVisionLab.Vision3D.Inspection;
+using System.Security.Cryptography;
 
 using Mat image = new Mat(2, 2, MatType.CV_8UC1, new Scalar(100));
 using ThresholdTool threshold = new ThresholdTool();
@@ -226,7 +227,7 @@ serializedPipeline.Steps.Add(new VisionPipelineStep
 serializedPipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] = "50";
 string pipelineXml = VisionPipelineSerializer.Serialize(serializedPipeline);
 VisionPipeline restoredPipeline = VisionPipelineSerializer.Deserialize(pipelineXml);
-if (restoredPipeline.SchemaVersion != 1
+if (restoredPipeline.SchemaVersion != VisionPipeline.CurrentSchemaVersion
     || restoredPipeline.Steps.Count != 1
     || restoredPipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] != "50")
 {
@@ -242,6 +243,50 @@ using (VisionPipelineRunResult missingLayerResult = new VisionPipelineRuntime()
         || missingLayerResult.StepResults[0].ToolResult.ErrorCode != VisionToolErrorCode.InputLayerMissing)
     {
         throw new InvalidOperationException("Pipeline package failure-result contract failed.");
+    }
+}
+
+if (VisionPipelineToolFactory.Descriptors.Count != 14
+    || VisionPipelineBlobToolFactory.Descriptors.Count != 15
+    || !VisionPipelineBlobToolFactory.TryGetDescriptor("BlobTool", out VisionPipelineToolDescriptor blobDescriptor)
+    || blobDescriptor.PackageId != "OpenVisionLab.Vision2D.Blob")
+{
+    throw new InvalidOperationException("Pipeline Tool descriptor package contract failed.");
+}
+
+using (Mat template = new Mat(16, 16, MatType.CV_8UC1, Scalar.Black))
+{
+    Cv2.Rectangle(template, new Rect(3, 4, 7, 8), Scalar.White, Cv2.FILLED);
+    byte[] encodedTemplate = template.ToBytes(".png", Array.Empty<int>());
+    string templateSha256;
+    using (SHA256 sha256 = SHA256.Create())
+    {
+        templateSha256 = BitConverter.ToString(sha256.ComputeHash(encodedTemplate)).Replace("-", string.Empty);
+    }
+
+    VisionPipelineStep matchingStep = new VisionPipelineStep { ToolType = "matching" };
+    matchingStep.Parameters[nameof(MatchingToolProperty.USE_FIND_ANGLE)] = "false";
+    matchingStep.Artifacts.Add(new VisionPipelineArtifactReference(
+        VisionPipelineToolFactory.TemplateArtifactRole,
+        "package/templates/part-a",
+        VisionPipelineToolFactory.EncodedImageArtifactFormat,
+        VisionPipelineToolFactory.EncodedImageArtifactFormatVersion,
+        templateSha256));
+
+    int resolverCalls = 0;
+    using MatchingTool restoredMatching = (MatchingTool)VisionPipelineBlobToolFactory.Create(matchingStep, artifact =>
+    {
+        resolverCalls++;
+        if (artifact.Id != "package/templates/part-a")
+        {
+            throw new InvalidOperationException("Pipeline artifact resolver received the wrong ID.");
+        }
+
+        return encodedTemplate;
+    });
+    if (resolverCalls != 1 || restoredMatching.property.PATTERN_PATH != string.Empty)
+    {
+        throw new InvalidOperationException("Pipeline model reconstruction package contract failed.");
     }
 }
 

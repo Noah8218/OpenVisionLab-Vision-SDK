@@ -638,22 +638,26 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
 
 Pipelines execute multiple tools sequentially through named layers.
 
-The default `VisionPipelineToolFactory` currently creates the following tools.
-
-- `threshold`
-- `morphology`
-- `filter`
-- `edge` or `edgedetection`
-- `rotatescale`
-- `affine`, `affinematrix`, or `affinetransform`
+`VisionPipelineToolFactory` owns 14 canonical Tool IDs: `threshold`, `morphology`,
+`filter`, `edgeDetection`, `rotateScale`, `affineTransform`, `contour`, `corner`,
+`matching`, `edgeBasedTemplateMatching`, `autoMPoint`, `sift`, `lineGauge`, and
+`mean`. `VisionPipelineBlobToolFactory` composes `blob` with those 14. Their
+immutable `Descriptors` catalogs expose aliases, package/type identity, parameters,
+invariant defaults/value kinds, and artifact requirements without reflection or a
+global registry.
 
 Pipeline configuration fails closed:
 
-- `VisionPipeline.SchemaVersion` defaults to version 1. Use
+- `VisionPipeline.SchemaVersion` defaults to version 2. Use
   `VisionPipelineSerializer.Serialize` and `Deserialize` for the SDK-owned in-memory
-  XML contract; the host owns file or database persistence.
+  XML contract. Explicit version 1 and original unversioned XML remain readable;
+  version 1 rejects artifact references. The host owns file or database persistence.
 - Omitted built-in tool parameters use documented defaults. Supplied values must be finite and valid for their declared type.
 - Unknown, empty, or case-insensitive duplicate parameter names are rejected with `ArgumentException` before tool execution.
+- `MatchingTool`, `EdgeBasedTemplateMatchingTool`, and `SiftTool` require one
+  schema 2 `template` artifact with a stable host ID, `encoded-image` format version
+  1, and SHA-256. `Create(step, resolver)` validates metadata and returned bytes
+  before decoding; Pipeline XML stores no host path or model bytes.
 - Empty and disabled-only pipelines return `Success == false`; a pipeline must execute at least one enabled step to pass.
 - `UseAcceptance = true` makes the acceptance contract authoritative. Metric values and active metric/time limits must be finite; `ExpectedSuccess = false` is supported only on the final enabled step and never creates a synthetic output layer.
 - `MaxElapsedMilliseconds` is a post-execution acceptance limit. It does not abort a
@@ -713,6 +717,8 @@ additive host boundary: a missing layer, factory exception/null return, or throw
 null custom Tool result becomes a typed failed step. Invalid Pipeline definitions
 still throw before execution. See the
 [capability and error producer matrix](docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md#pipeline-execution-choices).
+The [Vision2D package guide](src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction)
+contains the resolver, parameter-format, integrity, and ownership example.
 
 ## Native Image Resource Ownership
 

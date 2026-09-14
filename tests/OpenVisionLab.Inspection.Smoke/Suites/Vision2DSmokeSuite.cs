@@ -1,5 +1,6 @@
 using OpenVisionLab.Inspection;
 using OpenVisionLab.Vision2D;
+using OpenVisionLab.Vision2D.Blob;
 using OpenVisionLab.Vision2D.Pipeline;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
@@ -12,6 +13,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
 using static OpenVisionLab.Inspection.Smoke.SmokeFixtures;
 
@@ -51,7 +54,9 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Pipeline routes only non-null images to named output layers", TestVisionPipelineOptionalOutputContract);
             yield return new SmokeCase("Pipeline XML preserves versioned settings and rejects unsupported input", TestVisionPipelineSerialization);
             yield return new SmokeCase("Pipeline failure-result execution classifies infrastructure failures", TestVisionPipelineFailureResults);
-            yield return new SmokeCase("Pipeline factory creates every built-in tool from valid parameters", TestVisionPipelineFactoryBuiltIns);
+            yield return new SmokeCase("Pipeline descriptors cover every non-legacy 2D Tool", TestVisionPipelineDescriptors);
+            yield return new SmokeCase("Pipeline factories create all 15 non-legacy 2D Tools", TestVisionPipelineFactoryBuiltIns);
+            yield return new SmokeCase("Pipeline model artifacts enforce identity format hash and ownership", TestVisionPipelineModelArtifacts);
             yield return new SmokeCase("Pipeline factory rejects malformed, unknown, and duplicate parameters", TestVisionPipelineFactoryRejectsInvalidParameters);
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
             yield return new SmokeCase("Pipeline acceptance supports only a terminal expected failure", TestVisionPipelineExpectedFailureAcceptance);
@@ -1408,11 +1413,11 @@ namespace OpenVisionLab.Inspection.Smoke
             VisionPipeline pipeline = new VisionPipeline { Name = "Serialized fixture" };
             pipeline.Steps.Add(new VisionPipelineStep
             {
-                Name = "Threshold",
-                ToolType = "threshold",
+                Name = "Matching",
+                ToolType = "matching",
                 Enabled = true,
                 InputLayer = "input",
-                OutputLayer = "binary",
+                OutputLayer = "matched",
                 UseAcceptance = true,
                 ExpectedSuccess = true,
                 MaxElapsedMilliseconds = 12.5,
@@ -1420,46 +1425,102 @@ namespace OpenVisionLab.Inspection.Smoke
                 UseAcceptanceMetricMinimum = true,
                 AcceptanceMetricMinimum = 0.75
             });
-            pipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] = "123.5";
-            pipeline.Steps[0].Parameters[nameof(ThresholdToolProperty.Invert)] = "true";
+            pipeline.Steps[0].Parameters[nameof(MatchingToolProperty.SCORE_MIN)] = "0.8";
+            pipeline.Steps[0].Artifacts.Add(new VisionPipelineArtifactReference(
+                VisionPipelineToolFactory.TemplateArtifactRole,
+                "templates/part-a",
+                VisionPipelineToolFactory.EncodedImageArtifactFormat,
+                VisionPipelineToolFactory.EncodedImageArtifactFormatVersion,
+                new string('A', 64)));
 
             string serialized = VisionPipelineSerializer.Serialize(pipeline);
-            Require(serialized.Contains("schemaVersion=\"1\"", StringComparison.Ordinal)
+            Require(serialized.Contains("schemaVersion=\"2\"", StringComparison.Ordinal)
+                && serialized.Contains("role=\"template\"", StringComparison.Ordinal)
+                && serialized.Contains("id=\"templates/part-a\"", StringComparison.Ordinal)
                 && !serialized.Contains("xmlns", StringComparison.Ordinal),
                 "Pipeline serialization did not publish the current schema without default namespaces.");
 
             VisionPipeline restored = VisionPipelineSerializer.Deserialize(serialized);
-            Require(restored.SchemaVersion == 1
+            Require(restored.SchemaVersion == VisionPipeline.CurrentSchemaVersion
                 && restored.Name == pipeline.Name
                 && restored.Steps.Count == 1
-                && restored.Steps[0].Name == "Threshold"
+                && restored.Steps[0].Name == "Matching"
                 && restored.Steps[0].InputLayer == "input"
-                && restored.Steps[0].OutputLayer == "binary"
+                && restored.Steps[0].OutputLayer == "matched"
                 && restored.Steps[0].UseAcceptance
                 && restored.Steps[0].MaxElapsedMilliseconds == 12.5
                 && restored.Steps[0].AcceptanceMetricMinimum == 0.75
-                && restored.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] == "123.5"
-                && restored.Steps[0].Parameters[nameof(ThresholdToolProperty.Invert)] == "true",
+                && restored.Steps[0].Parameters[nameof(MatchingToolProperty.SCORE_MIN)] == "0.8"
+                && restored.Steps[0].Artifacts.Count == 1
+                && restored.Steps[0].Artifacts[0].Id == "templates/part-a"
+                && restored.Steps[0].Artifacts[0].Sha256 == new string('A', 64),
                 "Pipeline serialization did not preserve the semantic contract.");
 
-            string legacyXml = serialized.Replace(" schemaVersion=\"1\"", string.Empty);
-            Require(VisionPipelineSerializer.Deserialize(legacyXml).SchemaVersion == 1,
+            const string versionOneXml =
+                "<VisionPipeline schemaVersion=\"1\"><Name>Version one</Name><Steps><Step>"
+                + "<Name>Threshold</Name><ToolType>threshold</ToolType><Enabled>true</Enabled>"
+                + "<InputLayer>input</InputLayer><OutputLayer>binary</OutputLayer>"
+                + "<Parameters><Parameter><Key>Threshold</Key><Value>50</Value></Parameter></Parameters>"
+                + "</Step></Steps></VisionPipeline>";
+            VisionPipeline versionOne = VisionPipelineSerializer.Deserialize(versionOneXml);
+            Require(versionOne.SchemaVersion == 1
+                && versionOne.Steps.Count == 1
+                && versionOne.Steps[0].Parameters[nameof(ThresholdToolProperty.Threshold)] == "50",
+                "Schema version 1 Pipeline XML must remain readable.");
+
+            string unversionedXml = versionOneXml.Replace(" schemaVersion=\"1\"", string.Empty);
+            Require(VisionPipelineSerializer.Deserialize(unversionedXml).SchemaVersion == 1,
                 "Unversioned original Pipeline XML must load as schema version 1.");
 
-            string futureXml = serialized.Replace("schemaVersion=\"1\"", "schemaVersion=\"2\"");
+            VisionPipeline legacyWritable = new VisionPipeline { SchemaVersion = 1, Name = "Legacy write" };
+            Require(VisionPipelineSerializer.Serialize(legacyWritable).Contains("schemaVersion=\"1\"", StringComparison.Ordinal),
+                "Schema version 1 pipelines without artifacts must remain serializable.");
+
+            string futureXml = serialized.Replace("schemaVersion=\"2\"", "schemaVersion=\"3\"");
             RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Deserialize(futureXml));
+
+            string invalidVersionXml = serialized.Replace("schemaVersion=\"2\"", "schemaVersion=\"current\"");
+            RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Deserialize(invalidVersionXml));
+
+            string versionOneWithArtifact = serialized.Replace("schemaVersion=\"2\"", "schemaVersion=\"1\"");
+            RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Deserialize(versionOneWithArtifact));
+
+            string invalidHashXml = serialized.Replace(new string('A', 64), "not-a-sha256");
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Deserialize(invalidHashXml));
+
+            VisionPipelineArtifactReference artifact = pipeline.Steps[0].Artifacts[0];
+            string artifactRole = artifact.Role;
+            artifact.Role = " ";
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Serialize(pipeline));
+            artifact.Role = artifactRole;
+            string artifactId = artifact.Id;
+            artifact.Id = string.Empty;
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Serialize(pipeline));
+            artifact.Id = artifactId;
+            string artifactFormat = artifact.Format;
+            artifact.Format = string.Empty;
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Serialize(pipeline));
+            artifact.Format = artifactFormat;
+            int artifactFormatVersion = artifact.FormatVersion;
+            artifact.FormatVersion = 0;
+            RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Serialize(pipeline));
+            artifact.FormatVersion = artifactFormatVersion;
 
             string duplicateXml = serialized.Replace(
                 "</Parameters>",
-                "<Parameter><Key>threshold</Key><Value>20</Value></Parameter></Parameters>");
+                "<Parameter><Key>score_min</Key><Value>0.7</Value></Parameter></Parameters>");
             RequireThrows<InvalidOperationException>(() => VisionPipelineSerializer.Deserialize(duplicateXml));
 
             string dtdXml = "<!DOCTYPE VisionPipeline [<!ENTITY injected 'blocked'>]>" + serialized;
             RequireThrows<InvalidOperationException>(() => VisionPipelineSerializer.Deserialize(dtdXml));
             RequireThrows<ArgumentException>(() => VisionPipelineSerializer.Deserialize(" "));
 
-            pipeline.SchemaVersion = 2;
+            pipeline.SchemaVersion = 3;
             RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Serialize(pipeline));
+
+            legacyWritable.Steps.Add(new VisionPipelineStep());
+            legacyWritable.Steps[0].Artifacts.Add(pipeline.Steps[0].Artifacts[0]);
+            RequireThrows<NotSupportedException>(() => VisionPipelineSerializer.Serialize(legacyWritable));
         }
 
         private static void TestVisionPipelineFailureResults()
@@ -1572,6 +1633,116 @@ namespace OpenVisionLab.Inspection.Smoke
             }
         }
 
+        private static void TestVisionPipelineDescriptors()
+        {
+            string[] expectedToolTypes =
+            {
+                "threshold",
+                "morphology",
+                "filter",
+                "edgeDetection",
+                "rotateScale",
+                "affineTransform",
+                "contour",
+                "corner",
+                "matching",
+                "edgeBasedTemplateMatching",
+                "autoMPoint",
+                "sift",
+                "lineGauge",
+                "mean",
+                "blob"
+            };
+            Require(VisionPipelineToolFactory.Descriptors.Count == 14,
+                "The base Vision2D descriptor catalog must contain its 14 owned Tools.");
+            Require(VisionPipelineBlobToolFactory.Descriptors.Select(item => item.ToolType).SequenceEqual(expectedToolTypes),
+                "The Blob composite descriptor catalog does not contain the exact 15-Tool contract.");
+
+            foreach (VisionPipelineToolDescriptor descriptor in VisionPipelineBlobToolFactory.Descriptors)
+            {
+                Require(!string.IsNullOrWhiteSpace(descriptor.ToolType)
+                    && !string.IsNullOrWhiteSpace(descriptor.ToolTypeName)
+                    && !string.IsNullOrWhiteSpace(descriptor.PropertyTypeName)
+                    && !string.IsNullOrWhiteSpace(descriptor.PackageId),
+                    $"Pipeline descriptor '{descriptor.ToolType}' has incomplete identity metadata.");
+                Require(descriptor.Parameters.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                    == descriptor.Parameters.Count,
+                    $"Pipeline descriptor '{descriptor.ToolType}' has duplicate parameter names.");
+                Require(descriptor.Parameters.All(item => !string.IsNullOrWhiteSpace(item.Name)
+                    && !string.IsNullOrWhiteSpace(item.ValueType)
+                    && item.DefaultValue != null),
+                    $"Pipeline descriptor '{descriptor.ToolType}' has incomplete parameter metadata.");
+
+                Type propertyType = typeof(ThresholdToolProperty).Assembly.GetType(descriptor.PropertyTypeName)
+                    ?? typeof(BlobToolProperty).Assembly.GetType(descriptor.PropertyTypeName);
+                Require(propertyType != null,
+                    $"Pipeline descriptor '{descriptor.ToolType}' names an unavailable property type.");
+
+                Dictionary<string, PropertyInfo> writableProperties = propertyType.GetProperties()
+                    .Where(item => item.CanWrite)
+                    .ToDictionary(item => item.Name, StringComparer.Ordinal);
+                writableProperties.Remove(nameof(MatchingToolProperty.PATTERN_PATH));
+                Require(writableProperties.Keys.OrderBy(item => item).SequenceEqual(
+                    descriptor.Parameters.Select(item => item.Name).OrderBy(item => item)),
+                    $"Pipeline descriptor '{descriptor.ToolType}' does not cover its exact writable property contract.");
+
+                foreach (VisionPipelineParameterDescriptor parameter in descriptor.Parameters)
+                {
+                    PropertyInfo property = writableProperties[parameter.Name];
+                    Require(parameter.ValueKind == GetPipelineParameterValueKind(property.PropertyType)
+                        && parameter.ValueType == GetPipelineParameterValueType(property.PropertyType),
+                        $"Pipeline descriptor '{descriptor.ToolType}.{parameter.Name}' has incorrect type metadata.");
+                }
+
+                foreach (string alias in descriptor.Aliases)
+                {
+                    Require(VisionPipelineBlobToolFactory.TryGetDescriptor(alias, out VisionPipelineToolDescriptor resolved)
+                        && ReferenceEquals(resolved, descriptor),
+                        $"Pipeline descriptor alias '{alias}' does not resolve to '{descriptor.ToolType}'.");
+                }
+            }
+
+            Require(VisionPipelineToolFactory.TryGetDescriptor("rotate_and_scale_tool", out VisionPipelineToolDescriptor rotate)
+                && rotate.ToolType == "rotateScale",
+                "Pipeline descriptor lookup did not normalize a documented alias.");
+            Require(VisionPipelineBlobToolFactory.TryGetDescriptor("BlobTool", out VisionPipelineToolDescriptor blob)
+                && blob.PackageId == "OpenVisionLab.Vision2D.Blob",
+                "Blob descriptor lookup did not preserve the package owner.");
+
+            VisionPipelineToolDescriptor matching = VisionPipelineToolFactory.Descriptors.Single(item => item.ToolType == "matching");
+            Require(matching.Artifacts.Count == 1
+                && matching.Artifacts[0].Required
+                && matching.Artifacts[0].Role == VisionPipelineToolFactory.TemplateArtifactRole
+                && matching.Artifacts[0].Format == VisionPipelineToolFactory.EncodedImageArtifactFormat
+                && matching.Artifacts[0].FormatVersion == VisionPipelineToolFactory.EncodedImageArtifactFormatVersion
+                && matching.Parameters.All(item => item.Name != nameof(MatchingToolProperty.PATTERN_PATH)),
+                "Matching descriptor must require the versioned template artifact and exclude host paths.");
+
+            VisionPipelineToolDescriptor lineGauge = VisionPipelineToolFactory.Descriptors.Single(item => item.ToolType == "lineGauge");
+            Require(lineGauge.Parameters.Single(item => item.Name == nameof(LineGaugeToolProperty.CvROI)).Required,
+                "LineGauge descriptor must identify its taught ROI as required.");
+        }
+
+        private static VisionPipelineParameterValueKind GetPipelineParameterValueKind(Type type)
+        {
+            if (type == typeof(string)) return VisionPipelineParameterValueKind.Text;
+            if (type == typeof(bool)) return VisionPipelineParameterValueKind.Boolean;
+            if (type == typeof(int)) return VisionPipelineParameterValueKind.WholeNumber;
+            if (type == typeof(double)) return VisionPipelineParameterValueKind.Number;
+            if (type.IsEnum) return VisionPipelineParameterValueKind.Enum;
+            if (type == typeof(Rect)) return VisionPipelineParameterValueKind.Rectangle;
+            if (type == typeof(List<Rect>)) return VisionPipelineParameterValueKind.RectangleList;
+            if (type == typeof(System.Drawing.Color)) return VisionPipelineParameterValueKind.Color;
+            throw new InvalidOperationException($"Unsupported Pipeline parameter type '{type.FullName}'.");
+        }
+
+        private static string GetPipelineParameterValueType(Type type)
+        {
+            return type == typeof(List<Rect>)
+                ? "System.Collections.Generic.List<OpenCvSharp.Rect>"
+                : type.FullName;
+        }
+
         private static void TestVisionPipelineFactoryBuiltIns()
         {
             VisionPipelineStep thresholdStep = CreatePipelineStep("threshold");
@@ -1620,6 +1791,199 @@ namespace OpenVisionLab.Inspection.Smoke
             using (AffineTransformTool affine = (AffineTransformTool)VisionPipelineToolFactory.Create(affineStep))
             {
                 Require(affine.property.OutputWidth == 64, "Affine factory did not retain OutputWidth.");
+            }
+
+            VisionPipelineStep contourStep = CreatePipelineStep("contour");
+            contourStep.Parameters[nameof(ContourToolProperty.USE_ROI)] = "true";
+            contourStep.Parameters[nameof(ContourToolProperty.CvROI)] = "1,2,30,31";
+            contourStep.Parameters[nameof(ContourToolProperty.CvROIS)] = "1,2,3,4;5,6,7,8";
+            contourStep.Parameters[nameof(ContourToolProperty.DrawColor)] = "#112233";
+            using (ContourTool contour = (ContourTool)VisionPipelineToolFactory.Create(contourStep))
+            {
+                Require(contour.property.CvROI == new Rect(1, 2, 30, 31)
+                    && contour.property.CvROIS.SequenceEqual(new[] { new Rect(1, 2, 3, 4), new Rect(5, 6, 7, 8) })
+                    && contour.property.DrawColor.R == 0x11
+                    && contour.property.DrawColor.G == 0x22
+                    && contour.property.DrawColor.B == 0x33,
+                    "Contour factory did not retain rectangle, rectangle-list, or color parameters.");
+            }
+
+            VisionPipelineStep autoStep = CreatePipelineStep("autoMPoint");
+            autoStep.Parameters[nameof(AutoMPointToolProperty.AnalysisRoi)] = "2,3,40,41";
+            autoStep.Parameters[nameof(AutoMPointToolProperty.MaximumResults)] = "3";
+            using (AutoMPointTool auto = (AutoMPointTool)VisionPipelineToolFactory.Create(autoStep))
+            {
+                Require(auto.property.AnalysisRoi == new Rect(2, 3, 40, 41)
+                    && auto.property.MaximumResults == 3,
+                    "Auto MPoint factory did not retain its typed settings.");
+            }
+
+            using (Mat template = new Mat(32, 32, MatType.CV_8UC1, Scalar.Black))
+            {
+                Cv2.Rectangle(template, new Rect(5, 7, 12, 15), Scalar.White, Cv2.FILLED);
+                byte[] encoded = template.ToBytes(".png", Array.Empty<int>());
+                int resolverCalls = 0;
+                foreach (VisionPipelineToolDescriptor descriptor in VisionPipelineBlobToolFactory.Descriptors)
+                {
+                    VisionPipelineStep step = CreatePipelineStep(descriptor.ToolType);
+                    if (descriptor.ToolType == "lineGauge")
+                    {
+                        step.Parameters[nameof(LineGaugeToolProperty.CvROI)] = "1,1,20,20";
+                    }
+
+                    if (descriptor.Artifacts.Count > 0)
+                    {
+                        step.Artifacts.Add(CreateTemplateArtifact(encoded, descriptor.ToolType + "/template"));
+                    }
+
+                    IVisionTool tool = VisionPipelineBlobToolFactory.Create(step, artifact =>
+                    {
+                        resolverCalls++;
+                        Require(ReferenceEquals(artifact, step.Artifacts[0]),
+                            "The factory must pass the serialized artifact identity to the host resolver.");
+                        return encoded;
+                    });
+                    try
+                    {
+                        Require(tool.GetType().FullName == descriptor.ToolTypeName,
+                            $"Pipeline factory created '{tool.GetType().FullName}' for '{descriptor.ToolType}'.");
+                    }
+                    finally
+                    {
+                        (tool as IDisposable)?.Dispose();
+                    }
+                }
+
+                Require(resolverCalls == 3,
+                    "Only Matching, edge-based matching, and SIFT should resolve a template artifact.");
+            }
+
+            VisionPipelineStep blobStep = CreatePipelineStep("blob");
+            blobStep.Parameters[nameof(BlobToolProperty.CvROI)] = "3,4,20,21";
+            blobStep.Parameters[nameof(BlobToolProperty.MIN_AREA)] = "33";
+            using (BlobTool blobTool = (BlobTool)VisionPipelineBlobToolFactory.Create(blobStep))
+            {
+                Require(blobTool.property.CvROI == new Rect(3, 4, 20, 21)
+                    && blobTool.property.MIN_AREA == 33,
+                    "Blob factory did not retain its typed settings.");
+            }
+        }
+
+        private static void TestVisionPipelineModelArtifacts()
+        {
+            using (Mat template = new Mat(40, 40, MatType.CV_8UC1, Scalar.Black))
+            {
+                Cv2.Rectangle(template, new Rect(6, 8, 18, 15), Scalar.White, Cv2.FILLED);
+                Cv2.Circle(template, new OpenCvSharp.Point(29, 29), 5, new Scalar(127), Cv2.FILLED);
+                byte[] encoded = template.ToBytes(".png", Array.Empty<int>());
+                VisionPipelineStep matchingStep = CreatePipelineStep("matching");
+                matchingStep.Parameters[nameof(MatchingToolProperty.USE_FIND_ANGLE)] = "false";
+                matchingStep.Parameters[nameof(MatchingToolProperty.NUM_MATCH)] = "1";
+                matchingStep.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/verified"));
+
+                int resolverCalls = 0;
+                using (MatchingTool tool = (MatchingTool)VisionPipelineToolFactory.Create(matchingStep, artifact =>
+                {
+                    resolverCalls++;
+                    Require(artifact.Id == "templates/verified", "The resolver received the wrong artifact ID.");
+                    return encoded;
+                }))
+                {
+                    Array.Clear(encoded, 0, encoded.Length);
+                    using (VisionToolResult result = tool.Execute(template))
+                    {
+                        Require(result.Success && tool.property.PATTERN_PATH == string.Empty,
+                            "The reconstructed Matching Tool did not own a usable template or retained a host path.");
+                    }
+                }
+
+                Require(resolverCalls == 1, "A template artifact must be resolved exactly once during Tool creation.");
+            }
+
+            using (Mat template = new Mat(12, 12, MatType.CV_8UC1, Scalar.White))
+            {
+                byte[] encoded = template.ToBytes(".png", Array.Empty<int>());
+                VisionPipelineStep missing = CreatePipelineStep("sift");
+                RequireThrows<ArgumentException>(() => VisionPipelineToolFactory.Create(missing, _ => encoded));
+
+                VisionPipelineStep noResolver = CreatePipelineStep("sift");
+                noResolver.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/no-resolver"));
+                RequireThrows<InvalidOperationException>(() => VisionPipelineToolFactory.Create(noResolver));
+
+                VisionPipelineStep wrongHash = CreatePipelineStep("sift");
+                wrongHash.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/wrong-hash"));
+                wrongHash.Artifacts[0].Sha256 = new string('0', 64);
+                RequireThrows<InvalidOperationException>(() => VisionPipelineToolFactory.Create(wrongHash, _ => encoded));
+
+                VisionPipelineStep emptyBytes = CreatePipelineStep("sift");
+                emptyBytes.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/empty-bytes"));
+                RequireThrows<InvalidOperationException>(() => VisionPipelineToolFactory.Create(emptyBytes, _ => Array.Empty<byte>()));
+
+                VisionPipelineStep invalidMetadata = CreatePipelineStep("sift");
+                invalidMetadata.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/invalid-metadata"));
+                invalidMetadata.Artifacts[0].Sha256 = "invalid";
+                int invalidMetadataResolverCalls = 0;
+                RequireThrows<ArgumentException>(() => VisionPipelineToolFactory.Create(invalidMetadata, _ =>
+                {
+                    invalidMetadataResolverCalls++;
+                    return encoded;
+                }));
+                Require(invalidMetadataResolverCalls == 0,
+                    "Invalid artifact metadata must be rejected before calling the host resolver.");
+
+                VisionPipelineStep wrongFormat = CreatePipelineStep("sift");
+                wrongFormat.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/wrong-format"));
+                wrongFormat.Artifacts[0].Format = "raw-image";
+                RequireThrows<NotSupportedException>(() => VisionPipelineToolFactory.Create(wrongFormat, _ => encoded));
+
+                byte[] invalidBytes = { 1, 2, 3, 4, 5 };
+                VisionPipelineStep invalidImage = CreatePipelineStep("sift");
+                invalidImage.Artifacts.Add(CreateTemplateArtifact(invalidBytes, "templates/invalid-image"));
+                RequireThrows<InvalidOperationException>(() => VisionPipelineToolFactory.Create(invalidImage, _ => invalidBytes));
+
+                VisionPipelineStep duplicate = CreatePipelineStep("sift");
+                duplicate.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/one"));
+                duplicate.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/two"));
+                RequireThrows<ArgumentException>(() => VisionPipelineToolFactory.Create(duplicate, _ => encoded));
+
+                VisionPipelineStep pathParameter = CreatePipelineStep("sift");
+                pathParameter.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/no-path"));
+                pathParameter.Parameters[nameof(SiftToolProperty.PATTERN_PATH)] = "C:\\host\\template.png";
+                bool pathRejected = false;
+                try
+                {
+                    IVisionTool tool = VisionPipelineToolFactory.Create(pathParameter, _ => encoded);
+                    (tool as IDisposable)?.Dispose();
+                }
+                catch (ArgumentException exception)
+                {
+                    pathRejected = exception.ParamName == "parameters"
+                        && exception.Message.Contains(nameof(SiftToolProperty.PATTERN_PATH), StringComparison.Ordinal);
+                }
+
+                Require(pathRejected, "Pipeline model reconstruction must reject host path parameters.");
+
+                VisionPipelineStep nonModel = CreatePipelineStep("threshold");
+                nonModel.Artifacts.Add(CreateTemplateArtifact(encoded, "templates/unexpected"));
+                RequireThrows<ArgumentException>(() => VisionPipelineToolFactory.Create(nonModel, _ => encoded));
+
+                using (VisionPipelineContext context = new VisionPipelineContext())
+                using (Mat source = template.Clone())
+                {
+                    context.SetLayer("input", source);
+                    VisionPipeline pipeline = new VisionPipeline();
+                    pipeline.Steps.Add(wrongHash);
+                    VisionPipelineRuntime runtime = new VisionPipelineRuntime(
+                        step => VisionPipelineToolFactory.Create(step, _ => encoded),
+                        true);
+                    using (VisionPipelineRunResult result = runtime.RunWithFailureResults(pipeline, context))
+                    {
+                        Require(!result.Success
+                            && result.StepResults.Count == 1
+                            && result.StepResults[0].ToolResult.ErrorCode == VisionToolErrorCode.ToolFactoryFailed,
+                            "Artifact reconstruction failures must cross the Pipeline boundary as ToolFactoryFailed.");
+                    }
+                }
             }
         }
 
@@ -1679,6 +2043,9 @@ namespace OpenVisionLab.Inspection.Smoke
                     Require(!disabled.Success && disabled.StepResults.Count == 1 && disabled.StepResults[0].Skipped,
                         "A disabled-only pipeline must not pass.");
                 }
+
+                VisionPipeline futureSchema = new VisionPipeline { SchemaVersion = VisionPipeline.CurrentSchemaVersion + 1 };
+                RequireThrows<NotSupportedException>(() => runtime.Run(futureSchema, context));
 
                 VisionPipeline nullStepPipeline = new VisionPipeline();
                 nullStepPipeline.Steps.Add(null);
@@ -1829,6 +2196,18 @@ namespace OpenVisionLab.Inspection.Smoke
                 InputLayer = "input",
                 OutputLayer = "output"
             };
+        }
+
+        private static VisionPipelineArtifactReference CreateTemplateArtifact(byte[] encoded, string id)
+        {
+            string sha256 = BitConverter.ToString(SHA256.HashData(encoded)).Replace("-", string.Empty);
+
+            return new VisionPipelineArtifactReference(
+                VisionPipelineToolFactory.TemplateArtifactRole,
+                id,
+                VisionPipelineToolFactory.EncodedImageArtifactFormat,
+                VisionPipelineToolFactory.EncodedImageArtifactFormatVersion,
+                sha256);
         }
 
         private static void RequireFactoryArgumentError(string key, string value, string expectedMessage)

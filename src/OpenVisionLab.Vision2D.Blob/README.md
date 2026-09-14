@@ -59,6 +59,33 @@ native execution failure. Inspect `result.Exception` for the latter. Read
 `tool.results` only after a successful current call and copy values needed beyond
 the next execution. Dispose the result snapshot and Tool; the source remains yours.
 
+## Pipeline composition
+
+`VisionPipelineBlobToolFactory.Descriptors` exposes the complete immutable catalog
+for all 15 non-legacy 2D Tools: `BlobTool` from this package plus the 14 Tools from
+`OpenVisionLab.Vision2D`. `TryGetDescriptor` resolves canonical IDs and aliases.
+`Create` constructs Blob directly and delegates the other Tools to
+`VisionPipelineToolFactory`, including its host artifact resolver overload.
+
+```csharp
+using OpenVisionLab.Vision2D.Blob;
+using OpenVisionLab.Vision2D.Pipeline;
+
+VisionPipelineStep step = new VisionPipelineStep { ToolType = "blob" };
+step.Parameters[nameof(BlobToolProperty.THRESHOLD)] = "135";
+step.Parameters[nameof(BlobToolProperty.MIN_AREA)] = "25";
+
+using BlobTool restored = (BlobTool)VisionPipelineBlobToolFactory.Create(step);
+```
+
+Blob parameters use the invariant representations documented in the
+[shared Pipeline contract](../OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction).
+Blob rejects artifact references because it has no external model. If a Pipeline
+also contains Matching, edge-based matching, or SIFT, pass a resolver to the
+composite `Create(step, resolver)` overload and construct the runtime with that
+factory. The returned Tool remains caller-owned unless the runtime is explicitly
+configured to own custom-factory Tools.
+
 The [shared 2D contract](../OpenVisionLab.Vision2D/README.md#lifetime-threads-and-time-limits)
 covers image channels, sequential use, failure recovery and cancellation limits.
 

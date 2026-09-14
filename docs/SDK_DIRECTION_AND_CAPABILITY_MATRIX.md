@@ -1,7 +1,7 @@
 # OpenVisionLab Vision SDK direction and capability matrix
 
-Updated: 2026-09-14
-Work item: `PL-0014`
+Updated: 2026-09-15
+Work item: `PL-0015`
 API baseline: `3.0.0`
 
 ## Product direction
@@ -36,7 +36,7 @@ rules.
 
 ## Current maturity boundary
 
-- Release build, 235 synthetic smoke cases, coverage floors, exact public API,
+- Release build, 237 synthetic smoke cases, coverage floors, exact public API,
   analyzer identities, package provenance, negative probes, and isolated
   `net8.0/win-x64` consumption are automated.
 - Synthetic evidence does not establish real-sensor accuracy, calibration validity,
@@ -53,32 +53,35 @@ for one sequential worker; concurrent execution, settings/template mutation, inp
 mutation, and disposal on the same instance are unsupported. The common API has no
 cooperative-cancellation parameter.
 
-`Built-in` means the default `VisionPipelineToolFactory` creates the Tool from a
-`VisionPipelineStep`. `Custom factory` means direct typed execution is public but a
-host must currently use the existing `VisionPipelineRuntime(Func<...>)` seam.
+`Core factory` means `VisionPipelineToolFactory` owns the descriptor and creates the
+Tool from a `VisionPipelineStep`. `Blob composite` means
+`VisionPipelineBlobToolFactory` adds `BlobTool` and delegates the other 14 Tools to
+the Core factory. Both catalogs expose canonical IDs, aliases, package and property
+identity, invariant parameter metadata, defaults, and required artifacts.
 
 | Tool | Package | Primary input/output | Pipeline status | Additional artifact/setup |
 | --- | --- | --- | --- | --- |
-| `ThresholdTool` | Vision2D | image -> binary/range image | Built-in | typed threshold settings |
-| `MorphologyTool` | Vision2D | image/mask -> transformed image | Built-in | kernel/operator settings |
-| `FilterTool` | Vision2D | image -> filtered image | Built-in | filter/kernel settings |
-| `EdgeDetectionTool` | Vision2D | image -> edge image | Built-in | edge/operator settings |
-| `RotateScaleTool` | Vision2D | image -> transformed image | Built-in | angle/scale/output policy |
-| `AffineTransformTool` | Vision2D | image -> transformed image | Built-in | taught source/destination triangles |
-| `ContourTool` | Vision2D | image/mask -> candidates/contours | Custom factory | ROI, threshold and area settings |
-| `CornerTool` | Vision2D | image -> corner points | Custom factory | ROI and contour-family settings |
-| `MatchingTool` | Vision2D | image + template -> poses/scores | Custom factory | owned template image; future model resolver required |
-| `EdgeBasedTemplateMatchingTool` | Vision2D | image + edge template -> poses/evidence | Custom factory | trained edge model; future model resolver required |
-| `AutoMPointTool` | Vision2D | teaching and representative images -> candidate | Custom factory | analysis ROI and representative-set provenance |
-| `SiftTool` | Vision2D | image + template -> homography/match | Custom factory | owned template; bundled runtime currently uses ORB fallback |
-| `LineGaugeTool` | Vision2D | image + scan ROI -> subpixel line evidence | Custom factory | required taught scan ROI |
-| `MeanTool` | Vision2D | image/ROI -> scalar statistics | Custom factory | ROI and preprocessing settings |
-| `BlobTool` | Vision2D.Blob | binary image/ROI -> blob candidates | Package custom factory | threshold, ROI and area settings |
+| `ThresholdTool` | Vision2D | image -> binary/range image | Core factory | typed threshold settings |
+| `MorphologyTool` | Vision2D | image/mask -> transformed image | Core factory | kernel/operator settings |
+| `FilterTool` | Vision2D | image -> filtered image | Core factory | filter/kernel settings |
+| `EdgeDetectionTool` | Vision2D | image -> edge image | Core factory | edge/operator settings |
+| `RotateScaleTool` | Vision2D | image -> transformed image | Core factory | angle/scale/output policy |
+| `AffineTransformTool` | Vision2D | image -> transformed image | Core factory | taught source/destination triangles |
+| `ContourTool` | Vision2D | image/mask -> candidates/contours | Core factory | ROI, threshold and area settings |
+| `CornerTool` | Vision2D | image -> corner points | Core factory | ROI and contour-family settings |
+| `MatchingTool` | Vision2D | image + template -> poses/scores | Core factory | required host-resolved encoded template |
+| `EdgeBasedTemplateMatchingTool` | Vision2D | image + edge template -> poses/evidence | Core factory | required host-resolved encoded template |
+| `AutoMPointTool` | Vision2D | teaching and representative images -> candidate | Core factory | Pipeline executes one input image; representative-set teaching remains a typed direct workflow |
+| `SiftTool` | Vision2D | image + template -> homography/match | Core factory | required host-resolved encoded template; bundled runtime currently uses ORB fallback |
+| `LineGaugeTool` | Vision2D | image + scan ROI -> subpixel line evidence | Core factory | required taught `CvROI` parameter |
+| `MeanTool` | Vision2D | image/ROI -> scalar statistics | Core factory | ROI and preprocessing settings |
+| `BlobTool` | Vision2D.Blob | binary image/ROI -> blob candidates | Blob composite | threshold, ROI and area settings |
 
-The next 2D factory work must preserve direct typed APIs. Model-backed Tools need an
-artifact ID/hash/format contract and a host-supplied resolver before they can be
-reconstructed safely. The SDK must not persist host file paths or own a global
-service locator.
+Direct typed APIs remain available. Factory construction uses explicit parameter
+mapping without property reflection, `Activator`, or global registration. Matching,
+edge-based matching, and SIFT use the schema-versioned artifact contract below;
+their `PATTERN_PATH` compatibility property is deliberately excluded from Pipeline
+parameters.
 
 ## 3D Tool execution matrix
 
@@ -121,7 +124,7 @@ acceptance limit and does not abort work.
 
 ## Pipeline artifact contract
 
-- `VisionPipeline.SchemaVersion` defaults to `1` and is serialized as the root
+- `VisionPipeline.SchemaVersion` defaults to `2` and is serialized as the root
   `schemaVersion` XML attribute.
 - `VisionPipelineSerializer.Serialize` and `Deserialize` are the SDK-owned in-memory
   XML entry points. The host owns file or database persistence.
@@ -129,15 +132,21 @@ acceptance limit and does not abort work.
 - Unknown or invalid versions fail closed with `NotSupportedException`.
 - DTD processing is prohibited and external entity resolution is disabled.
 - Duplicate parameter names remain invalid without regard to case.
-- Version 1 retains invariant string parameter values for 3.x compatibility.
-- No migration is needed while version 1 is the only supported schema. Adding a
-  later version requires an explicit migration and fixtures for every accepted old
-  version before the supported version changes.
+- Version 1 retains invariant string parameter values for 3.x compatibility and
+  cannot contain artifact references. Original XML without the version attribute
+  is treated as version 1.
+- Version 2 adds per-step `Artifacts/Artifact` references with `role`, stable host
+  `id`, `format`, positive `formatVersion`, and a 64-hex-character `sha256`.
+- Matching, edge-based matching, and SIFT require exactly one `template` artifact
+  in `encoded-image` format version 1. Other current Tools reject artifacts.
+- `VisionPipelineToolFactory.Create(step, resolver)` validates metadata before it
+  invokes the resolver, validates the returned bytes against SHA-256 before image
+  decoding, copies the decoded image into the Tool, and releases the temporary
+  `Mat`. The host owns persistence and returned byte arrays; the caller owns and
+  disposes the returned Tool.
+- The resolver receives the complete serialized reference. It maps the stable ID
+  to host storage; no host file path is serialized or accepted as a model parameter.
 - Loading or restoring a Pipeline never executes it.
-
-Template images, trained edge models, calibration and large binary data are not
-embedded by this first contract. A later model-artifact contract must carry a stable
-ID, format version, SHA-256, and a host-supplied resolver.
 
 ## Error producer matrix
 
@@ -147,7 +156,7 @@ Use `ErrorCode`/`ResultStatus` for control flow and `Message` only for diagnosis
 | --- | --- | --- |
 | `InputImageInvalid` | Direct 2D Tool validation/execution | Correct image type, size, depth or channel contract |
 | `InputLayerMissing` | `RunWithFailureResults` before factory creation | Fix the step input-layer name or prior output routing |
-| `ToolFactoryFailed` | `RunWithFailureResults` for factory exception/null | Correct Tool ID/parameters/registration; inspect preserved exception |
+| `ToolFactoryFailed` | `RunWithFailureResults` for factory exception/null, including artifact resolution/integrity/decode failure | Correct Tool ID, parameters, or artifact metadata/bytes; inspect the preserved exception |
 | `ToolExecutionException` | `RunWithFailureResults` for a throwing/null custom Tool result and other declared boundaries | Preserve exception and input/settings evidence; do not reuse stale output |
 | `OpenCvExecutionFailed` and Tool-specific codes | Modern 2D `Execute` boundary | Branch on the typed code; diagnose native/input or controlled no-result condition |
 | `StepTimeout` | Reserved; no execution producer | Do not treat `MaxElapsedMilliseconds` as cancellation |
@@ -159,28 +168,30 @@ come from an executed Tool's controlled result.
 
 ## Shortest code-reading order
 
-1. `VisionPipeline.cs` and `VisionPipelineStep.cs` — serialized state owner.
-2. `VisionPipelineSerializer.cs` — schema/load/save validation owner.
-3. `VisionPipelineRuntime.cs` — layer, factory, Tool execution and failure-result
+1. `VisionPipeline.cs`, `VisionPipelineStep.cs`, and
+   `VisionPipelineArtifactReference.cs` — serialized state owner.
+2. `VisionPipelineToolDescriptor.cs` and `VisionPipelineBuiltInDescriptors.cs` —
+   discoverable Core Tool/parameter/artifact contract.
+3. `VisionPipelineSerializer.cs` — schema/load/save validation owner.
+4. `VisionPipelineToolFactory.cs` and the Blob package's
+   `VisionPipelineBlobToolFactory.cs` — explicit construction and model restoration.
+5. `VisionPipelineRuntime.cs` — layer, factory, Tool execution and failure-result
    call path.
-4. `VisionPipelineContext.cs` and `VisionPipelineRunResult.cs` — mutable layer owner
+6. `VisionPipelineContext.cs` and `VisionPipelineRunResult.cs` — mutable layer owner
    and result release owner.
-5. `VisionToolResult.cs` — public 2D status/error/lifetime contract.
-6. Search the Tool name in `Vision2DSmokeSuite.cs` or the matching 3D smoke suite.
+7. `VisionToolResult.cs` — public 2D status/error/lifetime contract.
+8. Search the Tool name in `Vision2DSmokeSuite.cs` or the matching 3D smoke suite.
 
 ## Ordered engineering priorities
 
-1. Add machine-readable Tool descriptors and complete safe 2D factory/model
-   reconstruction without reflection or global registration | Recommended model:
-   `gpt-5.6-sol` | Reasoning effort: `high`
-2. Add opt-in 3D typed adapters and a common execution report while retaining every
+1. Add opt-in 3D typed adapters and a common execution report while retaining every
    typed result | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
-3. Add cooperative cancellation first to long-running matching/search loops |
+2. Add cooperative cancellation first to long-running matching/search loops |
    Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-4. Characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
+3. Characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
    OpenCvSharp4 4.13 migration. Treat OpenCvSharp5/.NET 8 as a separate 4.0 decision
    | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-5. After the contract and representative-data gates exist, add calibrated 2D
+4. After the contract and representative-data gates exist, add calibrated 2D
    fixture/metrology, gauge primitives, golden comparison and color inspection |
    Recommended model: `gpt-6-astra` | Reasoning effort: `high`
 

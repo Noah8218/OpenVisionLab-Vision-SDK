@@ -216,6 +216,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
 
         private static void ValidatePipeline(VisionPipeline pipeline)
         {
+            VisionPipelineArtifactValidation.ValidatePipeline(pipeline);
+
             bool expectedFailureMustBeTerminal = false;
             foreach (VisionPipelineStep step in pipeline.Steps)
             {

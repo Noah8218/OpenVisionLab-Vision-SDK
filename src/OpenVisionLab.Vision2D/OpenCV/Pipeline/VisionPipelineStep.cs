@@ -47,6 +47,11 @@ namespace OpenVisionLab.Vision2D.Pipeline
         [XmlIgnore]
         public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>();
 
+        /// <summary>Gets the host-resolved artifact identities required to reconstruct this Tool.</summary>
+        [XmlArray("Artifacts")]
+        [XmlArrayItem("Artifact")]
+        public List<VisionPipelineArtifactReference> Artifacts { get; } = new List<VisionPipelineArtifactReference>();
+
         [XmlArray("Parameters")]
         [XmlArrayItem("Parameter")]
         public VisionPipelineParameter[] XmlParameters

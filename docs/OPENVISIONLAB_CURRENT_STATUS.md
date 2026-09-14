@@ -1,16 +1,17 @@
 # OpenVisionLab Vision SDK Current Status
 
-Updated: 2026-09-14
-Project work item: `PL-0014`
-Overall state: `resolved`
+Updated: 2026-09-15
+Project work item: `PL-0015`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0014.json` preserves the completed SDK direction and Pipeline
-artifact/failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
+`.proofline/issues/PL-0015.json` preserves the active 2D descriptor and safe model-
+reconstruction work. `.proofline/issues/PL-0014.json` preserves the completed SDK
+direction and Pipeline failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
 third-party redistribution-evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
 measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
 the completed 3.x public-compatibility analyzer review, while
@@ -60,6 +61,17 @@ contract, and ordered follow-up work are defined in
 
 ## Current progress
 
+`PL-0015` has an implementation candidate for all 15 non-legacy 2D Tools. The Core
+factory now exposes 14 explicit descriptors and construction paths; the Blob
+package composes the fifteenth. Matching, edge-based matching, and SIFT restore
+host-owned encoded templates only after versioned metadata and SHA-256 validation.
+Schema 2 carries those references while explicit schema 1 and original unversioned
+XML remain readable. Pipeline-focused Smoke passes 11/11 and the analyzer passes at
+411 reviewed diagnostics, including 186 exact compatibility and 225 exact retained
+performance identities. The full 237-case Smoke/coverage gate, 3,350-entry exact
+public API, third-party lock, and all 96 local document targets also pass. Commit-
+fixed package consumption and exact remote CI remain the completion boundary.
+
 `PL-0014` completed the first product-direction batch identified by the 2026-09-14
 full audit. The SDK now has one durable rule-based capability/error matrix, a
 versioned in-memory Pipeline XML contract, and an additive failure-result execution
@@ -75,17 +87,17 @@ redistribution. PL-0013 has now confirmed exact official sources for the Blob
 selection. Those texts and the other identified OpenCV 4.3 third-party notices are
 fixed into the Core package and fail-closed manifest. Commercial clearance
 remains blocked by the two approvals below.
-`PL-0012` has classified all 272 performance suggestions by rule, owner, project
+`PL-0012` classified all 272 performance suggestions by rule, owner, project
 layer, access, and call behavior. Thirty-two zero-length allocations now use
 `Array.Empty<T>()`, and nine single-task `Task.WaitAll` calls now use `Task.Wait()`;
 both transformations remove a directly measurable allocation without changing a
-public signature. The other 231 diagnostics are retained by explicit decision and
-exact identity. The working-tree Release build passes with no warnings/errors, all
-233 smoke cases pass, all five coverage floors pass, the public API remains exactly
-3,295 entries, all 80 checked local document targets resolve, and the analyzer
-reports 417 diagnostics with both the 186-identity compatibility contract and 231-
-identity performance contract passing. Exact-commit packages, provenance guards,
-isolated consumption, native-copy verification, and remote CI also pass.
+public signature. The other 231 diagnostics were retained by explicit decision and
+exact identity at that closure. Its Release build passed with no warnings/errors,
+all 233 then-current smoke cases passed, all five coverage floors passed, the public
+API was exactly 3,295 entries, and its analyzer reported 417 diagnostics with the
+186-identity compatibility and 231-identity performance contracts passing. Exact-
+commit packages, provenance guards, isolated consumption, native-copy verification,
+and remote CI also passed.
 `PL-0011` has classified all 186 public field and naming diagnostics into 46
 legacy-compatibility and 140 current 3.x locations. All 39 CA1051 diagnostics map
 one-to-one to the exact public API baseline's 39 visible instance fields. The
@@ -117,6 +129,102 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0015 work contract
+
+Status: `Incomplete` — source and focused verification pass; exact-commit package
+consumption and remote CI evidence are still required.
+
+Scope: expose machine-readable descriptors and package-owned, reflection-free
+factories for all 15 public non-legacy 2D Tools; add safe host-resolved template
+restoration for Matching, edge-based matching, and SIFT; and preserve prior Pipeline
+XML, typed Tool, error, and ownership contracts.
+
+Implement now: the 14-Tool `VisionPipelineToolFactory` catalog/factory, the Blob
+package's 15-Tool composite, schema 2 artifact references, version 1/unversioned
+read compatibility, invariant parameter parsing, SHA-256-before-decode validation,
+focused tests, package consumer coverage, and developer guidance.
+
+Review later: opt-in 3D typed adapters/common reports, real cooperative
+cancellation, Blob/Contour replacement and OpenCvSharp migration, and sensor-backed
+metrology/production qualification.
+
+Out of scope: UI, camera/sensor acquisition, host storage implementation, global
+factory registration, PLC/MES, calibration approval, NuGet publication, consumer-
+repository changes, 4.0 breaking changes, and production accuracy/Takt claims.
+
+Current owner and intended owner: `VisionPipeline`/`VisionPipelineStep` own the
+serialized recipe state; `VisionPipelineArtifactReference` owns artifact identity
+metadata; `VisionPipelineArtifactValidation` owns shared schema/metadata validation;
+`VisionPipelineSerializer` owns XML reading/writing and invokes that validation;
+`VisionPipelineToolFactory` owns Core descriptors, parameter mapping, artifact
+validation, decode, and Tool construction; `VisionPipelineBlobToolFactory` owns the
+Blob descriptor/construction and delegates Core Tools. These owners remain the
+intended boundary.
+
+Actual call paths:
+
+- discovery: host -> package `Descriptors`/`TryGetDescriptor` -> immutable Tool,
+  parameter, and artifact metadata;
+- non-model reconstruction: host -> `Create(step)` -> descriptor lookup -> explicit
+  invariant parameter reads -> concrete property -> concrete Tool;
+- model reconstruction: host -> `Create(step, resolver)` -> metadata validation ->
+  host resolver -> SHA-256 validation -> image decode -> Tool-owned template copy;
+- execution: host/runtime -> factory -> `IVisionTool.Execute` -> typed result ->
+  acceptance/output routing;
+- restore: host XML text -> `VisionPipelineSerializer.Deserialize` -> schema and
+  metadata validation -> inert Pipeline. Deserialization never resolves or runs.
+
+Mutable-state and release ownership: the host owns artifact storage and returned
+byte arrays. `VisionPipelineStep` retains mutable references/parameters. The factory
+keeps no global mutable registry, releases its decoded temporary `Mat`, and returns
+a caller-owned Tool whose template setter has copied the image. Runtime ownership
+continues to follow its existing default/custom-factory constructor contract.
+
+Existing binding/public contract: all direct typed Tool/property/result APIs,
+canonical/legacy Tool aliases, `VisionPipelineRuntime.Run`,
+`RunWithFailureResults`, XML parameter names, and 3.x `C*`/`CV*`/`LineGuage`
+identities remain. The new descriptors, resolver overload, artifact reference, and
+schema 2 members are additive. Model Pipeline parameters deliberately reject
+`PATTERN_PATH`; hosts map the serialized stable artifact ID to storage.
+
+Shortest review order: `SDK_DIRECTION_AND_CAPABILITY_MATRIX.md`,
+`VisionPipelineToolDescriptor.cs`, `VisionPipelineBuiltInDescriptors.cs`,
+`VisionPipelineArtifactReference.cs`, `VisionPipelineSerializer.cs`,
+`VisionPipelineToolFactory.cs`, `VisionPipelineBlobToolFactory.cs`, then the
+Pipeline cases in `Vision2DSmokeSuite.cs` and the package-only consumer.
+
+Acceptance criteria:
+
+- C1 — Pass in focused source verification. The two catalogs expose the exact 14/
+  15 Tool sets; the descriptor test compares every parameter name and value type
+  with its concrete writable property model, excluding only model host paths.
+- C2 — Pass in focused source verification. Explicit mappings construct all 15
+  Tools and reject unknown, duplicate, malformed, non-finite, and undefined enum
+  parameter values without property reflection or global registration.
+- C3 — Pass in focused source verification. All three model Tools require one
+  versioned template reference; metadata and SHA-256 are checked before decode,
+  caller/factory/Tool release owners are exercised, and host paths are rejected.
+- C4 — Pass in focused source verification. Schema 2 round-trips artifact metadata;
+  schema 1/unversioned XML loads; invalid versions, metadata, schema-1 artifacts,
+  duplicate parameters, and DTD input fail closed; loading is inert.
+- C5 — Partial. Full integrated, coverage, exact API/document, and third-party
+  checks pass. Commit-fixed package, isolated consumer/native-copy, and exact remote
+  CI evidence must still pass.
+
+Verification: Release build has zero warnings/errors; Pipeline-focused Smoke passes
+11/11; full Smoke passes 237/237; coverage passes at Core 37.35%, Inspection 69.92%,
+Vision2D 76.60%, Vision2D.Blob 74.55%, and Vision3D 90.97%; the exact public API is
+3,350 entries; analyzer passes at 411 diagnostics with 186 compatibility and 225
+performance identities; third-party provenance remains exact; and all 96 local
+targets across 26 Markdown files resolve. Current integrated evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0015\precommit-3`. Commit-
+fixed package and remote evidence is pending.
+
+Boundary / next dependency: this local evidence does not establish package-only or
+remote behavior until C5 passes. It does not establish sensor accuracy,
+calibration validity, Gauge R&R, production error rates/Takt, other native runtimes,
+or commercial redistribution clearance.
 
 ## PL-0014 work contract
 
@@ -847,16 +955,19 @@ readability diagnostics selected by their owner reviews. PL-0011 exact-locked al
 186 retained public-compatibility identities. PL-0012 reviewed the remaining 272
 performance suggestions, removed the 32 deterministic empty-array allocations and
 the nine single-task `WaitAll` params-array allocations, and exact-locked the 231
-retained identities. The implementation commit reports **417 diagnostics in eight
-emitted codes**. Exact-commit package and remote evidence are recorded under
-`PL-0012/final-8c5dd02` and Build run 34804351066. This is a reviewed no-regression
-boundary, not a zero-warning claim.
+retained identities. PL-0015 then removed six private `VisionPipelineToolFactory`
+CA1859 findings while adding the explicit construction paths. The current candidate
+reports **411 diagnostics in eight emitted codes**, including 186 compatibility and
+225 retained performance identities. PL-0012's exact-commit package and remote
+evidence remain recorded under `PL-0012/final-8c5dd02` and Build run 34804351066;
+PL-0015's exact evidence remains pending. This is a reviewed no-regression boundary,
+not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
 | Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | All identities are reviewed and exact-locked: 39 fields, 7 types, 118 members, 20 parameters, one namespace, and one interface member. Preserve the 3.x contract; any identity change requires explicit compatibility review. |
 | Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
-| Allocation, static and dispatch suggestions | CA1805 69, CA1822 68, CA1825 0, CA1843 0, CA1859 11, CA1861 82, CA1869 1 / 231 | All 272 inputs were reviewed. Fix the 41 deterministic per-call allocations; exact-lock the 231 retained identities. Public-static changes, unmeasured dispatch changes, shared mutable arrays, and one-time options caching remain rejected. |
+| Allocation, static and dispatch suggestions | CA1805 69, CA1822 68, CA1825 0, CA1843 0, CA1859 5, CA1861 82, CA1869 1 / 225 | PL-0012 reviewed all 272 inputs and fixed 41 deterministic per-call allocations. PL-0015 removed six private factory return-type findings as part of the real factory change. The remaining 225 identities stay exact-locked; public-static changes, unmeasured dispatch changes, shared mutable arrays, and one-time options caching remain rejected. |
 | Readability | CA1507, CA2249 / 0 | All 41 sites were reviewed for framework and comparison equivalence; the ceilings are removed. |
 | Ignored constructed result | CA1806 / 0 | Five TriangleMeshDistance and one Pipeline rejection assertion explicitly discard the constructed value without changing the expected exception. The ceiling is zero. |
 | Dispose/finalizer extensibility | CA1816 / 0 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release their existing owned Mats/results, then suppress finalization for derived instances. The ceiling is zero. |
@@ -878,10 +989,11 @@ and all five CA2208 call sites. PL-0010 reviewed the four CA1507 argument sites 
 37 CA2249 smoke assertions. PL-0011 reviewed the 186 compatibility identities and
 retains them only because correcting the public field/name shape would break the 3.x
 contract. PL-0012 reviewed all 272 performance suggestions, changed the 41 cases
-with deterministic allocation evidence, and retains 231 exact identities by their
-documented contract or call-frequency decision. CA1305, CA1507, CA1806, CA1816,
-CA1825, CA1843, CA2208, and CA2249 now have zero ceilings. No analyzer ceiling or
-coverage minimum was relaxed.
+with deterministic allocation evidence, and retained 231 exact identities by their
+documented contract or call-frequency decision. PL-0015's explicit factory work
+removed six of those identities; the remaining 225 keep their prior decisions.
+CA1305, CA1507, CA1806, CA1816, CA1825, CA1843, CA2208, and CA2249 now have zero
+ceilings. No analyzer ceiling or coverage minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 
