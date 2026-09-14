@@ -203,9 +203,9 @@ order:
 
 1. **Complete (`PL-0016` M2):** add opt-in 3D typed adapters and a common execution
    report while retaining every typed result.
-2. **Active (`PL-0016` M3):** add cooperative cancellation first to long-running
-   matching/search loops | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-3. **Pending (`PL-0016` M4):** characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
+2. **Complete (`PL-0016` M3):** add cooperative cancellation first to long-running
+   matching/search loops.
+3. **Active (`PL-0016` M4):** characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
    OpenCvSharp4 4.13 migration. Treat OpenCvSharp5/.NET 8 as a separate 4.0 decision
    | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
 4. **Pending (`PL-0016` M5):** after the contract and representative-data gates exist, add calibrated 2D

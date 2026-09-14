@@ -19,8 +19,8 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "M1 분석과 M2 typed 3D adapter/report가 완료됐다. 구현 commit b3c31a9a0df6909fcdd73c16717c412d1af71c84에서 8/8 focused, 245/245 full smoke/coverage, exact API/analyzer, five commit-fixed packages, D-drive isolated package consumer와 native DLL 1개가 통과했다. 다음은 M3 cooperative 2D cancellation이다.",
-    "next_action": "ICancellableVisionTool, OpenCvAlgorithmBase/Pipeline token overloads와 Matching/EdgeBased/AutoMPoint/SIFT checkpoint를 구현하고 cancellation/lifetime 증거를 만든다."
+    "current_summary": "M1 analysis, M2 typed 3D adapter/report, and M3 cooperative 2D cancellation are complete. M3 commit 6d92357a7c3c8a072a605105cadc1c08892f9d04 adds the optional ICancellableVisionTool contract, Pipeline token overloads, managed/native-boundary checkpoints in Matching, EdgeBasedTemplateMatching, AutoMPoint and Sift, and caller-token-only StepCanceled classification. Release build 0/0, 5/5 focused cancellation cases, exact 3,398 API entries, the unchanged 411 analyzer diagnostics, five commit-fixed packages, isolated package consumption, and one native output DLL passed. M4 Blob/Contour replacement and OpenCvSharp4 4.13 qualification is active.",
+    "next_action": "Replace Blob/Contour internals with the characterized compatibility engine, remove the OpenCvSharp.Blob dependency and shipped asset, then run the isolated OpenCvSharp4 4.13 build/smoke/package/native-layout qualification."
   },
   "objective": {
     "summary": "SDK 우선순위 1~4를 분석으로 먼저 고정하고, 3.x 호환성과 증거 경계를 보존하면서 검증 가능한 순서로 구현한다.",
@@ -55,7 +55,10 @@
     {
       "id": "C3",
       "text": "2D Pipeline과 Matching/EdgeBased/AutoMPoint/SIFT가 additive cooperative cancellation을 제공하며 기존 overload, exception, result disposal 계약을 보존한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E6",
+        "E7"
+      ]
     },
     {
       "id": "C4",
@@ -105,7 +108,7 @@
     {
       "id": "M3",
       "summary": "2D runtime과 네 matching/search Tool에 cooperative cancellation과 lifetime/error proof를 구현한다.",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C3"
@@ -115,7 +118,7 @@
     {
       "id": "M4",
       "summary": "Blob/Contour 호환 엔진으로 OpenCvSharp.Blob을 제거하고 OpenCvSharp4 4.13 격리 migration gate를 완료한다.",
-      "status": "pending",
+      "status": "doing",
       "required": true,
       "criteria_refs": [
         "C4",
@@ -219,6 +222,20 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M2/final-b3c31a9-a1/validation-summary.json",
       "observation": "Five packages at 3.0.1-pl0016.m2.b3c31a9.1 passed exact-commit provenance for b3c31a9a0df6909fcdd73c16717c412d1af71c84. A copied package-only consumer whose intermediate/output files were physically on D: executed the typed 3D adapter plus existing contracts and contained exactly one root OpenCvSharpExtern.dll with SHA-256 C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249.",
       "observed_at": "2026-09-15T01:50:00+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M3/classification-recheck-1789407595483/source-validation-summary.json",
+      "observation": "The M3 source candidate committed as 6d92357a7c3c8a072a605105cadc1c08892f9d04 passed Release build with 0 warnings/errors, all 5 focused cancellation/error/lifetime cases, the exact 3,398-entry public API, and the unchanged 411-diagnostic analyzer contract with 186 exact compatibility and 225 exact performance identities.",
+      "observed_at": "2026-09-15T02:43:29.1828283+09:00"
+    },
+    {
+      "id": "E7",
+      "kind": "artifact",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M3/final-6d92357-1789407712613/validation-summary.json",
+      "observation": "Five packages at 3.0.1-pl0016.m3.6d92357.1789407712613 passed clean exact-commit provenance for 6d92357a7c3c8a072a605105cadc1c08892f9d04. The isolated D-drive package consumer exercised the new cancellation API with existing 2D/Blob/3D contracts and produced exactly one root OpenCvSharpExtern.dll with SHA-256 C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249.",
+      "observed_at": "2026-09-15T02:43:29.1828283+09:00"
     }
   ],
   "events": [
@@ -233,5 +250,5 @@
     }
   ],
   "created_at": "2026-09-15T01:34:39.4459136+09:00",
-  "updated_at": "2026-09-15T01:51:30+09:00"
+  "updated_at": "2026-09-15T02:43:29.1828283+09:00"
 }

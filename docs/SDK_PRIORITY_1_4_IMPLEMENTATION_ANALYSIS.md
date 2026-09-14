@@ -220,6 +220,27 @@ existing search is parallel. Each native call is bracketed by checkpoints.
 - completed result/image ownership remains leak-free;
 - legacy overload tests and public API remain compatible.
 
+### Implemented M3 checkpoint
+
+Implementation commit `6d92357a7c3c8a072a605105cadc1c08892f9d04` adds the
+optional `ICancellableVisionTool` contract without changing `IVisionTool`, adds both
+Pipeline token overloads, and places cooperative checkpoints in Matching,
+EdgeBasedTemplateMatching, AutoMPoint, and SIFT. `StepCanceled` is emitted only when
+the caller token is actually requested; an unrequested cancellation-shaped custom
+Tool exception retains `ToolExecutionException`, while cancellation raised during
+factory execution is classified from the requested caller token.
+
+The M3 candidate passed Release build with 0 warnings/errors, all 5 focused
+cancellation/error/lifetime cases, the exact 3,398-entry public API, and the
+unchanged 411-diagnostic analyzer gate with 186 exact compatibility and 225 exact
+performance identities. Five clean commit-fixed packages at
+`3.0.1-pl0016.m3.6d92357.1789407712613` passed provenance and isolated package-only
+consumption, with exactly one root `OpenCvSharpExtern.dll`. Reusable evidence is
+under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M3\classification-recheck-1789407595483`
+and `M3\final-6d92357-1789407712613`. The final PL-0016 candidate still owns the
+full smoke and coverage gate.
+
 ## Priority 3 — remove OpenCvSharp.Blob and qualify OpenCvSharp4 4.13
 
 ### Current binary and dependency boundary

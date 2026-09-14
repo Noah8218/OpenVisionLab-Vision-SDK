@@ -76,10 +76,17 @@ the next old-Blob case fails, proving Blob removal is a migration prerequisite.
 M2 is complete at implementation commit
 `b3c31a9a0df6909fcdd73c16717c412d1af71c84`. The separate typed 3D
 adapter/report owner passed eight focused cases, full 245-case Smoke/coverage, the
-3,389-entry exact API, and the unchanged 411-diagnostic analyzer contract. Five
-commit-fixed packages at `3.0.1-pl0016.m2.b3c31a9.1` passed provenance, and a copied
-package-only consumer running physically on `D:` preserved the typed result and
-contained exactly one native DLL. M3 cooperative 2D cancellation is now active.
+3,389-entry exact API, and the unchanged 411-diagnostic analyzer contract. M3 is
+complete at implementation commit
+`6d92357a7c3c8a072a605105cadc1c08892f9d04`. The optional
+`ICancellableVisionTool` contract, two Pipeline token overloads, and managed/native-
+boundary checkpoints in the four matching/search Tools passed all five focused
+cancellation, error-classification, and lifetime cases. The candidate also passed a
+zero-warning Release build, the exact 3,398-entry API, and the unchanged 411-
+diagnostic analyzer contract. Five commit-fixed packages at
+`3.0.1-pl0016.m3.6d92357.1789407712613` passed provenance and isolated consumption
+with exactly one native output DLL. M4 Blob/Contour replacement and OpenCvSharp4
+4.13 qualification is now active.
 
 `PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
@@ -154,7 +161,8 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0016 work contract
 
-Status: `In progress`; detailed analysis and M2 typed 3D execution are complete.
+Status: `In progress`; detailed analysis, M2 typed 3D execution, and M3 cooperative
+2D cancellation are complete.
 
 Scope: add an independent typed 3D execution adapter/report; add additive cooperative
 cancellation to the 2D runtime and four matching/search Tools; replace
@@ -178,15 +186,24 @@ internal component/contour compatibility engine reused by `ContourTool` and the
 friend Blob package. The host remains the owner of calibration, real data, and final
 acceptance.
 
-Immediate next action: implement and verify M3 cooperative 2D cancellation. The
-remaining ordered project work is Blob/Contour dependency removal plus the 4.13
-gate, then the calibrated-data gate.
+Immediate next action: implement and verify the M4 internal Blob/Contour
+compatibility engine, remove `OpenCvSharp.Blob`, and qualify OpenCvSharp4 4.13. The
+remaining ordered project work after M4 is the calibrated-data gate.
 
 M2 durable evidence: source and coverage summary under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M2`; exact package and
 isolated-consumer evidence under `M2\final-b3c31a9-a1`. The final validation summary
 has SHA-256
 `8C563EA988CB12B9653C93516A8876C10293A103922ADCEBE4A364B878DDDF47`.
+
+M3 durable evidence: focused source checks are under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M3\classification-recheck-1789407595483`.
+Exact-commit package, manifest, isolated-consumer, package SHA-256, and native-output
+evidence is under `M3\final-6d92357-1789407712613\validation-summary.json`. This M3
+summary has SHA-256
+`B4D85C020D61D2B043C7B9A65252E86F983E5699D9D0413EF58D46329CC78F09`. This M3
+checkpoint does not replace the full smoke/coverage run required for the final
+PL-0016 source candidate.
 
 Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
 4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,
@@ -1380,10 +1397,10 @@ prerequisites recorded above.
 
 ## Active PL-0016 implementation order
 
-1. Typed 3D adapter/report | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-2. Cooperative 2D matching/search cancellation | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-3. Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-4. Calibrated representative-data gate | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+1. Complete: typed 3D adapter/report.
+2. Complete: cooperative 2D matching/search cancellation.
+3. Active: Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+4. Pending: calibrated representative-data gate | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
 
 Priority 4 public physical metrology/golden/color algorithms remain blocked until a
 manifested and approved real-sensor data set supplies the acquisition, calibration,
