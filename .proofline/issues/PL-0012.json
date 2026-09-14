@@ -16,8 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "272건 전수 분류와 선택 구현을 마쳤다. CA1825 32건과 CA1843 9건은 호출당 할당을 제거했고, 나머지 231건은 공개 계약, 측정 부재, 일회성 호출 또는 공유 가변 상태 위험으로 유지해 exact 지문으로 고정했다. Release 0/0, smoke/coverage 233/233, API 3295 exact, analyzer 417/8과 호환 186·성능 231 exact, 문서 80/80 및 동일 개수 한 지문 교체 음성 검증이 통과했다. 고정 커밋 package·consumer와 원격 CI는 아직 남았다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 8c5dd0224cee4be332997faa19ce11a4495a78c8을 origin/main에 반영했다. 272건을 전수 분류해 CA1825 32건과 CA1843 9건의 호출당 할당을 제거하고 나머지 231건은 exact 지문으로 고정했다. Release 0/0, smoke/coverage 233/233, API 3295 exact, analyzer 417/8과 호환 186·성능 231 exact, 문서 80/80, 동일 개수 한 지문 교체 음성 검증, 패키지 5개/provenance/negative 3/격리 consumer/native 1개 및 원격 CI 34804351066이 통과했다. 패키지 게시, 센서·교정·현장 성능·재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "성능 analyzer 제안을 실제 비용과 계약 위험으로 구분하고, 확정적인 할당·호출 오버헤드만 제거한 뒤 남는 진단을 재검토 가능한 증거로 고정한다.",
@@ -56,7 +56,8 @@
       "id": "C4",
       "text": "Release build, 전체 smoke/coverage, exact public API, analyzer, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4"
       ]
     }
   ],
@@ -95,7 +96,7 @@
     {
       "id": "M4",
       "summary": "통합 검증, 고정 커밋 package·consumer·원격 CI와 durable closure",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4"
@@ -162,6 +163,11 @@
       "kind": "working-tree verification",
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0012/precommit",
       "summary": "Release, 전체 smoke/coverage, exact API, 문서 링크와 별도 exact analyzer/음성 probe 증거."
+    },
+    {
+      "kind": "exact implementation commit verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0012/final-8c5dd02",
+      "summary": "구현 커밋의 패키지 5개, provenance, 3개 fail-closed probe, 격리 consumer, native 1개, 원격 CI와 통합 요약."
     }
   ],
   "evidence": [
@@ -185,6 +191,13 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\focused; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\coverage; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\public-api; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\docs-final; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\analyzer-final; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\analyzer-negative-final",
       "observation": "Release solution build 0 warnings/errors, direct·coverage smoke 각 233/233, coverage 5개 floor 통과, public API exact 3295, 문서 local target 80/80, analyzer 417건/8 emitted codes와 호환 186·성능 231 exact가 통과했다. 동일 규칙별 개수와 231 총계를 유지하고 한 지문만 교체한 성능 기준선은 unreviewed와 missing을 모두 보고하며 실패했다.",
       "observed_at": "2026-09-14T12:51:29.6863153+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "exact implementation commit packages and remote CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\final-8c5dd02\\integrated-verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34804351066",
+      "observation": "구현 커밋 8c5dd0224cee4be332997faa19ce11a4495a78c8의 5개 package 3.0.1-dev.1789358326070이 provenance와 3개 fail-closed probe를 통과했고 격리 net8.0/win-x64 consumer 및 output-root native DLL 1개가 실행됐다. 원격 Build 34804351066의 14개 필수 workflow step도 exact commit에서 success였다. 통합 요약 SHA256은 C05204D8E7FD0393AF9FFE7EF484EE48D57F00E3C141434951C42ADE3D5BCFE9이다.",
+      "observed_at": "2026-09-14T13:01:29.5164819+09:00"
     }
   ],
   "events": [
@@ -206,8 +219,16 @@
         "E2",
         "E3"
       ]
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-09-14T13:01:29.5164819+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 272건 전수 분류, 41건 결정적 할당 제거, 231건 exact 유지 계약, 전체 로컬 품질 게이트, 고정 커밋 패키지·격리 소비자 및 원격 CI를 모두 통과했다."
     }
   ],
   "created_at": "2026-09-14T12:34:26.7410429+09:00",
-  "updated_at": "2026-09-14T12:51:29.6863153+09:00"
+  "updated_at": "2026-09-14T13:01:29.5164819+09:00"
 }

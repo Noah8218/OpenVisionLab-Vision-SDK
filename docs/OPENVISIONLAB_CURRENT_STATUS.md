@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0012`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0012.json` records the active measured-performance analyzer
+`.proofline/issues/PL-0012.json` records the completed measured-performance analyzer
 review. `.proofline/issues/PL-0011.json` preserves the completed 3.x public-
 compatibility analyzer review, `.proofline/issues/PL-0010.json` preserves the
 completed readability-focused follow-up, `.proofline/issues/PL-0009.json` preserves
@@ -65,8 +65,8 @@ exact identity. The working-tree Release build passes with no warnings/errors, a
 233 smoke cases pass, all five coverage floors pass, the public API remains exactly
 3,295 entries, all 80 checked local document targets resolve, and the analyzer
 reports 417 diagnostics with both the 186-identity compatibility contract and 231-
-identity performance contract passing. Exact-commit package consumption and remote
-CI remain to be recorded before closure.
+identity performance contract passing. Exact-commit packages, provenance guards,
+isolated consumption, native-copy verification, and remote CI also pass.
 `PL-0011` has classified all 186 public field and naming diagnostics into 46
 legacy-compatibility and 140 current 3.x locations. All 39 CA1051 diagnostics map
 one-to-one to the exact public API baseline's 39 visible instance fields. The
@@ -101,10 +101,10 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0012 work contract
 
-Status: `Doing` on the working tree based on source commit
-`202758506d99e985e3f1d2b595aff638cb3007c2`.
+Status: `Complete` at implementation commit
+`8c5dd0224cee4be332997faa19ce11a4495a78c8` on `origin/main`.
 
-Implement now: review every CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, and
+Completed scope: review every CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, and
 CA1869 diagnostic by owner, layer, access, call frequency, and observable contract;
 change only the cases with deterministic allocation evidence and no public or
 exception-contract change; then exact-lock every retained performance identity.
@@ -147,7 +147,7 @@ exception contract; CA1825 and CA1843 are zero; all 231 retained identities pass
 a same-count replacement fails; all local, exact-commit package-consumer, and remote
 gates pass.
 
-### PL-0012 current evidence
+### PL-0012 verification and closure
 
 - The fixed-source inventory divides into CA1805 69, CA1822 68, CA1825 32, CA1843
   9, CA1859 11, CA1861 82, and CA1869 1. Product code owns all CA1805/CA1822,
@@ -184,6 +184,14 @@ gates pass.
   and all 186 compatibility plus 231 retained performance identities pass. A copied
   performance baseline with one identity replaced and all counts unchanged fails
   with both unreviewed and missing identity errors.
+- Five exact-commit packages at `3.0.1-dev.1789358326070` pass package and third-
+  party provenance, all three fail-closed mutation probes, isolated
+  `net8.0/win-x64` package consumption, and the one-native-copy check. The packages
+  were not published and no consumer repository was changed.
+- GitHub Actions [Build run 34804351066](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34804351066)
+  completed successfully for the implementation commit. All 14 required workflow
+  steps passed, including build, coverage, exact API, both analyzer contracts,
+  package provenance, negative probes, isolated consumption, and native placement.
 
 | Rule | Input | Changed | Retained | Decision |
 | --- | ---: | ---: | ---: | --- |
@@ -194,6 +202,15 @@ gates pass.
 | CA1859 | 11 | 0 | 11 | Keep abstraction/collection boundaries until dispatch is a measured bottleneck. |
 | CA1861 | 82 | 0 | 82 | Keep one-shot non-empty arrays local and avoid shared mutable test state. |
 | CA1869 | 1 | 0 | 1 | Keep the one-time report serializer options local. |
+
+Reusable exact-commit evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0012\final-8c5dd02`.
+`integrated-verification-summary.json` has SHA-256
+`C05204D8E7FD0393AF9FFE7EF484EE48D57F00E3C141434951C42ADE3D5BCFE9`.
+The GitHub runner emitted one non-blocking Node.js 20 action-runtime deprecation
+annotation. This work does not prove real-sensor accuracy, calibration, false
+accept/reject rates, representative production latency or takt, non-Windows-x64
+runtime behavior, or commercial redistribution clearance.
 
 ## PL-0011 work contract
 
@@ -635,9 +652,10 @@ readability diagnostics selected by their owner reviews. PL-0011 exact-locked al
 186 retained public-compatibility identities. PL-0012 reviewed the remaining 272
 performance suggestions, removed the 32 deterministic empty-array allocations and
 the nine single-task `WaitAll` params-array allocations, and exact-locked the 231
-retained identities. The working tree now reports **417 diagnostics in eight emitted
-codes**. Exact-commit and remote PL-0012 evidence remain pending. This is a reviewed
-no-regression boundary, not a zero-warning claim.
+retained identities. The implementation commit reports **417 diagnostics in eight
+emitted codes**. Exact-commit package and remote evidence are recorded under
+`PL-0012/final-8c5dd02` and Build run 34804351066. This is a reviewed no-regression
+boundary, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
