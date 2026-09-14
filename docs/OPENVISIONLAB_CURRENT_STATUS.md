@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0010`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0010.json` records the active readability-focused analyzer
+`.proofline/issues/PL-0010.json` records the completed readability-focused analyzer
 follow-up. `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
 review, and `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
 and `.proofline/issues/PL-0007.json` preserves the preceding culture-conversion
@@ -54,11 +54,10 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
-`PL-0010` is reviewing all 41 readability diagnostics. The implementation candidate
-uses `nameof` at four existing Vision3D argument checks and the same
-`StringComparison` with `Contains` at 37 .NET 8 smoke assertions. The focused
-analyzer and local integrated gates pass at 458 diagnostics in 10 codes. Package
-consumption from the exact commit and remote CI are still pending.
+`PL-0010` reviewed all 41 readability diagnostics. The implementation uses
+`nameof` at four existing Vision3D argument checks and the same `StringComparison`
+with `Contains` at 37 .NET 8 smoke assertions. The analyzer and all local,
+exact-commit package-consumer, and remote gates pass at 458 diagnostics in 10 codes.
 `PL-0009` reviewed the 14 remaining exception-parameter, Dispose/finalizer, and
 intentional-construction diagnostics. The implementation reports the
 public `options` argument while retaining the invalid 3D option-property name,
@@ -82,14 +81,14 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0010 work contract
 
-Status: `Locally verified implementation candidate` on `main`; no implementation
-commit is fixed yet.
+Status: `Complete` at implementation commit
+`8e65d2910a9b4382515dd0a3d0944cabacc3c053` on `origin/main`.
 
-Implement now: review every CA1507 and CA2249 diagnostic by owner, target
-framework, and observable meaning; replace only literal parameter names that are
-identical to the current parameter and positive `IndexOf` containment assertions
-that can retain their exact `StringComparison`; lower the measured analyzer
-ceilings to zero; then run integrated, package-consumer, and remote verification.
+Completed scope: review every CA1507 and CA2249 diagnostic by owner, target
+framework, and observable meaning; replace only literal parameter names identical
+to the current parameter and positive `IndexOf` containment assertions that retain
+their exact `StringComparison`; remove the two measured analyzer ceilings; and run
+integrated, package-consumer, and remote verification.
 
 Review later: the 186 public field/name compatibility diagnostics require a
 separately versioned migration, and the 272 allocation/static/dispatch suggestions
@@ -131,8 +130,22 @@ gates pass. Evidence is retained under
   69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, and Vision3D 90.97%; all floors
   pass. The public API matches all **3,295** entries and all 80 local Markdown links
   resolve.
-- Fixed-commit packages, isolated consumer, and remote CI are pending before
-  closure.
+- Five exact-commit packages at `3.0.1-dev.1789347380332` pass provenance,
+  documentation and binary hashes, three fail-closed mutation probes, isolated
+  `net8.0/win-x64` consumption, and the one-native-copy check. The packages were
+  not published and no consumer repository was changed.
+- GitHub Actions [Build run 34794211675](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34794211675)
+  completed successfully for the exact implementation commit, including build,
+  smoke/coverage, API, analyzer, package, provenance, consumer, and native gates.
+
+Reusable exact-commit evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0010\final-8e65d29`.
+`integrated-verification-summary.json` has SHA-256
+`8063EB9DBF39BA20A813E681667C2209259F875DD61BD944B620161BF95CEB4C`.
+Only console DLLs were executed. The GitHub runner emitted one non-blocking action
+runtime deprecation annotation. This does not prove real-sensor accuracy,
+calibration, false accept/reject rates, long-running production performance,
+non-Windows-x64 runtimes, or commercial redistribution clearance.
 
 ## PL-0009 work contract
 
@@ -420,11 +433,12 @@ runtimes and redistribution clearance remain outside this completed scope.
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
 PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. PL-0009 removed the 14
-CA1806, CA1816, and CA2208 diagnostics. The current PL-0010 implementation
-candidate removes the 41 CA1507 and CA2249 readability diagnostics. Its focused
-analyzer reports **458 diagnostics in 10 emitted codes**, with every other code
-count unchanged. Exact-commit package and remote evidence is still pending. This
-remains a no-regression gate and categorized debt review, not a zero-warning claim.
+CA1806, CA1816, and CA2208 diagnostics. PL-0010 removed the 41 CA1507 and CA2249
+readability diagnostics. The exact implementation commit reports **458 diagnostics
+in 10 emitted codes**, with every other code count unchanged. Current counts are
+recorded in `PL-0010/final-8e65d29/integrated-verification-summary.json` under the
+D-drive evidence root and in remote Build run 34794211675. This remains a
+no-regression gate and categorized debt review, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |

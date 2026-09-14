@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "41건 등가 치환과 기준선 조정을 완료했고 local Release build 0/0, direct/coverage smoke 233/233, coverage floors, API 3295 exact, analyzer 458/10, Markdown links 80/80가 통과했다. 구현 커밋 고정과 package/consumer/remote CI가 남았다.",
-    "next_action": "구현 변경을 main에 커밋·푸시하고 exact commit의 package/provenance/negative/격리 consumer/native 및 GitHub CI를 검증한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 8e65d2910a9b4382515dd0a3d0944cabacc3c053을 origin/main에 반영했다. CA1507 4건과 CA2249 37건을 동작 등가 최소 수정으로 제거해 analyzer 458/10코드를 달성했고, build 0/0, smoke/coverage 233/233, API 3295 exact, 문서 링크 80/80, 패키지 5개/provenance/negative 3/격리 consumer/native 1개 및 원격 CI 34794211675가 통과했다. 패키지 게시, 센서·교정·현장 성능·재배포 승인은 별도 경계다."
   },
   "objective": {
     "summary": "매개변수 이름, 문자열 비교 방식, 실패 메시지 검증과 공개 API를 보존하면서 CA1507과 CA2249를 0으로 낮추고 analyzer 총계를 499에서 458로 줄인다.",
@@ -59,7 +58,8 @@
       "id": "C4",
       "text": "공개 API 3295개, Release build, 전체 smoke/coverage, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E4"
       ]
     }
   ],
@@ -100,7 +100,7 @@
     {
       "id": "M4",
       "summary": "고정 커밋 package·consumer·원격 CI와 durable closure",
-      "status": "pending",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4"
@@ -156,9 +156,25 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0010\\precommit",
       "observation": "Release solution build는 경고/오류 0, direct full smoke와 coverage smoke는 각각 233/233, exact public API는 3295, analyzer는 458건/10코드, local Markdown link는 80/80로 통과했다. Coverage는 Core 37.35%, Inspection 69.92%, Vision2D 74.35%, Vision2D.Blob 69.17%, Vision3D 90.97%로 모두 기준 이상이다. source-equivalence는 IndexOf 37→Contains 37, parameter literal 4→nameof 4와 target framework 경계를 확인한다.",
       "observed_at": "2026-09-14T09:54:06.2049910+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "exact implementation commit packages and remote CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0010\\final-8e65d29\\integrated-verification-summary.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34794211675",
+      "observation": "구현 커밋 8e65d2910a9b4382515dd0a3d0944cabacc3c053의 5개 package 3.0.1-dev.1789347380332가 provenance와 3개 fail-closed probe를 통과했고 격리 net8.0/win-x64 consumer 및 output-root native DLL 1개가 실행됐다. 원격 Build 34794211675도 exact commit의 14개 named workflow step을 success로 완료했다. 통합 요약 SHA256은 8063EB9DBF39BA20A813E681667C2209259F875DD61BD944B620161BF95CEB4C다.",
+      "observed_at": "2026-09-14T09:59:00.8811724+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T09:59:00.8811724+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: 구현 커밋 8e65d2910a9b4382515dd0a3d0944cabacc3c053을 origin/main에 반영했다. CA1507 4건과 CA2249 37건을 동작 등가 최소 수정으로 제거해 analyzer 458/10코드를 달성했고, build 0/0, smoke/coverage 233/233, API 3295 exact, 문서 링크 80/80, 패키지 5개/provenance/negative 3/격리 consumer/native 1개 및 원격 CI 34794211675가 통과했다. 패키지 게시, 센서·교정·현장 성능·재배포 승인은 별도 경계다."
+    }
+  ],
   "created_at": "2026-09-14T09:48:15.9010690+09:00",
-  "updated_at": "2026-09-14T09:54:06.2049910+09:00"
+  "updated_at": "2026-09-14T09:59:00.8811724+09:00"
 }
