@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0013`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0013.json` records the current third-party redistribution-
+`.proofline/issues/PL-0013.json` records the completed third-party redistribution-
 evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
 measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
 the completed 3.x public-compatibility analyzer review, while
@@ -60,7 +60,7 @@ package-source traceability, and exact third-party technical-provenance scopes.
 redistribution. PL-0013 has now confirmed exact official sources for the Blob
 `LGPL-3.0-or-later` version, IPPICV 2020 redistribution terms, and ittnotify's BSD
 selection. Those texts and the other identified OpenCV 4.3 third-party notices are
-being fixed into the Core package and fail-closed manifest. Commercial clearance
+fixed into the Core package and fail-closed manifest. Commercial clearance
 remains blocked by the two approvals below.
 `PL-0012` has classified all 272 performance suggestions by rule, owner, project
 layer, access, and call behavior. Thirty-two zero-length allocations now use
@@ -107,9 +107,10 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0013 work contract
 
-Status: `In progress`.
+Status: `Complete` at implementation commit
+`e24099c98797f0fc07f3aa533345dc130eb8c19e` on `origin/main`.
 
-Implement now: preserve exact official license/notice evidence for the bundled
+Scope: preserve exact official license/notice evidence for the bundled
 OpenCvSharp/OpenCV bytes; replace the three publicly resolvable unknowns with their
 exact source, version, and hashes; package the evidence only in Core; and keep the
 remaining clearance state fail closed.
@@ -153,11 +154,44 @@ Exact findings:
   libpng, libtiff, libwebp, OpenEXR/IlmImf, protobuf, quirc, SoftFloat, and zlib are
   included in the reviewed document set.
 
-Acceptance criteria: exact official-source linkage and hashes; 25 manifest-owned
-evidence documents; Core-only package inclusion; fail-closed source/package drift
-checks; consistent consumer and current-status documentation; fresh focused,
-package, isolated-consumer, and remote CI verification. Completion evidence will be
-recorded here and in `.proofline/issues/PL-0013.json` after those checks run.
+Acceptance criteria:
+
+- C1 — Pass. Twenty-four external source files match fresh exact upstream downloads
+  or exact IPPICV archive entries. The source-verification summary SHA-256 is
+  `05DFB89EAE143D11E4CF45815914E327FDC3A2A816DA6CF086B4F6F79A97F82C`.
+- C2 — Pass. The Core manifest fixes three DLLs and 25 documents by path, size, and
+  SHA-256. Git preserves external-source bytes without line-ending conversion. Core
+  alone packages the evidence, and four package mutations fail closed, including an
+  altered Intel license file.
+- C3 — Pass. Root/Core README and NOTICE files, this status, and the actionable
+  clearance checklist consistently distinguish the three resolved public facts from
+  the two human approvals. All 90 checked local targets across 25 Markdown files
+  resolve.
+- C4 — Pass. Clean-commit Release build completed with zero warnings and errors;
+  smoke/coverage passed `233/233` and all five floors; public API matched 3,295 exact
+  entries; analyzer matched 417 reviewed diagnostics; package version
+  `3.0.1-pl0013.e24099c.1` passed five-package provenance, four negative probes,
+  isolated `net8.0`/`win-x64` consumption, and one exact native root copy.
+- C5 — Pass. GitHub Actions Build run
+  [`34807992892`](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34807992892)
+  passed the exact implementation commit in `1m42s`.
+
+Verification: `Verify-ThirdPartyBinaries.ps1`, Release build, full smoke/coverage,
+exact public API, analyzer baseline, local document links, commit-fixed package
+provenance, four fail-closed mutations, isolated package consumer, native placement,
+and remote CI all passed.
+
+Evidence: the complete local record is
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0013\final-e24099c-20260914-a1`.
+Its `validation-summary.json` SHA-256 is
+`23740AF907D58D6C88544063F05BC12462747E5B06DD531723C84B5A9A3628BD`;
+`.proofline/issues/PL-0013.json` links each criterion to immutable evidence.
+
+Boundary / next dependency: no legal determination, package publication, stable
+version, tag, release, deployment, consumer-repository mutation, binary replacement,
+other RID, .NET Framework runtime, real-sensor, calibration, Gauge R&R, or
+production-takt verification was performed. Commercial redistribution remains
+blocked until the two approvals in the checklist are retained.
 
 ## PL-0012 work contract
 

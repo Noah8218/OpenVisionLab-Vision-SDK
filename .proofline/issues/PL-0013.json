@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "Exact 2020 upstream 자료 재검증에서 IPPICV archive의 Intel Simplified Software License, ittnotify의 BSD/GPLv2 선택 조항, OpenCvSharp.Blob 소스의 LGPL-3.0-or-later 헤더가 확인됐다. 이 공식 근거를 저장소와 Core package에 고정하고 남는 외부 승인 경계를 정확히 축소한다.",
-    "next_action": "공식 원문과 source linkage를 ThirdParty manifest/NOTICE/package에 반영하고, fail-closed verifier와 문서·패키지·CI 검증을 완료한다."
+    "status": "resolved",
+    "current_summary": "Complete: 구현 커밋 e24099c98797f0fc07f3aa533345dc130eb8c19e을 origin/main에 반영했다. 24개 외부 원문과 저장소 NOTICE를 합친 25개 Core 증빙 문서, 3개 공식 바이너리, 2개 외부 승인 경계를 exact manifest와 fail-closed 검증으로 고정했다. Release 0/0, smoke/coverage 233/233, API 3295, analyzer 417, 문서 90개 링크, 5개 package, 4개 negative probe, 격리 consumer/native 1개 및 원격 CI 34807992892가 통과했다. 상업 재배포 승인과 패키지 게시는 별도 경계다."
   },
   "problem": {
     "claims": [
@@ -38,28 +37,37 @@
       "id": "C1",
       "text": "IPPICV, ittnotify, Blob 각각의 exact source/version/license 연결과 해시가 공식 1차 자료 및 로컬 재현 증빙으로 기록된다.",
       "evidence_refs": [
-        "E1"
+        "E1",
+        "E2"
       ]
     },
     {
       "id": "C2",
       "text": "Core ThirdParty bundle, provenance manifest, csproj packaging과 verifier가 필요한 원문을 정확히 포함하고 drift를 fail closed한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2"
+      ]
     },
     {
       "id": "C3",
       "text": "README, NOTICE, current status가 해소된 공개 증빙과 아직 필요한 외부 권리/내부 승인을 일관되게 구분하며 법적 승인으로 과장하지 않는다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2"
+      ]
     },
     {
       "id": "C4",
       "text": "focused third-party gate, documentation gate, five-package provenance, negative probes와 isolated consumer가 fresh D: 경로에서 통과한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     },
     {
       "id": "C5",
       "text": "origin/main의 exact commit에 대한 GitHub Actions Build가 통과하거나 실패 원인이 기록된다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4"
+      ]
     }
   ],
   "relations": [
@@ -96,6 +104,27 @@
       "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\official-recheck-20260914",
       "observation": "OpenCV commit d40fe356 pins ippicv archive a56b6ac6 with MD5 879741A7946B814455EEE6C6FFDE2984; the freshly downloaded exact archive SHA-256 E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7 contains Intel Simplified Software License (April 2018), which expressly permits unmodified redistribution subject to its conditions, and a third-party-programs.txt stating no Third Party Programs are included. Exact ittnotify.h SHA-256 5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80 states the file is dual BSD/GPLv2 and may be redistributed under either license; the exact BSD text SHA-256 is 77CF47AA88DF151FABA9DB8BBBFCFF8E83DBE5F0FF0DAC3EF76E63217F579A55. Exact OpenCvSharp source commit daa955c6 has seven Blob source files whose headers specify LGPL version 3 or later; the packaged managed assembly reports that commit as ProductVersion.",
       "observed_at": "2026-09-14T13:25:38.3379798+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "implementation and exact upstream evidence",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\official-recheck-20260914\\official-source-verification-complete.json; commit e24099c98797f0fc07f3aa533345dc130eb8c19e",
+      "observation": "Exact OpenCV/OpenCvSharp/GNU/IPPICV 원문 24/24가 저장소 사본과 일치했다(요약 SHA-256 05DFB89EAE143D11E4CF45815914E327FDC3A2A816DA6CF086B4F6F79A97F82C). Core manifest는 저장소 NOTICE를 포함한 25개 문서와 3개 DLL의 경로·크기·SHA-256을 고정하고, csproj는 해당 문서만 Core에 패키징한다. 외부 원문은 Git 줄바꿈 변환에서 제외했으며 README/NOTICE/승인 체크리스트는 세 해소 항목과 두 외부 승인 경계를 일관되게 구분한다.",
+      "observed_at": "2026-09-14T14:02:22.970671+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "exact implementation commit local verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\final-e24099c-20260914-a1\\validation-summary.json",
+      "observation": "Clean 구현 커밋에서 Release build 0경고/0오류, smoke/coverage 233/233와 5개 floor, public API 3295 exact, analyzer 417 exact, 25개 third-party 문서, Markdown 25개/로컬 대상 90개, 5-package provenance, 변조 probe 4/4, 격리 net8.0/win-x64 consumer와 native root copy 1개가 통과했다. package version은 3.0.1-pl0013.e24099c.1이며 통합 요약 SHA-256은 23740AF907D58D6C88544063F05BC12462747E5B06DD531723C84B5A9A3628BD다.",
+      "observed_at": "2026-09-14T14:02:22.970671+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "remote exact-commit CI",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0013\\final-e24099c-20260914-a1\\github-actions-34807992892.json; https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34807992892",
+      "observation": "origin/main 구현 커밋 e24099c98797f0fc07f3aa533345dc130eb8c19e의 GitHub Actions Build 34807992892가 1분 42초에 success로 완료됐다. checkout 후 build, smoke/coverage, API, analyzer, pack, 25-document provenance, 4개 fail-closed probe, package-only consumer와 native copy 검증이 모두 통과했다. CI JSON SHA-256은 3853EBEFAE5288BDFBBFA0FC8503ED7F19BA491E8870DC5B69931C7898C605EE다.",
+      "observed_at": "2026-09-14T14:02:22.970671+09:00"
     }
   ],
   "events": [
@@ -107,8 +136,27 @@
       "evidence_refs": [
         "E1"
       ]
+    },
+    {
+      "id": "D2",
+      "kind": "decision",
+      "at": "2026-09-14T14:02:22.970671+09:00",
+      "summary": "공개 1차 자료로 해결 가능한 Blob LGPL 버전, IPPICV 조건, ittnotify 선택을 기술적으로 닫는다. Blob 전체 라이선스 범위에 대한 권리자 답변과 프로젝트 배포 책임자 승인은 구현으로 대체할 수 없는 별도 외부 선행조건으로 유지한다.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T14:02:22.970671+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Complete: exact 외부 원문, Core-only 증빙 패키징, fail-closed 검증, 문서 경계, 고정 커밋 로컬 패키지/소비자와 origin/main CI를 모두 통과했다."
     }
   ],
   "created_at": "2026-09-14T13:25:38.3379798+09:00",
-  "updated_at": "2026-09-14T13:25:38.3379798+09:00"
+  "updated_at": "2026-09-14T14:02:22.970671+09:00"
 }
