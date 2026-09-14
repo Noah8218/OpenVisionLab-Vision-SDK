@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "SDK 방향·capability/error 계약과 additive versioned Pipeline/failure-result 구현이 완료되었다. 모든 인프라 실패는 ExpectedSuccess=false로 승인되지 않으며 최종 working-tree focused/통합 검증이 통과했다. 커밋 고정 패키지와 원격 CI가 남아 있다.",
-    "next_action": "최종 staged diff를 검토해 main에 커밋·push한 뒤 정확한 커밋으로 package provenance/negative/isolated consumer/native copy와 원격 CI를 검증한다."
+    "status": "resolved",
+    "current_summary": "전수 조사에서 확인한 SDK 조합성 공백을 capability/error matrix, schema v1 Pipeline serializer, additive typed failure-result 실행 경로로 해소했다. 기존 Run과 3.x 계약을 유지했고 구현 커밋 296404102bc32fec33a9b20259bee0debebedf20의 로컬·패키지·원격 검증이 모두 통과했다."
   },
   "objective": {
     "summary": "개발자가 2D/3D Tool의 현재 조합 가능 범위와 책임 경계를 한 문서에서 찾고, 2D Pipeline을 버전된 XML로 안전하게 왕복하며 missing layer/factory/tool exception을 typed step result로 선택적으로 처리할 수 있게 한다.",
@@ -62,7 +61,8 @@
       "evidence_refs": [
         "E3",
         "E5",
-        "E7"
+        "E7",
+        "E8"
       ]
     },
     {
@@ -71,7 +71,9 @@
       "evidence_refs": [
         "E3",
         "E5",
-        "E7"
+        "E7",
+        "E8",
+        "E9"
       ]
     }
   ],
@@ -89,7 +91,7 @@
     {
       "id": "M2",
       "summary": "Versioned Pipeline serializer와 additive failure-result 실행 경로 구현",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C2",
@@ -101,7 +103,7 @@
     {
       "id": "M3",
       "summary": "통합·패키지·원격 검증과 durable closure",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C5"
@@ -199,6 +201,20 @@
       "supersedes": [
         "E5"
       ]
+    },
+    {
+      "id": "E8",
+      "kind": "commit-fixed package verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0014/final-2964041-20260914-a1",
+      "observation": "구현 커밋 296404102bc32fec33a9b20259bee0debebedf20에서 버전 3.0.1-pl0014.2964041.1의 정확히 5개 패키지가 provenance를 통과했다. 변조 probe 4/4, package-only Pipeline consumer, net8.0/win-x64 실행, 출력 루트 OpenCvSharpExtern.dll 1개와 원본 동일 SHA-256이 통과했으며 validation-summary SHA-256은 8F3BFC039E26A3A5875236E04FFF52EFAF88C2C60B98E1E60050D2B6397B8003이다.",
+      "observed_at": "2026-09-14T22:05:46.4251845+09:00"
+    },
+    {
+      "id": "E9",
+      "kind": "remote CI",
+      "location": "https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34846504124",
+      "observation": "GitHub Actions Build run 34846504124가 exact head SHA 296404102bc32fec33a9b20259bee0debebedf20에서 completed/success로 종료됐고 단일 build job이 통과했다.",
+      "observed_at": "2026-09-14T22:05:46.4251845+09:00"
     }
   ],
   "events": [
@@ -208,8 +224,16 @@
       "at": "2026-09-14T21:33:07.5811888+09:00",
       "summary": "첫 배치는 기존 Run을 바꾸지 않고 versioned XML serializer와 RunWithFailureResults를 additive하게 제공한다. 3D mega-interface, timeout 가장, factory reflection과 외부 serialization dependency는 도입하지 않는다.",
       "evidence_refs": []
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T22:05:46.4251845+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "방향·artifact·실패 결과 계약과 모든 승인된 검증이 완료됐다."
     }
   ],
   "created_at": "2026-09-14T21:33:07.5811888+09:00",
-  "updated_at": "2026-09-14T21:58:18.7268396+09:00"
+  "updated_at": "2026-09-14T22:05:46.4251845+09:00"
 }

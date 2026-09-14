@@ -170,19 +170,17 @@ come from an executed Tool's controlled result.
 
 ## Ordered engineering priorities
 
-1. Complete and verify the versioned Pipeline and failure-result contract in
-   `PL-0014` | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
-2. Add machine-readable Tool descriptors and complete safe 2D factory/model
+1. Add machine-readable Tool descriptors and complete safe 2D factory/model
    reconstruction without reflection or global registration | Recommended model:
    `gpt-5.6-sol` | Reasoning effort: `high`
-3. Add opt-in 3D typed adapters and a common execution report while retaining every
+2. Add opt-in 3D typed adapters and a common execution report while retaining every
    typed result | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
-4. Add cooperative cancellation first to long-running matching/search loops |
+3. Add cooperative cancellation first to long-running matching/search loops |
    Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-5. Characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
+4. Characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
    OpenCvSharp4 4.13 migration. Treat OpenCvSharp5/.NET 8 as a separate 4.0 decision
    | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-6. After the contract and representative-data gates exist, add calibrated 2D
+5. After the contract and representative-data gates exist, add calibrated 2D
    fixture/metrology, gauge primitives, golden comparison and color inspection |
    Recommended model: `gpt-6-astra` | Reasoning effort: `high`
 

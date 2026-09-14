@@ -2,14 +2,14 @@
 
 Updated: 2026-09-14
 Project work item: `PL-0014`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0014.json` records the current SDK direction and Pipeline
+`.proofline/issues/PL-0014.json` preserves the completed SDK direction and Pipeline
 artifact/failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
 third-party redistribution-evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
 measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
@@ -60,15 +60,12 @@ contract, and ordered follow-up work are defined in
 
 ## Current progress
 
-`PL-0014` is implementing the first product-direction batch identified by the
-2026-09-14 full audit. The approved scope keeps the existing `Run` behavior and
-typed Tool APIs, adds an SDK-owned versioned in-memory Pipeline XML contract, and
-adds a separate failure-result execution path for host orchestration. It does not
-add a generic 3D mega-interface, a global registry, a serialization dependency, or
-a fake timeout. The current implementation and verification state is recorded in
-the work contract below. The current working tree passes 235/235 Smoke cases, all
-five coverage floors, the exact 3,300-entry public API, the 417-diagnostic analyzer
-contract, and 88 checked local documentation targets.
+`PL-0014` completed the first product-direction batch identified by the 2026-09-14
+full audit. The SDK now has one durable rule-based capability/error matrix, a
+versioned in-memory Pipeline XML contract, and an additive failure-result execution
+path while retaining the existing `Run` behavior and typed Tool APIs. Implementation
+commit `296404102bc32fec33a9b20259bee0debebedf20`, commit-fixed packages, isolated
+consumption, and exact remote CI all pass; the complete evidence is below.
 
 `PL-0002`, `PL-0003`, and `PL-0004` are resolved for their approved functional,
 package-source traceability, and exact third-party technical-provenance scopes.
@@ -123,16 +120,18 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0014 work contract
 
-Status: `Doing`.
+Status: `Complete` at implementation commit
+`296404102bc32fec33a9b20259bee0debebedf20` on `origin/main`.
 
 Scope: document the UI-independent rule-based kernel direction and current Tool
 composition boundary; add versioned Pipeline XML serialization; and add an optional
 execution boundary that returns typed step failures for missing input layers,
 factory failures, and thrown/null custom Tool results.
 
-Implement now: `VisionPipeline.SchemaVersion`, `VisionPipelineSerializer`,
-`VisionPipelineRuntime.RunWithFailureResults`, focused/package consumer examples,
-public API baseline, and the capability/error matrix.
+Completed implementation: `VisionPipeline.SchemaVersion`,
+`VisionPipelineSerializer`, `VisionPipelineRuntime.RunWithFailureResults`, focused
+and package-only consumer examples, the 3,300-entry public API baseline, and the
+capability/error matrix.
 
 Review later: complete the model-backed 2D factory, add machine-readable Tool
 descriptors, add 3D typed adapters/common execution reports, and propagate real
@@ -160,25 +159,52 @@ Actual call paths:
 
 Existing binding/public contract: `Run`, custom-factory ownership overloads,
 `IVisionTool`, typed Tool properties/results, XML names, and all 3.x compatibility
-identities remain. The new members are additive and require an explicit public API
-baseline update.
+identities remain. The five new public API entries are additive.
 
 Shortest review order: `SDK_DIRECTION_AND_CAPABILITY_MATRIX.md`,
 `VisionPipeline.cs`, `VisionPipelineSerializer.cs`, `VisionPipelineRuntime.cs`,
 `VisionToolResult.cs`, then the Pipeline cases in `Vision2DSmokeSuite.cs` and the
 package-only consumer.
 
-Acceptance criteria: see `PL-0014` C1-C5. Completion requires focused and full
-Smoke/coverage, exact API/analyzer/document checks, commit-fixed package provenance,
-negative probes, isolated consumer/native copy, and exact remote CI. Runtime/UI,
-sensor, calibration, production error rates and Takt remain unverified.
+Acceptance criteria:
 
-Working-tree checkpoint: the Pipeline-focused suite passes 9/9; Release build has
-zero warnings and errors; full Smoke passes 235/235; coverage is Core 37.35%,
-Inspection 69.92%, Vision2D 74.72%, Vision2D.Blob 69.17%, and Vision3D 90.97%;
-public API matches 3,300 entries; analyzer remains at 417 reviewed diagnostics; and
-all 88 checked local documentation targets resolve. Commit-fixed package and remote
-CI evidence still remain before closure.
+- C1 — Pass. The capability matrix records the SDK/host boundary, all 15 public 2D
+  Tools, all 62 public 3D Tools, their current execution layers, the error
+  producer/reserved state, and the ordered follow-up work.
+- C2 — Pass. Pipeline XML preserves schema version 1 and current/legacy-unversioned
+  semantic state; future versions, duplicate parameters, DTD input, blank input,
+  and unsupported serialization versions fail closed.
+- C3 — Pass. `Run` retains its exception and ownership behavior.
+  `RunWithFailureResults` classifies missing input, factory exception/null, and Tool
+  exception/null result. These infrastructure failures cannot pass a terminal
+  `ExpectedSuccess=false` rule, and owned input clones, results and Tools are
+  released by the recorded lifetime owners.
+- C4 — Pass. XML documentation, source guides, the exact public API baseline, and
+  the package-only consumer exercise the versioned artifact and typed failure path.
+- C5 — Pass. Release build, focused/full Smoke, coverage, API, analyzer, document
+  links, commit-fixed package provenance, four negative probes, isolated consumer,
+  one exact native copy, and exact remote CI all pass.
+
+Verification: Pipeline-focused Smoke passes 9/9; Release build has zero warnings and
+errors; full Smoke passes 235/235; coverage is Core 37.35%, Inspection 69.92%,
+Vision2D 74.72%, Vision2D.Blob 69.17%, and Vision3D 90.97%; public API matches 3,300
+entries; analyzer remains at 417 reviewed diagnostics; and all 88 checked local
+documentation targets resolve. Package version `3.0.1-pl0014.2964041.1` passes all
+five-package provenance and isolated `net8.0/win-x64` consumption. GitHub Actions
+Build run [`34846504124`](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34846504124)
+passes the exact implementation commit.
+
+Evidence: the complete local record is
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0014\final-2964041-20260914-a1`.
+Its `validation-summary.json` SHA-256 is
+`8F3BFC039E26A3A5875236E04FFF52EFAF88C2C60B98E1E60050D2B6397B8003`;
+`.proofline/issues/PL-0014.json` links each criterion to current evidence.
+
+Boundary / next dependency: no NuGet publication, tag, release, deployment,
+consumer-repository mutation, UI, sensor, calibration, production error-rate/Takt,
+non-Windows-x64, or .NET Framework runtime verification was performed. Timeout and
+cancellation codes remain reserved until cooperative execution exists. Commercial
+redistribution still depends on the existing PL-0013 human approvals.
 
 ## PL-0013 work contract
 
