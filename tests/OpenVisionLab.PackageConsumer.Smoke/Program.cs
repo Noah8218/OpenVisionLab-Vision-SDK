@@ -194,6 +194,25 @@ if (!result.Success || result.Steps.Count != 2)
         $"Package-only consumer failed: {result.Message}");
 }
 
+TwoPointLineTool packageLineTool = new TwoPointLineTool();
+ThreeDToolAdapter<TwoPointLineResult> packageLineAdapter = new ThreeDToolAdapter<TwoPointLineResult>(
+    "Package two-point line",
+    token => packageLineTool.Execute(
+        new TwoPointLineInput(new ThreeDPoint(0.0, 0.0, 0.0), new ThreeDPoint(3.0, 4.0, 0.0)),
+        token));
+ThreeDToolExecutionReport threeDExecutionReport = ThreeDToolExecutionRunner.Run(
+    new IThreeDToolAdapter[] { packageLineAdapter });
+ThreeDToolExecutionResult<TwoPointLineResult> packageLineResult =
+    threeDExecutionReport.Steps[0] as ThreeDToolExecutionResult<TwoPointLineResult>;
+if (threeDExecutionReport.Status != ThreeDToolExecutionStatus.Completed
+    || packageLineResult?.Result == null
+    || !packageLineResult.Result.Success
+    || packageLineResult.Result.SegmentLength != 5.0
+    || !packageLineResult.SupportsCancellation)
+{
+    throw new InvalidOperationException("Typed 3D adapter package contract failed.");
+}
+
 using Mat blobImage = new Mat(8, 8, MatType.CV_8UC1, Scalar.All(0));
 Cv2.Rectangle(blobImage, new Rect(2, 2, 4, 4), Scalar.All(255), -1);
 using BlobTool blob = new BlobTool();

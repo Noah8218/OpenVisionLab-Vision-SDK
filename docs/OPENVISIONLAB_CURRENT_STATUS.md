@@ -73,8 +73,11 @@ metrology/golden/color API. Fixed probes passed 1,600/1,600 exact contour sequen
 comparisons and 500/500 exact component comparisons. The isolated 4.13 source build
 passes after one `MatType` cache-key adjustment and passes the first 192 smoke cases;
 the next old-Blob case fails, proving Blob removal is a migration prerequisite.
-Production source has not yet changed for this work item. Implementation proceeds in
-that order under the linked analysis and ledger criteria.
+The M2 source candidate now adds the separate typed 3D adapter/report owner. Its
+eight focused cases, full 245-case Smoke/coverage, 3,389-entry exact API, and
+411-diagnostic analyzer contract pass locally. Commit-fixed package consumption is
+still required before M2 is closed. The remaining implementation proceeds in the
+documented order.
 
 `PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
@@ -149,8 +152,8 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0016 work contract
 
-Status: `In progress`; detailed analysis is complete and production implementation
-has not started.
+Status: `In progress`; detailed analysis and the M2 source candidate are complete,
+with commit-fixed package verification pending.
 
 Scope: add an independent typed 3D execution adapter/report; add additive cooperative
 cancellation to the 2D runtime and four matching/search Tools; replace
@@ -174,9 +177,10 @@ internal component/contour compatibility engine reused by `ContourTool` and the
 friend Blob package. The host remains the owner of calibration, real data, and final
 acceptance.
 
-Immediate next action: implement and verify the typed 3D adapter/report milestone.
-The remaining ordered project work is 2D cancellation, Blob/Contour dependency
-removal plus the 4.13 gate, then the calibrated-data gate.
+Immediate next action: verify the typed 3D adapter/report through a commit-fixed
+isolated package consumer and close M2. The remaining ordered project work is 2D
+cancellation, Blob/Contour dependency removal plus the 4.13 gate, then the
+calibrated-data gate.
 
 Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
 4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,

@@ -19,7 +19,7 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "우선순위 1~4의 상세 분석과 구현 순서가 main에 기록됐다. 최초 staged whitespace 검사에서 문서 hard-break 공백 2개를 발견해 제거했고 fresh diff/ledger 검증으로 분석 checkpoint를 정정했다. 다음은 M2 독립 3D typed adapter/report 구현이다.",
+    "current_summary": "M1 분석은 닫혔고 M2 독립 3D typed adapter/report source candidate가 구현됐다. focused 8/8, full smoke/coverage 245/245, Release 0/0, exact API 3,389, analyzer 411이 통과했다. M2 closure에는 구현 commit의 commit-fixed package consumer/native-output 검증이 남아 있다.",
     "next_action": "ThreeDToolExecutionRunner와 typed adapter/report를 구현하고 focused/package-consumer 증거를 만든다."
   },
   "objective": {
@@ -47,7 +47,9 @@
     {
       "id": "C2",
       "text": "독립 3D adapter/runner가 heterogeneous typed result를 보존하고 execution status를 inspection decision과 분리하며 fault/cancel/ownership 계약을 검증한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4"
+      ]
     },
     {
       "id": "C3",
@@ -72,7 +74,9 @@
     {
       "id": "C7",
       "text": "완료된 source candidate가 focused/full smoke, Release build, coverage, exact API/analyzer, documentation, provenance, commit-fixed package와 isolated consumer gate를 통과하며 게시·릴리스는 수행되지 않는다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4"
+      ]
     }
   ],
   "milestones": [
@@ -199,6 +203,13 @@
       "supersedes": [
         "E2"
       ]
+    },
+    {
+      "id": "E4",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M2/m2-source-summary.json",
+      "observation": "The M2 source candidate passed Release build with 0 warnings/errors, 8/8 focused and 245/245 full smoke cases, all five coverage floors, the exact 3,389-entry public API, and the unchanged 411-diagnostic analyzer contract. Commit-fixed package consumption remains pending.",
+      "observed_at": "2026-09-15T01:46:41.9358031+09:00"
     }
   ],
   "events": [
@@ -213,5 +224,5 @@
     }
   ],
   "created_at": "2026-09-15T01:34:39.4459136+09:00",
-  "updated_at": "2026-09-15T01:41:00+09:00"
+  "updated_at": "2026-09-15T01:47:00+09:00"
 }

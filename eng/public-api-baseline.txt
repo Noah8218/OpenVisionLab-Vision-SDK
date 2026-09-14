@@ -12,6 +12,8 @@ C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionInput|()
 C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunResult|()
 C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunner|()
 C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult|()
+C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|(System.String name,System.Func<System.Threading.CancellationToken,TResult> execute)
+C|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|(System.String name,System.Func<TResult> execute)
 C|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|()
 C|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|(System.Int32 index,System.Double Area,OpenCvSharp.Point2d Center,OpenCvSharp.Rect rt,System.Double dAngle optional=0)
 C|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobToolProperty|()
@@ -306,6 +308,10 @@ F|OpenVisionLab.Core|OpenVisionLab.Core.FormulaUtil+PROJECTION_POLARITY|value__|
 F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionDomain|ThreeD|OpenVisionLab.Inspection.CombinedInspectionDomain|static,const|value=1
 F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionDomain|TwoD|OpenVisionLab.Inspection.CombinedInspectionDomain|static,const|value=0
 F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionDomain|value__|System.Int32||
+F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|Canceled|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|static,const|value=1
+F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|Completed|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|static,const|value=0
+F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|Faulted|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|static,const|value=2
+F|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|value__|System.Int32||
 F|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|candidates|System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.VisionObjectCandidate>||
 F|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|property|OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob||
 F|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|results|System.Collections.Generic.List<OpenVisionLab.Vision2D.Blob.BlobResult>||
@@ -849,6 +855,10 @@ M|OpenVisionLab.Core|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator|GetVer
 M|OpenVisionLab.Core|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator|GetVerticalLines|System.Collections.Generic.List<OpenVisionLab.Core.Geometry2D.LineSegment2D>|(System.Collections.Generic.List<OpenCvSharp.Point> Edge,System.Int32 ImageW,System.Int32 ImageH,System.Int32 POINT_RANGE,OpenVisionLab.Core.FormulaUtil+PROJECTION_DIR VER_PRJ_DIR)|static
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunResult|Dispose|System.Void|()|
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunner|Run|OpenVisionLab.Inspection.CombinedInspectionRunResult|(OpenVisionLab.Inspection.CombinedInspectionInput input,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision2D.Tool.IVisionTool> twoDTools,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool> threeDTools)|
+M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|Execute|OpenVisionLab.Inspection.ThreeDToolExecutionResult|(System.Threading.CancellationToken cancellationToken)|abstract
+M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|Execute|OpenVisionLab.Inspection.ThreeDToolExecutionResult<TResult>|(System.Threading.CancellationToken cancellationToken optional=<null>)|
+M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|Run|OpenVisionLab.Inspection.ThreeDToolExecutionReport|(System.Collections.Generic.IEnumerable<OpenVisionLab.Inspection.IThreeDToolAdapter> adapters)|static
+M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|Run|OpenVisionLab.Inspection.ThreeDToolExecutionReport|(System.Collections.Generic.IEnumerable<OpenVisionLab.Inspection.IThreeDToolAdapter> adapters,System.Threading.CancellationToken cancellationToken)|static
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob propertyBase)|
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.CVBlob|Run|System.Void|()|virtual
@@ -1081,6 +1091,28 @@ P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult
 P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult|ThreeDResult|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult|index=|get|
 P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult|ToolName|System.String|index=|get|
 P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult|VisionResult|OpenVisionLab.Vision2D.Tool.VisionToolResult|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|Name|System.String|index=|get|abstract
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|ResultType|System.Type|index=|get|abstract
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|SupportsCancellation|System.Boolean|index=|get|abstract
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|Name|System.String|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|ResultType|System.Type|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|SupportsCancellation|System.Boolean|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|CanceledStepCount|System.Int32|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|CompletedStepCount|System.Int32|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|Elapsed|System.TimeSpan|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|FaultedStepCount|System.Int32|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|Message|System.String|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|Status|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|Steps|System.Collections.Generic.IReadOnlyList<OpenVisionLab.Inspection.ThreeDToolExecutionResult>|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult<TResult>|Result|TResult|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|Elapsed|System.TimeSpan|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|Exception|System.Exception|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|Message|System.String|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|ResultType|System.Type|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|Status|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|SupportsCancellation|System.Boolean|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|ToolName|System.String|index=|get|
+P|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|UntypedResult|System.Object|index=|get|
 P|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|Angle|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|Area|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|Bounding|System.Drawing.Rectangle|index=|get,set|
@@ -2951,6 +2983,13 @@ T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionInput|clas
 T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunResult|class|sealed|base=System.Object|interfaces=System.IDisposable|underlying=-
 T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunner|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionStepResult|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|interface|abstract|base=-|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|class|sealed|base=System.Object|interfaces=OpenVisionLab.Inspection.IThreeDToolAdapter|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionReport|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult<TResult>|class|sealed|base=OpenVisionLab.Inspection.ThreeDToolExecutionResult|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionResult|class|abstract|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionStatus|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobResult|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobToolProperty|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob,OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase,OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty|underlying=-
 T|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-

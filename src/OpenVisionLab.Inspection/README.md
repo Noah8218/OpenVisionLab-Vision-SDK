@@ -1,6 +1,7 @@
 # OpenVisionLab.Inspection
 
-One runner for independent OpenVisionLab 2D tools and height-map `IThreeDInspectionTool` steps.
+Execution contracts for independent OpenVisionLab 2D tools, height-map
+`IThreeDInspectionTool` steps, and opt-in heterogeneous typed 3D adapters.
 
 `3.0.0` is the API/assembly baseline, not the install version. Use the exact
 immutable version from your package source; `3.0.1-dev.1` is only the current
@@ -44,6 +45,43 @@ Console.WriteLine($"success={result.Success}, steps={result.Steps.Count}");
 ```
 
 Every configured step runs even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image, height map, or supplied tools. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
+
+Use `ThreeDToolAdapter<TResult>` when heterogeneous typed 3D Tool calls need one
+ordered execution report. The adapter retains the exact result type and reports only
+execution completion, cancellation, or an exception. It never interprets a result's
+`Success`, `Passed`, measurement, or tolerance fields.
+
+```csharp
+using System.Threading;
+using OpenVisionLab.Inspection;
+using OpenVisionLab.Vision3D.FeatureExtraction;
+
+TwoPointLineTool lineTool = new TwoPointLineTool();
+TwoPointLineInput lineInput = new TwoPointLineInput(
+    new ThreeDPoint(0, 0, 0),
+    new ThreeDPoint(3, 4, 0));
+
+ThreeDToolAdapter<TwoPointLineResult> adapter =
+    new ThreeDToolAdapter<TwoPointLineResult>(
+        "Datum line",
+        token => lineTool.Execute(lineInput, token));
+
+ThreeDToolExecutionReport execution = ThreeDToolExecutionRunner.Run(
+    new IThreeDToolAdapter[] { adapter },
+    CancellationToken.None);
+ThreeDToolExecutionResult<TwoPointLineResult> lineStep =
+    (ThreeDToolExecutionResult<TwoPointLineResult>)execution.Steps[0];
+
+Console.WriteLine($"execution={lineStep.Status}, line={lineStep.Result.Success}");
+```
+
+The token-taking adapter constructor declares real cooperative support; the
+tokenless constructor declares only pre/post runner checkpoints. A faulted adapter
+does not suppress later independent evidence. Cancellation stops later adapters. If
+a tokenless call completes while cancellation is requested, its completed typed
+result remains available and the report stops before the next adapter. The report
+does not dispose captured inputs, Tools, or returned result objects; the host owns
+their lifetimes. A null typed result is an execution fault.
 
 All 2D steps execute in list order, followed by all 3D steps in list order. They
 receive the same original input for their domain; one result is not fed into the

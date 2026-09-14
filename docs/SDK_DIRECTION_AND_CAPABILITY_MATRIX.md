@@ -94,9 +94,11 @@ The three height-map inspection Tools below share
 - `DatumPlaneRawHeightDeviationInspectionTool`
 
 The remaining public Tools keep source-neutral typed inputs/options/results. They
-run through their own `Execute` overloads and require a host adapter when a single
-recipe runner is needed. This preserves compile-time geometry and result contracts
-instead of forcing unrelated inputs into one generic DTO.
+run through their own `Execute` overloads. A host can opt into
+`ThreeDToolAdapter<TResult>` and `ThreeDToolExecutionRunner` when one ordered
+execution report is needed. The adapter preserves each exact typed result and keeps
+`Completed`/`Canceled`/`Faulted` execution status separate from domain `Success`,
+`Passed`, measurements, and tolerances.
 
 | Typed execution area | Public Tools | Current common-runner path |
 | --- | --- | --- |
@@ -107,10 +109,12 @@ instead of forcing unrelated inputs into one generic DTO.
 | Statistics/decision | `CompletenessGridInspectionTool`, `DualSurfaceThicknessInspectionTool`, `HeightDeviationInspectionTool`, `RepeatabilityStatisticsTool`, `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool` | Typed direct `Execute`; host adapter required |
 | Multi-input metrology | `PlaneFlatnessInspectionTool`, `PointPairDimensionsInspectionTool`, `GapFlushInspectionTool`, `VolumeInspectionTool`, `CrossSectionDimensionsInspectionTool` | Typed direct `Execute`; host adapter required |
 
-Selected typed 3D overloads already accept `CancellationToken`; the height-map
-interface and combined runner do not. A future adapter must report each Tool's real
-cancellation capability and must not imply that every native or numerical call can
-be interrupted.
+Selected typed 3D overloads accept `CancellationToken`; the height-map interface and
+combined runner do not. The token-taking adapter constructor reports cooperative
+support while the tokenless constructor reports only runner pre/post checkpoints.
+Cancellation stops later adapters, but a completed tokenless result remains in the
+report. The report owns none of the captured inputs, Tools, or returned result
+objects.
 
 ## Pipeline execution choices
 
