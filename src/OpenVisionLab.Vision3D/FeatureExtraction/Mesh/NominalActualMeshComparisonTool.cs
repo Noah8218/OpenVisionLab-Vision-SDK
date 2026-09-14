@@ -212,7 +212,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 0,
                 0,
                 0,
-                new NominalActualMeshDeviationSample[0],
+                Array.Empty<NominalActualMeshDeviationSample>(),
                 TimeSpan.Zero,
                 TimeSpan.Zero);
         }

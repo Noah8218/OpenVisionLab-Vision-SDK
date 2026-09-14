@@ -99,7 +99,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Regions = regions ?? new ConnectedRegionMetric[0];
+            Regions = regions ?? Array.Empty<ConnectedRegionMetric>();
             TotalArea = totalArea;
         }
 
@@ -125,7 +125,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return new ConnectedRegionMetricsResult(
                 false,
                 message,
-                new ConnectedRegionMetric[0],
+                Array.Empty<ConnectedRegionMetric>(),
                 0.0);
         }
     }

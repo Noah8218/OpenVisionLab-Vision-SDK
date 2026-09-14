@@ -17,8 +17,8 @@ namespace OpenVisionLab.Vision2D.Tool
         private double sourceTriangleArea;
         private double destinationTriangleArea;
         private double validPixelRatio;
-        private Point2f[] destinationPoints = new Point2f[0];
-        private Point2f[] transformedFramePoints = new Point2f[0];
+        private Point2f[] destinationPoints = Array.Empty<Point2f>();
+        private Point2f[] transformedFramePoints = Array.Empty<Point2f>();
 
         public void SetProperty(IAffineTransformToolProperty property) => this.property = property;
 
@@ -269,7 +269,7 @@ namespace OpenVisionLab.Vision2D.Tool
             double y3,
             out Point2f[] points)
         {
-            points = new Point2f[0];
+            points = Array.Empty<Point2f>();
             if (!IsFinite(x1) || !IsFinite(y1)
                 || !IsFinite(x2) || !IsFinite(y2)
                 || !IsFinite(x3) || !IsFinite(y3))

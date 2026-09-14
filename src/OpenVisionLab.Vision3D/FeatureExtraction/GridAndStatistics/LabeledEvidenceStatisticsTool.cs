@@ -199,7 +199,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return new LabeledEvidenceStatisticsResult(
                 false,
                 message,
-                new LabeledEvidenceRoleStatistics[0]);
+                Array.Empty<LabeledEvidenceRoleStatistics>());
         }
     }
 }

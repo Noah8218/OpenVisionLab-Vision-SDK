@@ -122,7 +122,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Points = points ?? new HeightDifferenceEdgePoint[0];
+            Points = points ?? Array.Empty<HeightDifferenceEdgePoint>();
             Diagnostics = diagnostics;
         }
 
@@ -144,7 +144,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         internal static HeightDifferenceEdgeResult Failed(string message)
         {
-            return new HeightDifferenceEdgeResult(false, message, new HeightDifferenceEdgePoint[0], null);
+            return new HeightDifferenceEdgeResult(false, message, Array.Empty<HeightDifferenceEdgePoint>(), null);
         }
     }
 

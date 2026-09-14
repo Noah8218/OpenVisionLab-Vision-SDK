@@ -107,7 +107,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             ArithmeticRmsResidual = arithmeticRmsResidual;
             ArithmeticMaximumResidual = arithmeticMaximumResidual;
             ArithmeticResidualWarningExceeded = arithmeticResidualWarningExceeded;
-            Residuals = residuals ?? new FullXyzAffineResidual[0];
+            Residuals = residuals ?? Array.Empty<FullXyzAffineResidual>();
         }
 
         public bool Success { get; }
@@ -146,7 +146,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         internal static FullXyzAffineSolveResult Failed(string message)
         {
-            return new FullXyzAffineSolveResult(false, message, null, double.NaN, double.NaN, double.NaN, double.NaN, double.NaN, false, new FullXyzAffineResidual[0]);
+            return new FullXyzAffineSolveResult(false, message, null, double.NaN, double.NaN, double.NaN, double.NaN, double.NaN, false, Array.Empty<FullXyzAffineResidual>());
         }
     }
 

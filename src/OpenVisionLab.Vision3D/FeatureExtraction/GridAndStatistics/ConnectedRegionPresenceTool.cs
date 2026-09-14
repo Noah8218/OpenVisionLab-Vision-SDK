@@ -85,7 +85,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Regions = regions ?? new ConnectedRegionPresenceFeature[0];
+            Regions = regions ?? Array.Empty<ConnectedRegionPresenceFeature>();
             PresentRegionCount = presentRegionCount;
             MissingRegionCount = missingRegionCount;
             AggregateDecision = aggregateDecision;
@@ -119,7 +119,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return new ConnectedRegionPresenceResult(
                 false,
                 message,
-                new ConnectedRegionPresenceFeature[0],
+                Array.Empty<ConnectedRegionPresenceFeature>(),
                 0,
                 0,
                 ConnectedRegionPresenceDecision.NotEvaluated);

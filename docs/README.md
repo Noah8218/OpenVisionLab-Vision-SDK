@@ -9,7 +9,7 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0011 exact 3.x compatibility-analyzer contract, prior analyzer/API evidence, and blocked redistribution-clearance prerequisite |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0012 measured performance-analyzer review, exact retained-diagnostic contracts, prior API evidence, and blocked redistribution-clearance prerequisite |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and unresolved redistribution blockers |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
@@ -104,9 +104,11 @@ The API baseline is an exact reviewed set: an addition, removal, signature chang
 or recorded parameter-name change requires an explicit compatibility decision.
 Analyzer results are compared by diagnostic code so existing debt cannot grow
 silently. CA1051, CA1707, and CA1716 are also compared against all 186 reviewed
-rule/kind/symbol identities in `eng/analyzer-compatibility-baseline.json`; a
-same-count replacement therefore fails until its public-compatibility effect is
-reviewed explicitly.
+rule/kind/symbol identities in `eng/analyzer-compatibility-baseline.json`. The seven
+performance rules are compared against their exact reviewed counts, including zero
+for CA1825 and CA1843, and all 231 retained identities in
+`eng/analyzer-performance-baseline.json`. A same-count replacement therefore fails
+until its compatibility or performance effect is reviewed explicitly.
 
 The package-provenance entry point is `eng/Verify-PackageProvenance.ps1`; its
 minimal fail-closed regression check is

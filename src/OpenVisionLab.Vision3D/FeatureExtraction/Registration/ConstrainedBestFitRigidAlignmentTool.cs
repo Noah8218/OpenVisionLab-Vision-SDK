@@ -157,7 +157,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             RmsResidual = rmsResidual;
             MaximumResidual = maximumResidual;
             ArithmeticResidualWarningExceeded = arithmeticResidualWarningExceeded;
-            Residuals = residuals ?? new ConstrainedBestFitRigidAlignmentResidual[0];
+            Residuals = residuals ?? Array.Empty<ConstrainedBestFitRigidAlignmentResidual>();
         }
 
         public bool Success { get; }
@@ -227,7 +227,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double.NaN,
                 double.NaN,
                 false,
-                new ConstrainedBestFitRigidAlignmentResidual[0]);
+                Array.Empty<ConstrainedBestFitRigidAlignmentResidual>());
         }
     }
 

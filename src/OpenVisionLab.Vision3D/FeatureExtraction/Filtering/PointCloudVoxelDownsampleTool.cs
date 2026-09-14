@@ -102,7 +102,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Representatives = representatives ?? new PointCloudVoxelDownsamplePoint[0];
+            Representatives = representatives ?? Array.Empty<PointCloudVoxelDownsamplePoint>();
             VoxelEdgeLength = voxelEdgeLength;
             OriginX = originX;
             OriginY = originY;
@@ -304,7 +304,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             new PointCloudVoxelDownsampleResult(
                 false,
                 message,
-                new PointCloudVoxelDownsamplePoint[0],
+                Array.Empty<PointCloudVoxelDownsamplePoint>(),
                 double.NaN,
                 double.NaN,
                 double.NaN,

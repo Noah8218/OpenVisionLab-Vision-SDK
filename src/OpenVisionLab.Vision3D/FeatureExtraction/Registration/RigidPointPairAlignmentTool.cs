@@ -141,7 +141,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             MaximumObservedPairLengthError = maximumObservedPairLengthError;
             RmsResidual = rmsResidual;
             MaximumResidual = maximumResidual;
-            Residuals = residuals ?? new RigidPointPairAlignmentResidual[0];
+            Residuals = residuals ?? Array.Empty<RigidPointPairAlignmentResidual>();
         }
 
         public bool Success { get; }
@@ -190,7 +190,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double.NaN,
                 double.NaN,
                 double.NaN,
-                new RigidPointPairAlignmentResidual[0]);
+                Array.Empty<RigidPointPairAlignmentResidual>());
         }
     }
 

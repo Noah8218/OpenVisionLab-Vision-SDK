@@ -58,7 +58,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            RetainedPoints = retainedPoints ?? new PointCloudBackgroundFilterPoint[0];
+            RetainedPoints = retainedPoints ?? Array.Empty<PointCloudBackgroundFilterPoint>();
             Mode = mode;
             MaximumBackgroundDistance = maximumBackgroundDistance;
             InputPointCount = inputPointCount;
@@ -276,7 +276,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             new PointCloudBackgroundFilterResult(
                 false,
                 message,
-                new PointCloudBackgroundFilterPoint[0],
+                Array.Empty<PointCloudBackgroundFilterPoint>(),
                 default(PointCloudBackgroundFilterMode),
                 double.NaN,
                 0,

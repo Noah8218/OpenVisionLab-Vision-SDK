@@ -168,11 +168,11 @@ namespace OpenVisionLab.Vision2D.Tool
                                                  FindTemplate(mat, ImageTpl, Results_T, T_Result, property.MAGNIFIATION, property.CvROIS[i]);
                                              });
                                 });
-                                Task.WaitAll(plusTask);
-                                Task.WaitAll(minusTask);
+                                plusTask.Wait();
+                                minusTask.Wait();
                             }
 
-                            Task.WaitAll(firstTask);
+                            firstTask.Wait();
 
                             CResultMatching highestScoreResult = Results_T.OrderByDescending(r => r.Score).FirstOrDefault();
 
@@ -334,11 +334,11 @@ namespace OpenVisionLab.Vision2D.Tool
                                              FindTemplate(mat, ImageTpl, Results_T, T_Result, property.MAGNIFIATION, property.CvROI);
                                          });
                             });
-                            Task.WaitAll(plusTask);
-                            Task.WaitAll(minusTask);
+                            plusTask.Wait();
+                            minusTask.Wait();
                         }
                        
-                        Task.WaitAll(firstTask);
+                        firstTask.Wait();
 
                         CResultMatching highestScoreResult = Results_T.OrderByDescending(r => r.Score).FirstOrDefault();
 

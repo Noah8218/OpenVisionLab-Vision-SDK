@@ -1152,11 +1152,11 @@ namespace OpenVisionLab.Vision2D.Tool
                     });
                 });
 
-                Task.WaitAll(plusTask);
-                Task.WaitAll(minusTask);
+                plusTask.Wait();
+                minusTask.Wait();
             }
 
-            Task.WaitAll(firstTask);
+            firstTask.Wait();
             return candidates.OrderByDescending(r => r.Score).FirstOrDefault();
         }
 

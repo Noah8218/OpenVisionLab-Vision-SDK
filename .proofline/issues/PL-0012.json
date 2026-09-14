@@ -1,0 +1,213 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0012",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "성능 analyzer 측정 기반 검토",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "user-approved analyzer follow-up",
+    "summary": "PL-0011 이후 남은 성능 진단 272건을 규칙, 소유자, 호출 특성, 공개 계약 위험별로 전수 검토하고 측정 가능하며 계약 안전한 항목만 수정한다.",
+    "refs": [
+      "PL-0011"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "272건 전수 분류와 선택 구현을 마쳤다. CA1825 32건과 CA1843 9건은 호출당 할당을 제거했고, 나머지 231건은 공개 계약, 측정 부재, 일회성 호출 또는 공유 가변 상태 위험으로 유지해 exact 지문으로 고정했다. Release 0/0, smoke/coverage 233/233, API 3295 exact, analyzer 417/8과 호환 186·성능 231 exact, 문서 80/80 및 동일 개수 한 지문 교체 음성 검증이 통과했다. 고정 커밋 package·consumer와 원격 CI는 아직 남았다."
+  },
+  "objective": {
+    "summary": "성능 analyzer 제안을 실제 비용과 계약 위험으로 구분하고, 확정적인 할당·호출 오버헤드만 제거한 뒤 남는 진단을 재검토 가능한 증거로 고정한다.",
+    "constraints": [
+      "C:\\Git\\OpenVisionLab-Vision-SDK의 main만 수정하고 C:\\Git\\Vision-SDK의 과거 worktree는 변경하지 않는다.",
+      "공개 API 3295개와 3.x binary, reflection, source, named-argument 계약을 유지한다.",
+      "성능 수치가 없는 공개 instance-to-static 변경, 구체 타입 결합, 공유 가변 배열 도입은 하지 않는다.",
+      "로컬 synthetic 측정은 방향성 근거로만 사용하고 센서, 교정, 현장 takt 또는 생산 성능으로 확대 해석하지 않는다.",
+      "패키지 게시, 소비자 저장소 변경, UI, native binary 변경, 4.0 마이그레이션은 범위에 포함하지 않는다."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "272건을 규칙, 프로젝트 계층, 소유자, 호출 특성, 공개 계약 위험과 처리 결정별로 전수 분류한다.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "수정 항목은 반복 가능한 미세 측정 또는 결정적 할당 근거가 있고 공개 API와 예외 의미를 보존한다.",
+      "evidence_refs": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "남는 성능 진단은 exact 지문으로 고정되어 같은 개수의 새 진단이나 심볼 교체도 analyzer gate를 통과하지 못한다.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Release build, 전체 smoke/coverage, exact public API, analyzer, 문서 링크, 고정 커밋 package/provenance/negative/격리 consumer/native 및 원격 CI가 통과한다.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "272건 소유자·계약·호출 특성·공식 규칙 분류",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "측정 가능한 최소 성능 수정과 focused 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "잔여 성능 진단 exact 기준선과 fail-closed 검증",
+      "status": "done",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "summary": "통합 검증, 고정 커밋 package·consumer·원격 CI와 durable closure",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0011"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source commit",
+      "location": "202758506d99e985e3f1d2b595aff638cb3007c2"
+    },
+    {
+      "kind": "current authority",
+      "location": "docs/OPENVISIONLAB_CURRENT_STATUS.md"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1805"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1822"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1825"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1843"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1859"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1861"
+    },
+    {
+      "kind": "official rule set",
+      "location": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1869"
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "planning evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0012/planning",
+      "summary": "고정 HEAD analyzer 원문, 272건 CSV, 규칙·소유자·계층·접근성·처리 결정별 전수 분류."
+    },
+    {
+      "kind": "directional allocation evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0012/microbench-before/result.log",
+      "summary": "7회·각 1,000,000회 반복에서 new T[0] 24바이트와 단일 Task.WaitAll 32바이트의 호출당 할당이 각 대체 표현에서 0바이트로 감소."
+    },
+    {
+      "kind": "working-tree verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0012/precommit",
+      "summary": "Release, 전체 smoke/coverage, exact API, 문서 링크와 별도 exact analyzer/음성 probe 증거."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "performance diagnostic inventory and decision review",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\planning\\performance-classification.initial.json",
+      "observation": "고정 HEAD 2027585의 272건은 CA1805 69, CA1822 68, CA1825 32, CA1843 9, CA1859 11, CA1861 82, CA1869 1이다. CA1825 32건과 CA1843 9건만 결정적 호출당 할당 제거 대상으로 선택했다. CA1822 중 61건은 exact 공개 API와 일치하며, CA1861 82건은 전부 일회성 smoke/benchmark 호출이다.",
+      "observed_at": "2026-09-14T12:51:29.6863153+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "directional allocation and exception-semantics probes",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\microbench-before\\result.log; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\wait-exception-probe\\result.log",
+      "observation": "7회·각 1,000,000회 반복의 .NET 8 방향성 probe에서 new T[0]→Array.Empty<T>()는 24→0 bytes/call, 단일 Task.WaitAll→Task.Wait는 32→0 bytes/call이었다. fault와 cancellation probe는 두 대기 방식이 모두 AggregateException과 동일 inner exception 종류/메시지를 생성함을 확인했다. 현장 OpenCV takt 측정으로 확대 해석하지 않는다.",
+      "observed_at": "2026-09-14T12:51:29.6863153+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "working-tree integrated and exact-gate verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\focused; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\coverage; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\public-api; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\docs-final; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\analyzer-final; D:\\OpenVisionLab-TestData\\OpenVisionLab-Vision-SDK\\PL-0012\\precommit\\analyzer-negative-final",
+      "observation": "Release solution build 0 warnings/errors, direct·coverage smoke 각 233/233, coverage 5개 floor 통과, public API exact 3295, 문서 local target 80/80, analyzer 417건/8 emitted codes와 호환 186·성능 231 exact가 통과했다. 동일 규칙별 개수와 231 총계를 유지하고 한 지문만 교체한 성능 기준선은 unreviewed와 missing을 모두 보고하며 실패했다.",
+      "observed_at": "2026-09-14T12:51:29.6863153+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-14T12:34:26.7410429+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "성능 진단 272건의 전수 분류와 측정 기반 최소 수정 작업을 시작했다."
+    },
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-09-14T12:51:29.6863153+09:00",
+      "summary": "직접 할당 근거가 있는 CA1825 32건과 CA1843 9건만 수정한다. 공개 계약 변경, 측정되지 않은 dispatch 변경, 공유 non-empty 배열, 일회성 옵션 캐시는 유지하고 231개 exact 성능 지문으로 신규 유입을 차단한다.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    }
+  ],
+  "created_at": "2026-09-14T12:34:26.7410429+09:00",
+  "updated_at": "2026-09-14T12:51:29.6863153+09:00"
+}

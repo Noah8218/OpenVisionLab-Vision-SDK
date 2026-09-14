@@ -10,6 +10,8 @@ param(
 
     [string] $CompatibilityBaselinePath = (Join-Path $PSScriptRoot 'analyzer-compatibility-baseline.json'),
 
+    [string] $PerformanceBaselinePath = (Join-Path $PSScriptRoot 'analyzer-performance-baseline.json'),
+
     [switch] $UpdateBaseline
 )
 
@@ -22,6 +24,21 @@ New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
 $env:DOTNET_CLI_UI_LANGUAGE = 'en-US'
 $analysisLevel = 'latest-recommended'
 $analysisMode = 'All'
+$solutionDirectory = Split-Path -Parent $solution
+$sourceLinesByPath = @{}
+
+function Get-SourceLines {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SourcePath
+    )
+
+    if (-not $sourceLinesByPath.ContainsKey($SourcePath)) {
+        $sourceLinesByPath[$SourcePath] = @(Get-Content -LiteralPath $SourcePath)
+    }
+
+    return @($sourceLinesByPath[$SourcePath])
+}
 
 function Get-CA1051Identity {
     param(
@@ -35,7 +52,7 @@ function Get-CA1051Identity {
         [int] $Column
     )
 
-    $sourceLines = @(Get-Content -LiteralPath $SourcePath)
+    $sourceLines = Get-SourceLines -SourcePath $SourcePath
     $lineIndex = $Line - 1
     $columnIndex = $Column - 1
     if ($lineIndex -lt 0 -or $lineIndex -ge $sourceLines.Count) {
@@ -68,6 +85,75 @@ function Get-CA1051Identity {
     $namespaceName = $namespaceMatches[$namespaceMatches.Count - 1].Groups['name'].Value
     $typeName = $typeMatches[$typeMatches.Count - 1].Groups['name'].Value
     return "CA1051|field|$namespaceName.$typeName.$($identifierMatch.Value)"
+}
+
+function Get-PerformanceIdentityBase {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Code,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Message,
+
+        [Parameter(Mandatory = $true)]
+        [string] $SourcePath,
+
+        [Parameter(Mandatory = $true)]
+        [int] $Line
+    )
+
+    $sourceLines = Get-SourceLines -SourcePath $SourcePath
+    $lineIndex = $Line - 1
+    if ($lineIndex -lt 0 -or $lineIndex -ge $sourceLines.Count) {
+        throw "$Code source line is outside '$SourcePath': $Line."
+    }
+
+    $prefix = $sourceLines[0..$lineIndex] -join [Environment]::NewLine
+    $namespaceMatches = [regex]::Matches(
+        $prefix,
+        '(?m)^\s*namespace\s+(?<name>[A-Za-z_][A-Za-z0-9_.]*)\s*(?:;|\{)')
+    $typeMatches = [regex]::Matches(
+        $prefix,
+        '(?m)^\s*(?:(?:public|protected|internal|private|abstract|sealed|static|partial)\s+)*(?:class|struct|record(?:\s+(?:class|struct))?)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)')
+    if ($namespaceMatches.Count -eq 0 -or $typeMatches.Count -eq 0) {
+        throw "Could not identify the $Code owner in '$SourcePath' at line $Line."
+    }
+
+    $namespaceName = $namespaceMatches[$namespaceMatches.Count - 1].Groups['name'].Value
+    $ownerTypeMatches = $typeMatches
+    if ($Code -in @('CA1805', 'CA1822')) {
+        $publicTypeMatches = [regex]::Matches(
+            $prefix,
+            '(?m)^\s*public\s+(?:(?:abstract|sealed|static|partial)\s+)*(?:class|struct|record(?:\s+(?:class|struct))?)\s+(?<name>[A-Za-z_][A-Za-z0-9_]*)')
+        if ($publicTypeMatches.Count -gt 0) {
+            $ownerTypeMatches = $publicTypeMatches
+        }
+    }
+    $typeName = $ownerTypeMatches[$ownerTypeMatches.Count - 1].Groups['name'].Value
+    $memberName = $null
+    if ($Code -in @('CA1805', 'CA1822') -and $Message -match "^Member '(?<member>[^']+)'") {
+        $memberName = $Matches['member']
+    }
+    else {
+        for ($index = $lineIndex; $index -ge 0; $index--) {
+            $candidate = ([string] $sourceLines[$index]).Trim()
+            $declarationMatch = [regex]::Match(
+                $candidate,
+                '^(?:public|private|internal|protected)\s+(?:(?:static|unsafe|virtual|override|sealed|abstract|async|readonly|partial|extern|new)\s+)*(?:[A-Za-z_][A-Za-z0-9_<>,.\[\]? ]+\s+)?(?<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]+>\s*)?\(')
+            if ($declarationMatch.Success) {
+                $memberName = $declarationMatch.Groups['name'].Value
+                break
+            }
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($memberName)) {
+        throw "Could not identify the $Code member in '$SourcePath' at line $Line."
+    }
+
+    $relativePath = [System.IO.Path]::GetRelativePath($solutionDirectory, $SourcePath).Replace('\', '/')
+    $sourceLine = [regex]::Replace(([string] $sourceLines[$lineIndex]).Trim(), '\s+', ' ')
+    return "$Code|$relativePath|$namespaceName.$typeName|$memberName|$sourceLine"
 }
 
 function Get-CompatibilityIdentity {
@@ -148,6 +234,8 @@ if ($LASTEXITCODE -ne 0) {
 $counts = @{}
 $compatibilityCodes = @('CA1051', 'CA1707', 'CA1716')
 $compatibilityIdentities = [System.Collections.Generic.List[string]]::new()
+$performanceCodes = @('CA1805', 'CA1822', 'CA1825', 'CA1843', 'CA1859', 'CA1861', 'CA1869')
+$performanceIdentityBases = [System.Collections.Generic.List[string]]::new()
 foreach ($line in $output) {
     $match = [regex]::Match([string] $line, '\bwarning (?<code>CA\d{4})\b')
     if (-not $match.Success) {
@@ -160,7 +248,7 @@ foreach ($line in $output) {
     }
     $counts[$code]++
 
-    if ($compatibilityCodes -notcontains $code) {
+    if ($compatibilityCodes -notcontains $code -and $performanceCodes -notcontains $code) {
         continue
     }
 
@@ -168,20 +256,40 @@ foreach ($line in $output) {
         [string] $line,
         '^(?<path>.+)\((?<line>\d+),(?<column>\d+)\): warning CA\d{4}: (?<message>.+?) \[[^\]]+\]$')
     if (-not $diagnosticMatch.Success) {
-        throw "Could not parse compatibility diagnostic: $line"
+        throw "Could not parse reviewed analyzer diagnostic: $line"
     }
 
     $message = [regex]::Replace(
         $diagnosticMatch.Groups['message'].Value,
         '\s+\(https?://[^)]+\)$',
         '')
-    $identity = Get-CompatibilityIdentity `
-        -Code $code `
-        -Message $message `
-        -SourcePath $diagnosticMatch.Groups['path'].Value `
-        -Line ([int] $diagnosticMatch.Groups['line'].Value) `
-        -Column ([int] $diagnosticMatch.Groups['column'].Value)
-    $compatibilityIdentities.Add($identity)
+    if ($compatibilityCodes -contains $code) {
+        $identity = Get-CompatibilityIdentity `
+            -Code $code `
+            -Message $message `
+            -SourcePath $diagnosticMatch.Groups['path'].Value `
+            -Line ([int] $diagnosticMatch.Groups['line'].Value) `
+            -Column ([int] $diagnosticMatch.Groups['column'].Value)
+        $compatibilityIdentities.Add($identity)
+    }
+    else {
+        $identityBase = Get-PerformanceIdentityBase `
+            -Code $code `
+            -Message $message `
+            -SourcePath $diagnosticMatch.Groups['path'].Value `
+            -Line ([int] $diagnosticMatch.Groups['line'].Value)
+        $performanceIdentityBases.Add($identityBase)
+    }
+}
+
+$performanceIdentityOccurrences = @{}
+$performanceIdentities = [System.Collections.Generic.List[string]]::new()
+foreach ($identityBase in $performanceIdentityBases) {
+    if (-not $performanceIdentityOccurrences.ContainsKey($identityBase)) {
+        $performanceIdentityOccurrences[$identityBase] = 0
+    }
+    $performanceIdentityOccurrences[$identityBase]++
+    $performanceIdentities.Add("$identityBase|occurrence=$($performanceIdentityOccurrences[$identityBase])")
 }
 
 $orderedCounts = [ordered] @{}
@@ -248,6 +356,56 @@ foreach ($identity in $missingCompatibilityIdentities) {
     $failures.Add("Reviewed compatibility diagnostic disappeared or changed: $identity")
 }
 
+$performanceBaselineFile = (Resolve-Path -LiteralPath $PerformanceBaselinePath).Path
+$performanceBaseline = Get-Content -LiteralPath $performanceBaselineFile -Raw | ConvertFrom-Json
+if ([int] $performanceBaseline.schemaVersion -ne 1) {
+    $failures.Add(
+        "Performance baseline schemaVersion '$($performanceBaseline.schemaVersion)' is not supported.")
+}
+if ([string] $performanceBaseline.analysisLevel -ne $analysisLevel) {
+    $failures.Add(
+        "Performance baseline analysisLevel '$($performanceBaseline.analysisLevel)' does not match '$analysisLevel'.")
+}
+if ([string] $performanceBaseline.analysisMode -ne $analysisMode) {
+    $failures.Add(
+        "Performance baseline analysisMode '$($performanceBaseline.analysisMode)' does not match '$analysisMode'.")
+}
+
+$expectedPerformanceIdentities = @($performanceBaseline.diagnostics | ForEach-Object { [string] $_.identity })
+$duplicateExpectedPerformanceIdentities = @($expectedPerformanceIdentities | Group-Object | Where-Object { $_.Count -ne 1 })
+$duplicateActualPerformanceIdentities = @($performanceIdentities | Group-Object | Where-Object { $_.Count -ne 1 })
+if ($duplicateExpectedPerformanceIdentities.Count -gt 0) {
+    $failures.Add(
+        "Performance baseline contains duplicate identities: $($duplicateExpectedPerformanceIdentities.Name -join ', ')")
+}
+if ($duplicateActualPerformanceIdentities.Count -gt 0) {
+    $failures.Add(
+        "Analyzer produced duplicate performance identities: $($duplicateActualPerformanceIdentities.Name -join ', ')")
+}
+
+foreach ($code in $performanceCodes) {
+    $expectedProperty = $performanceBaseline.expectedWarningsByCode.PSObject.Properties[$code]
+    if ($null -eq $expectedProperty) {
+        $failures.Add("Performance baseline is missing the expected count for $code.")
+        continue
+    }
+
+    $actualCount = if ($counts.ContainsKey($code)) { [int] $counts[$code] } else { 0 }
+    if ($actualCount -ne [int] $expectedProperty.Value) {
+        $failures.Add(
+            "Performance diagnostic $code changed from $($expectedProperty.Value) to $actualCount; review and update the exact contract.")
+    }
+}
+
+$unexpectedPerformanceIdentities = @($performanceIdentities | Where-Object { $expectedPerformanceIdentities -notcontains $_ } | Sort-Object)
+$missingPerformanceIdentities = @($expectedPerformanceIdentities | Where-Object { $performanceIdentities -notcontains $_ } | Sort-Object)
+foreach ($identity in $unexpectedPerformanceIdentities) {
+    $failures.Add("Unreviewed performance diagnostic: $identity")
+}
+foreach ($identity in $missingPerformanceIdentities) {
+    $failures.Add("Reviewed performance diagnostic disappeared or changed: $identity")
+}
+
 foreach ($entry in $orderedCounts.GetEnumerator()) {
     Write-Host "Analyzer $($entry.Key): $($entry.Value)"
 }
@@ -256,6 +414,7 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "Compatibility diagnostic contract passed: $($compatibilityIdentities.Count) exact identities."
+Write-Host "Performance diagnostic contract passed: $($performanceIdentities.Count) exact identities."
 
 if ($UpdateBaseline) {
     $baseline = [ordered] @{

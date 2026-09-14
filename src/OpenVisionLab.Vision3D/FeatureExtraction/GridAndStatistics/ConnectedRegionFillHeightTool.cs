@@ -106,7 +106,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Regions = regions ?? new ConnectedRegionFillHeightFeature[0];
+            Regions = regions ?? Array.Empty<ConnectedRegionFillHeightFeature>();
             AcceptedRegionCount = acceptedRegionCount;
             RejectedRegionCount = rejectedRegionCount;
         }
@@ -136,7 +136,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return new ConnectedRegionFillHeightResult(
                 false,
                 message,
-                new ConnectedRegionFillHeightFeature[0],
+                Array.Empty<ConnectedRegionFillHeightFeature>(),
                 0,
                 0);
         }

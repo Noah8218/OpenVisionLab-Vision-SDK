@@ -1,26 +1,27 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0011`
-Overall state: `resolved`
+Project work item: `PL-0012`
+Overall state: `doing`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0011.json` records the completed 3.x public-compatibility analyzer
-review. `.proofline/issues/PL-0010.json` preserves the completed readability-focused
-follow-up, `.proofline/issues/PL-0009.json` preserves the completed correctness-focused
-review, and `.proofline/issues/PL-0008.json` preserves the completed CA1305 review,
-and `.proofline/issues/PL-0007.json` preserves the preceding culture-conversion
-closure, and `.proofline/issues/PL-0006.json` preserves the preceding diagnostics, lifetime,
-API-contract, and boundary-test closure. `PL-0005`'s SIFT diagnostic criterion was
-reopened after a missed success path was found, then corrected and revalidated by
-PL-0006. The other prior verification remains historical evidence, while
-`.proofline/issues/PL-0004.json` preserves the preceding closure and
-`.proofline/issues/PL-0003.json` and `.proofline/issues/PL-0002.json` preserve the
-preceding closures. No ledger is a second design or release authority.
+`.proofline/issues/PL-0012.json` records the active measured-performance analyzer
+review. `.proofline/issues/PL-0011.json` preserves the completed 3.x public-
+compatibility analyzer review, `.proofline/issues/PL-0010.json` preserves the
+completed readability-focused follow-up, `.proofline/issues/PL-0009.json` preserves
+the completed correctness-focused review, and `.proofline/issues/PL-0008.json`
+preserves the completed CA1305 review. `.proofline/issues/PL-0007.json` and
+`.proofline/issues/PL-0006.json` preserve the preceding culture, diagnostics,
+lifetime, API-contract, and boundary-test closures. `PL-0005`'s SIFT diagnostic
+criterion was reopened after a missed success path was found, then corrected and
+revalidated by PL-0006. The other prior verification remains historical evidence,
+while `.proofline/issues/PL-0004.json`, `.proofline/issues/PL-0003.json`, and
+`.proofline/issues/PL-0002.json` preserve the preceding closures. No ledger is a
+second design or release authority.
 
 If a dated plan, completion record, benchmark count, command, version example, or
 artifact path conflicts with this file, treat the dated material as historical
@@ -55,6 +56,17 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
 redistribution; that separate clearance remains blocked by the prerequisites below.
+`PL-0012` has classified all 272 performance suggestions by rule, owner, project
+layer, access, and call behavior. Thirty-two zero-length allocations now use
+`Array.Empty<T>()`, and nine single-task `Task.WaitAll` calls now use `Task.Wait()`;
+both transformations remove a directly measurable allocation without changing a
+public signature. The other 231 diagnostics are retained by explicit decision and
+exact identity. The working-tree Release build passes with no warnings/errors, all
+233 smoke cases pass, all five coverage floors pass, the public API remains exactly
+3,295 entries, all 80 checked local document targets resolve, and the analyzer
+reports 417 diagnostics with both the 186-identity compatibility contract and 231-
+identity performance contract passing. Exact-commit package consumption and remote
+CI remain to be recorded before closure.
 `PL-0011` has classified all 186 public field and naming diagnostics into 46
 legacy-compatibility and 140 current 3.x locations. All 39 CA1051 diagnostics map
 one-to-one to the exact public API baseline's 39 visible instance fields. The
@@ -86,6 +98,102 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
+
+## PL-0012 work contract
+
+Status: `Doing` on the working tree based on source commit
+`202758506d99e985e3f1d2b595aff638cb3007c2`.
+
+Implement now: review every CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, and
+CA1869 diagnostic by owner, layer, access, call frequency, and observable contract;
+change only the cases with deterministic allocation evidence and no public or
+exception-contract change; then exact-lock every retained performance identity.
+
+Review later: representative sensor and calibration workloads are needed before a
+production throughput or latency claim. Commercial redistribution still requires
+the external prerequisites listed below.
+
+Out of scope: public instance-to-static conversion, tighter public signatures,
+shared non-empty mutable arrays, speculative dispatch rewrites, 4.0 migration,
+package publication, consumer-repository mutation, UI, native-binary replacement,
+and sensor/calibration qualification.
+
+The result constructors, controlled-failure factories, and `AffineTransformTool`
+retain ownership of their existing empty-array references. `CVMatching`'s two legacy
+search loops and `MatchingTool.FindBestMatchingCandidateExhaustive` retain the same
+local task creation, synchronous wait order, and `AggregateException` behavior.
+`Array.Empty<T>()` adds no mutable element state because every shared array has length
+zero. The 82 non-empty CA1861 arrays remain local to their smoke or benchmark calls.
+No public signature, caller, result shape, mutable-state writer, or lifetime owner
+moves.
+
+`eng/analyzer-performance-baseline.json` owns the 231 retained decisions.
+`eng/Verify-AnalyzerBaseline.ps1` derives identities from rule, repository path,
+declaring type, member, normalized source line, and a stable same-member occurrence
+number. It checks exact identities and all seven rule counts
+before the aggregate ceiling check. `eng/analyzer-baseline.json` fixes CA1825 and
+CA1843 at zero.
+
+Shortest review order: the rule decisions and counts at the top of
+`eng/analyzer-performance-baseline.json`, the performance identity function and set
+comparison in `eng/Verify-AnalyzerBaseline.ps1`, the `Array.Empty<T>()` and
+`Task.Wait()` source diff, the matching and 3D smoke cases, then this section. The
+complete input inventory and per-location decision are under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0012\planning`.
+
+Acceptance: all 272 inputs are classified; the 41 selected changes remove their
+per-call allocation while preserving the 3,295-entry public API and synchronous
+exception contract; CA1825 and CA1843 are zero; all 231 retained identities pass and
+a same-count replacement fails; all local, exact-commit package-consumer, and remote
+gates pass.
+
+### PL-0012 current evidence
+
+- The fixed-source inventory divides into CA1805 69, CA1822 68, CA1825 32, CA1843
+  9, CA1859 11, CA1861 82, and CA1869 1. Product code owns all CA1805/CA1822,
+  30 CA1825, all CA1843, and 8 CA1859 sites. Smoke/benchmark code owns the other
+  88 sites.
+- A seven-trial, one-million-iteration .NET 8 directional probe reports median
+  allocation of 24 to 0 bytes per call for `new T[0]` to `Array.Empty<T>()` and 32
+  to 0 bytes per call for single-task `Task.WaitAll` to `Task.Wait`. Median times
+  were 8.726 to 7.177 ns and 25.691 to 14.260 ns respectively. This measures the
+  primitive transformations on this workstation, not OpenCV matching throughput or
+  production takt.
+- Microsoft documents [CA1825](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1825)
+  as eliminating zero-length array allocations and [CA1843](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1843)
+  as avoiding single-task `WaitAll`. The chosen `Task.Wait()` replacement keeps the
+  SDK synchronous and retains `AggregateException` rather than changing the public
+  flow to `await`.
+- [CA1822](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1822)
+  identifies an externally visible instance-to-static change as breaking; 61 of 68
+  sites match the exact public API baseline and remain unchanged. The seven private
+  sites have no measured hot-path benefit. [CA1861](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1861)
+  permits retention for one-time calls or potentially mutable arrays, which applies
+  to all 82 smoke/benchmark sites. The sole [CA1869](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1869)
+  options object is created once for final benchmark report output.
+- [CA1805](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1805)
+  69 and [CA1859](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1859)
+  11 remain because no material constructor or dispatch bottleneck was established.
+  The explicit defaults document legacy/result model state, while the concrete-type
+  suggestions affect setup, collection construction, smoke, or report parsing paths.
+- The current Release solution build reports 0 warnings/errors and direct smoke
+  passes 233/233. Coverage is Core 37.35%, Inspection 69.92%, Vision2D 74.35%,
+  Vision2D.Blob 69.17%, and Vision3D 90.97%, with all floors passing. The public API
+  is exactly 3,295 entries and all 80 checked local document targets resolve. The
+  analyzer reports 417 diagnostics in eight emitted codes, CA1825/CA1843 are absent,
+  and all 186 compatibility plus 231 retained performance identities pass. A copied
+  performance baseline with one identity replaced and all counts unchanged fails
+  with both unreviewed and missing identity errors.
+
+| Rule | Input | Changed | Retained | Decision |
+| --- | ---: | ---: | ---: | --- |
+| CA1805 | 69 | 0 | 69 | Keep explicit defaults; no material measured benefit justifies model churn. |
+| CA1822 | 68 | 0 | 68 | Keep 61 public instance contracts and seven unmeasured private members. |
+| CA1825 | 32 | 32 | 0 | Use the standard singleton empty array; deterministic allocation removal. |
+| CA1843 | 9 | 9 | 0 | Use `Task.Wait()`; deterministic params-array removal with the same blocking exception shape. |
+| CA1859 | 11 | 0 | 11 | Keep abstraction/collection boundaries until dispatch is a measured bottleneck. |
+| CA1861 | 82 | 0 | 82 | Keep one-shot non-empty arrays local and avoid shared mutable test state. |
+| CA1869 | 1 | 0 | 1 | Keep the one-time report serializer options local. |
 
 ## PL-0011 work contract
 
@@ -522,21 +630,20 @@ runtimes and redistribution clearance remain outside this completed scope.
 ### Current analyzer triage boundary
 
 The PL-0006 analyzer run historically retained **596 diagnostics in 16 codes**.
-PL-0007 and PL-0008 removed all 83 CA1305 diagnostics. PL-0009 removed the 14
-CA1806, CA1816, and CA2208 diagnostics. PL-0010 removed the 41 CA1507 and CA2249
-readability diagnostics. PL-0011 has now reviewed every one of the 186 retained
-CA1051, CA1707, and CA1716 identities and added an exact compatibility gate on top
-of the aggregate ceilings. The implementation commit reports **458 diagnostics in 10
-emitted codes**, with every code count unchanged. Exact-commit evidence is recorded
-under `PL-0011/final-fba68a1` on the D-drive evidence root and in remote Build run
-34798108229. This remains a no-regression gate and categorized debt review, not a
-zero-warning claim.
+PL-0007 through PL-0010 removed all 138 culture, correctness, lifetime, and
+readability diagnostics selected by their owner reviews. PL-0011 exact-locked all
+186 retained public-compatibility identities. PL-0012 reviewed the remaining 272
+performance suggestions, removed the 32 deterministic empty-array allocations and
+the nine single-task `WaitAll` params-array allocations, and exact-locked the 231
+retained identities. The working tree now reports **417 diagnostics in eight emitted
+codes**. Exact-commit and remote PL-0012 evidence remain pending. This is a reviewed
+no-regression boundary, not a zero-warning claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |
 | Public field and naming compatibility | CA1051, CA1707, CA1716 / 186 | All identities are reviewed and exact-locked: 39 fields, 7 types, 118 members, 20 parameters, one namespace, and one interface member. Preserve the 3.x contract; any identity change requires explicit compatibility review. |
 | Culture-sensitive formatting | CA1305 / 0 | All 31 remaining sites were reviewed by owner. Numeric diagnostics, legacy rounding, reflection conversion, and generated evidence now use explicit culture-independent behavior; the baseline ceiling is zero. |
-| Allocation, static and dispatch suggestions | CA1805, CA1822, CA1825, CA1843, CA1859, CA1861, CA1869 / 272 | No measured bottleneck justifies a bulk rewrite. Benchmark the affected call path before promoting performance suggestions. |
+| Allocation, static and dispatch suggestions | CA1805 69, CA1822 68, CA1825 0, CA1843 0, CA1859 11, CA1861 82, CA1869 1 / 231 | All 272 inputs were reviewed. Fix the 41 deterministic per-call allocations; exact-lock the 231 retained identities. Public-static changes, unmeasured dispatch changes, shared mutable arrays, and one-time options caching remain rejected. |
 | Readability | CA1507, CA2249 / 0 | All 41 sites were reviewed for framework and comparison equivalence; the ceilings are removed. |
 | Ignored constructed result | CA1806 / 0 | Five TriangleMeshDistance and one Pipeline rejection assertion explicitly discard the constructed value without changing the expected exception. The ceiling is zero. |
 | Dispose/finalizer extensibility | CA1816 / 0 | VisionToolResult, VisionPipelineContext and VisionPipelineRunResult release their existing owned Mats/results, then suppress finalization for derived instances. The ceiling is zero. |
@@ -557,10 +664,11 @@ PL-0009 re-reviewed and corrected the six CA1806 sites, all three Dispose bodies
 and all five CA2208 call sites. PL-0010 reviewed the four CA1507 argument sites and
 37 CA2249 smoke assertions. PL-0011 reviewed the 186 compatibility identities and
 retains them only because correcting the public field/name shape would break the 3.x
-contract. The 272 performance suggestions remain classified rather than individually
-promoted to code changes; they need measured evidence. CA1305 remains a fixed zero
-ceiling; CA1507, CA1806, CA1816, CA2208, and CA2249 are absent from both output and
-the maximum-count map. No analyzer ceiling or coverage minimum was relaxed.
+contract. PL-0012 reviewed all 272 performance suggestions, changed the 41 cases
+with deterministic allocation evidence, and retains 231 exact identities by their
+documented contract or call-frequency decision. CA1305, CA1507, CA1806, CA1816,
+CA1825, CA1843, CA2208, and CA2249 now have zero ceilings. No analyzer ceiling or
+coverage minimum was relaxed.
 
 ### Historical PL-0002 milestone snapshot
 

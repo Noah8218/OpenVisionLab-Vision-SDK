@@ -16,7 +16,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Values = values ?? new double[0];
+            Values = values ?? Array.Empty<double>();
             ChangedCount = changedCount;
         }
 
@@ -36,7 +36,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         internal static DeterministicMedianFilterResult Failed(string message)
         {
-            return new DeterministicMedianFilterResult(false, message, new double[0], 0);
+            return new DeterministicMedianFilterResult(false, message, Array.Empty<double>(), 0);
         }
     }
 

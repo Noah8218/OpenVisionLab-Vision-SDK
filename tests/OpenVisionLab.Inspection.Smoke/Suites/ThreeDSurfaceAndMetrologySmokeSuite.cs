@@ -1431,7 +1431,7 @@ namespace OpenVisionLab.Inspection.Smoke
             DeterministicSurfaceEdgeCoverageResult result =
                 new DeterministicSurfaceEdgeCoverageTool().Execute(
                     model,
-                    new SurfaceEdgeAnchorSample[0],
+                    Array.Empty<SurfaceEdgeAnchorSample>(),
                     identity,
                     0.2);
 
@@ -2113,7 +2113,7 @@ namespace OpenVisionLab.Inspection.Smoke
             {
                 new VolumeInspectionTool().Execute(
                     CreateAnalyticPlaneSamples(0.0, 0.0, 0.0, new double[9]),
-                    new HeightFieldPlaneFitSample[0],
+                    Array.Empty<HeightFieldPlaneFitSample>(),
                     VolumeOptions(1.0, 0.0, 0.0));
                 throw new InvalidOperationException("Empty volume measurement input must be rejected.");
             }

@@ -93,7 +93,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             Success = success;
             Message = message ?? string.Empty;
-            Regions = regions ?? new ConnectedRegion[0];
+            Regions = regions ?? Array.Empty<ConnectedRegion>();
             ForegroundCellCount = foregroundCellCount;
             VisitedCellCount = visitedCellCount;
         }
@@ -122,7 +122,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return new ConnectedRegionResult(
                 false,
                 message,
-                new ConnectedRegion[0],
+                Array.Empty<ConnectedRegion>(),
                 0,
                 0);
         }

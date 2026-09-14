@@ -140,7 +140,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             Message = message ?? string.Empty;
             Geometry = geometry;
             Diagnostics = diagnostics;
-            PointDiagnostics = pointDiagnostics ?? new DeterministicLineFitPointDiagnostic[0];
+            PointDiagnostics = pointDiagnostics ?? Array.Empty<DeterministicLineFitPointDiagnostic>();
         }
 
         public bool Success { get; }
@@ -168,7 +168,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         internal static DeterministicLineFitResult Failed(string message)
         {
-            return new DeterministicLineFitResult(false, message, null, null, new DeterministicLineFitPointDiagnostic[0]);
+            return new DeterministicLineFitResult(false, message, null, null, Array.Empty<DeterministicLineFitPointDiagnostic>());
         }
     }
 
