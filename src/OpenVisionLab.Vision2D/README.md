@@ -207,8 +207,9 @@ any of these factory failures to `ToolFactoryFailed` and preserves the exception
 `RunWithFailureResults` instead returns `InputLayerMissing`, `ToolFactoryFailed`, or
 `ToolExecutionException` step results for missing layers, factory failures, and
 throwing/null custom Tool results. Invalid Pipeline definitions still throw before
-execution. `StepTimeout` and `StepCanceled` remain reserved until a real cooperative
-execution contract exists.
+execution. The token overload of `Run` propagates `OperationCanceledException`; the
+token overload of `RunWithFailureResults` returns exactly one `StepCanceled` /
+`Canceled` step and stops before a later step. `StepTimeout` remains reserved.
 
 ```csharp
 // After using VisionToolResult result = tool.Execute(source):
@@ -235,12 +236,40 @@ reported. To retain an output after disposing a result, make an owned `Clone()`.
 
 Use one Tool per sequential worker. Concurrent execution, property changes,
 template changes, input mutation and disposal on the same instance are unsupported.
-`IVisionTool.Execute`, `VisionPipelineRuntime.Run` and `CombinedInspectionRunner.Run`
-are synchronous and have no cancellation-token contract. Pipeline
-`MaxElapsedMilliseconds` checks elapsed time **after** execution; it does not abort
-a native call. Running a call inside `Task.Run` or stopping the await does not cancel
-that work. Keep inputs/tools alive until it finishes. Hard stop/restart requirements
-belong to host process orchestration.
+All 2D calls remain synchronous. `MatchingTool`,
+`EdgeBasedTemplateMatchingTool`, `AutoMPointTool`, and `SiftTool` implement
+`ICancellableVisionTool.Execute(Mat, CancellationToken)`. Their managed ROI,
+candidate, angle, scale and feature loops observe the token, and native OpenCV calls
+are checked before and after returning. A native call already in progress cannot be
+preempted. Hard stop/restart requirements belong to host process orchestration.
+
+The token overloads of `VisionPipelineRuntime.Run` and
+`RunWithFailureResults` forward the token to `ICancellableVisionTool`. Other
+`IVisionTool` implementations receive checks immediately before and after their
+call. If such a non-cooperative Tool returns after cancellation, the runtime disposes
+its returned result and does not publish its output layer. Pipeline
+`MaxElapsedMilliseconds` still checks elapsed time **after** execution and does not
+abort work. `CombinedInspectionRunner.Run` retains its existing tokenless contract.
+
+```csharp
+using System;
+using System.Threading;
+
+// matchingTool is configured and source remains caller-owned.
+using CancellationTokenSource cancellation = new CancellationTokenSource();
+
+try
+{
+    using VisionToolResult result =
+        ((ICancellableVisionTool)matchingTool).Execute(source, cancellation.Token);
+    // Consume result before disposing it.
+}
+catch (OperationCanceledException exception)
+    when (exception.CancellationToken == cancellation.Token)
+{
+    // The caller requested cancellation; do not reuse mutable Tool result lists.
+}
+```
 
 The caller owns the input `Mat`. Dispose the Tool and `VisionToolResult`; the result
 owns its output image snapshot. `VisionToolResult`, `VisionPipelineContext`, and

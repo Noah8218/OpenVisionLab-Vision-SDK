@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using OpenVisionLab.Core;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
@@ -14,7 +15,7 @@ namespace OpenVisionLab.Vision2D.Tool
     /// runtime does not expose SIFT. The selected detector is reported in the
     /// result metrics.
     /// </summary>
-    public partial class SiftTool : OpenCvAlgorithmBase
+    public partial class SiftTool : OpenCvAlgorithmBase, ICancellableVisionTool
     {
         public IOpenCVPropertyFeatureSIFT property;
         public List<MatchingResult> results = new List<MatchingResult>();
@@ -23,6 +24,11 @@ namespace OpenVisionLab.Vision2D.Tool
         private string lastFeatureDetector = "Unknown";
 
         public SiftTool() { }
+
+        public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
+        {
+            return ExecuteWithCancellation(source, cancellationToken);
+        }
 
         public void SetProperty(IOpenCVPropertyFeatureSIFT propertyBase) => property = propertyBase;
 
@@ -106,6 +112,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             if(property.USE_MULTI_ROI)
             {
                 MultiRun();
@@ -113,7 +120,8 @@ namespace OpenVisionLab.Vision2D.Tool
             else
             {
                 SingleRun();
-            }            
+            }
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
         }
 
         protected bool MultiRun()
@@ -129,6 +137,7 @@ namespace OpenVisionLab.Vision2D.Tool
             {
                 for (int i = 0; i < property.CvROIS.Count; i++)
                 {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     Rect roi = NormalizeFeatureRoi(property.CvROIS[i]);
                     RunFeatureMatchingForRoi(imageTemplate, roi, true);
                 }
@@ -159,10 +168,12 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private Mat CreatePreparedFeatureTemplate()
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             Mat preparedTemplate = imageTemplate.Clone();
             try
             {
                 ApplyCommonPreprocessing(preparedTemplate, property);
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
                 return preparedTemplate;
             }
             catch
@@ -181,14 +192,17 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private void RunFeatureMatchingForRoi(Mat imageTemplate, Rect roi, bool useRoi)
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             using (Mat imageSift = CreatePreprocessedImage(roi, useRoi, property))
             {
                 AddFeatureMatchResult(imageSift, imageTemplate, useRoi, roi);
             }
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
         }
 
         private void AddFeatureMatchResult(Mat imageSift, Mat imageTemplate, bool useRoi, Rect roi)
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             if (OpenCvHelper.IsImageEmpty(imageSift) || OpenCvHelper.IsImageEmpty(imageTemplate))
             {
                 SetFeatureFailure(VisionToolErrorCode.FeatureNoResult, $"Feature matching source or template image is empty after preprocessing. {FormatFeatureOptions(roi)}");
@@ -200,8 +214,11 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat descriptorsSource = new Mat())
             {
                 lastFeatureDetector = detector.Name;
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
                 detector.Detector.DetectAndCompute(imageTemplate, null, out KeyPoint[] keypointsTemplate, descriptorsTemplate);
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
                 detector.Detector.DetectAndCompute(imageSift, null, out KeyPoint[] keypointsSource, descriptorsSource);
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
 
                 if (descriptorsTemplate.Empty() || descriptorsSource.Empty()
                     || keypointsTemplate.Length == 0 || keypointsSource.Length == 0)
@@ -214,12 +231,15 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 using (BFMatcher matcher = new BFMatcher(detector.NormType))
                 {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     DMatch[][] knnMatches = matcher.KnnMatch(descriptorsTemplate, descriptorsSource, 2);
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     float ratioThreshold = (float)property.SCORE_MIN;
                     List<DMatch> goodMatches = new List<DMatch>();
 
                     foreach (DMatch[] match in knnMatches)
                     {
+                        ExecutionCancellationToken.ThrowIfCancellationRequested();
                         if (match.Length >= 2 && match[0].Distance < ratioThreshold * match[1].Distance)
                         {
                             goodMatches.Add(match[0]);
@@ -239,9 +259,11 @@ namespace OpenVisionLab.Vision2D.Tool
                     Point2d[] srcPtsD = ConvertPoint2fToPoint2d(srcPts);
                     Point2d[] dstPtsD = ConvertPoint2fToPoint2d(dstPts);
 
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     using (Mat inlierMask = new Mat())
                     using (Mat homography = Cv2.FindHomography(srcPtsD, dstPtsD, HomographyMethods.Ransac, property.RANSAC_REPROJ_THRESHOLD, inlierMask))
                     {
+                        ExecutionCancellationToken.ThrowIfCancellationRequested();
                         if (homography == null || homography.Empty())
                         {
                             SetFeatureFailure(
@@ -259,7 +281,9 @@ namespace OpenVisionLab.Vision2D.Tool
                             new Point2f(size.Width - 1, 0)
                         };
 
+                        ExecutionCancellationToken.ThrowIfCancellationRequested();
                         Point2f[] dst = Cv2.PerspectiveTransform(pts, homography);
+                        ExecutionCancellationToken.ThrowIfCancellationRequested();
                         if (dst.Length != 4)
                         {
                             SetFeatureFailure(VisionToolErrorCode.FeatureHomographyFailed, $"Feature matching homography returned invalid corner count. Count={dst.Length}, {FormatFeatureOptions(roi)}");
@@ -270,6 +294,7 @@ namespace OpenVisionLab.Vision2D.Tool
                         {
                             for (int i = 0; i < dst.Length; i++)
                             {
+                                ExecutionCancellationToken.ThrowIfCancellationRequested();
                                 dst[i].X += roi.X;
                                 dst[i].Y += roi.Y;
                             }
@@ -288,6 +313,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                         results.Add(new MatchingResult(results.Count + 1, score, center, bounding, rect.Angle));
                         ResetFeatureFailure();
+                        ExecutionCancellationToken.ThrowIfCancellationRequested();
                     }
                 }
             }

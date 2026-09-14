@@ -50,8 +50,11 @@ rules.
 All current 2D Tools implement `IVisionTool.Execute(Mat)` and return an owned,
 disposable `VisionToolResult`. The caller owns the input `Mat`. One Tool instance is
 for one sequential worker; concurrent execution, settings/template mutation, input
-mutation, and disposal on the same instance are unsupported. The common API has no
-cooperative-cancellation parameter.
+mutation, and disposal on the same instance are unsupported. `MatchingTool`,
+`EdgeBasedTemplateMatchingTool`, `AutoMPointTool`, and `SiftTool` also implement
+`ICancellableVisionTool.Execute(Mat, CancellationToken)`. Cancellation is observed
+inside their managed search loops and around native calls; it cannot preempt a
+native OpenCV call already in progress.
 
 `Core factory` means `VisionPipelineToolFactory` owns the descriptor and creates the
 Tool from a `VisionPipelineStep`. `Blob composite` means
@@ -122,8 +125,11 @@ objects.
 | --- | --- |
 | `VisionPipelineRuntime.Run` | Existing 3.x behavior. Invalid Pipeline definitions, factory failures, and thrown custom Tool exceptions propagate. Completed step results are disposed if execution throws. |
 | `VisionPipelineRuntime.RunWithFailureResults` | Additive host boundary. Missing input layers, factory exceptions/null returns, and thrown/null Tool results become failed `VisionPipelineStepResult` entries. Invalid Pipeline definitions still throw before execution. |
+| `VisionPipelineRuntime.Run(..., CancellationToken)` | Additive cooperative path. The token is forwarded to `ICancellableVisionTool`; cancellation propagates as `OperationCanceledException`, disposes unreturned completed results, and stops later steps. |
+| `VisionPipelineRuntime.RunWithFailureResults(..., CancellationToken)` | Additive captured path. Cancellation creates exactly one `StepCanceled` / `Canceled` step, disposes any result returned after cancellation, and stops later steps. |
 
-Both APIs remain synchronous. `MaxElapsedMilliseconds` is a post-execution
+All four APIs remain synchronous. A non-cooperative `IVisionTool` receives only
+pre/post-call cancellation checks. `MaxElapsedMilliseconds` is a post-execution
 acceptance limit and does not abort work.
 
 ## Pipeline artifact contract
@@ -164,7 +170,7 @@ Use `ErrorCode`/`ResultStatus` for control flow and `Message` only for diagnosis
 | `ToolExecutionException` | `RunWithFailureResults` for a throwing/null custom Tool result and other declared boundaries | Preserve exception and input/settings evidence; do not reuse stale output |
 | `OpenCvExecutionFailed` and Tool-specific codes | Modern 2D `Execute` boundary | Branch on the typed code; diagnose native/input or controlled no-result condition |
 | `StepTimeout` | Reserved; no execution producer | Do not treat `MaxElapsedMilliseconds` as cancellation |
-| `StepCanceled` | Reserved; no common 2D execution producer | Use only after a real cooperative cancellation contract exists |
+| `StepCanceled` | Token overload of `RunWithFailureResults` | Treat it as caller-requested execution cancellation; inspect the retained `OperationCanceledException` and do not execute dependent steps |
 
 Infrastructure failures returned by `RunWithFailureResults` cannot satisfy a
 terminal `ExpectedSuccess=false` acceptance rule. Expected inspection failures must
@@ -184,7 +190,8 @@ come from an executed Tool's controlled result.
 6. `VisionPipelineContext.cs` and `VisionPipelineRunResult.cs` — mutable layer owner
    and result release owner.
 7. `VisionToolResult.cs` — public 2D status/error/lifetime contract.
-8. Search the Tool name in `Vision2DSmokeSuite.cs` or the matching 3D smoke suite.
+8. Read `Vision2DCancellationSmokeSuite.cs` for cancellation/error/lifetime cases,
+   then search the Tool name in `Vision2DSmokeSuite.cs` or the matching 3D suite.
 
 ## Ordered engineering priorities
 

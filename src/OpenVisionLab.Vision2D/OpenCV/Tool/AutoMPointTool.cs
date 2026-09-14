@@ -6,10 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
-    public sealed class AutoMPointTool : OpenCvAlgorithmBase
+    public sealed class AutoMPointTool : OpenCvAlgorithmBase, ICancellableVisionTool
     {
         public IAutoMPointToolProperty property;
         public List<AutoMPointCandidateResult> results = new List<AutoMPointCandidateResult>();
@@ -22,6 +23,7 @@ namespace OpenVisionLab.Vision2D.Tool
         private double analysisElapsedMilliseconds;
         private IReadOnlyList<Mat> representativeImages = Array.Empty<Mat>();
         private readonly AutoMPointCandidateAnalyzer candidateAnalyzer;
+        private CancellationToken CurrentCancellationToken => ExecutionCancellationToken;
 
         public AutoMPointTool()
         {
@@ -30,12 +32,33 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public void SetProperty(IAutoMPointToolProperty property) => this.property = property;
 
+        public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
+        {
+            return ExecuteWithCancellation(source, cancellationToken);
+        }
+
         public VisionToolResult Execute(Mat source, IReadOnlyList<Mat> samples)
         {
             representativeImages = samples ?? Array.Empty<Mat>();
             try
             {
                 return base.Execute(source);
+            }
+            finally
+            {
+                representativeImages = Array.Empty<Mat>();
+            }
+        }
+
+        public VisionToolResult Execute(
+            Mat source,
+            IReadOnlyList<Mat> samples,
+            CancellationToken cancellationToken)
+        {
+            representativeImages = samples ?? Array.Empty<Mat>();
+            try
+            {
+                return ExecuteWithCancellation(source, cancellationToken);
             }
             finally
             {
@@ -122,6 +145,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 for (int index = 0; index < representativeImages.Count; index++)
                 {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     Mat sample = representativeImages[index];
                     if (OpenCvHelper.IsImageEmpty(sample)
                         || sample.Width != imageSource.Width
@@ -183,7 +207,9 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             candidateAnalyzer.Run();
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
         }
 
         protected override IDictionary<string, double> CollectMetrics()
@@ -269,11 +295,14 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private Stopwatch swTaktTimems => owner.swTaktTimems;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         private void ReplaceResultImage(Mat result) => owner.ReplaceResultImage(result);
 
         public void Run()
         {
             Stopwatch analysisStopwatch = Stopwatch.StartNew();
+            cancellationToken.ThrowIfCancellationRequested();
             results.Clear();
             candidates.Clear();
             generatedCandidateCount = 0;
@@ -287,11 +316,17 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat absoluteGradientX = new Mat())
             using (Mat absoluteGradientY = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Canny(gray, edges, property.CannyLow, property.CannyHigh, 3, true);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Sobel(gray, gradientX, MatType.CV_32FC1, 1, 0, 3);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Sobel(gray, gradientY, MatType.CV_32FC1, 0, 1, 3);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.ConvertScaleAbs(gradientX, absoluteGradientX);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.ConvertScaleAbs(gradientY, absoluteGradientY);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 List<FeatureCandidate> scored = GenerateCandidateRects()
                     .Select(candidate => ScoreFeatureCandidate(
@@ -318,6 +353,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 {
                     foreach (FeatureCandidate finalist in finalists)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         AutoMPointCandidateResult candidate = EvaluateCandidate(gray, finalist, matcher);
                         candidates.Add(candidate);
                     }
@@ -326,6 +362,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     {
                         foreach (AutoMPointCandidateResult candidate in candidates.Where(item => item.Accepted))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             EvaluateRepresentativeImages(gray, candidate, matcher);
                         }
                     }
@@ -351,6 +388,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 for (int index = 0; index < accepted.Count; index++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     accepted[index].Rank = index + 1;
                     accepted[index].Index = index + 1;
                 }
@@ -360,6 +398,7 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             analysisStopwatch.Stop();
+            cancellationToken.ThrowIfCancellationRequested();
             analysisElapsedMilliseconds = analysisStopwatch.Elapsed.TotalMilliseconds;
             swTaktTimems.Restart();
             swTaktTimems.Stop();
@@ -380,8 +419,10 @@ namespace OpenVisionLab.Vision2D.Tool
                     property.CandidateStride);
                 foreach (int y in ys)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     foreach (int x in xs)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         output.Add(new CandidateRect(
                             new Rect(x, y, property.PatternWidth, property.PatternHeight),
                             false));
@@ -405,6 +446,7 @@ namespace OpenVisionLab.Vision2D.Tool
             Mat absoluteGradientX,
             Mat absoluteGradientY)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             FeatureCandidate candidate = new FeatureCandidate(rect, isWholeAnalysisRoi);
             using (Mat grayRoi = gray.SubMat(rect))
             using (Mat edgeRoi = edges.SubMat(rect))
@@ -412,12 +454,16 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat gradientYRoi = absoluteGradientY.SubMat(rect))
             {
                 Cv2.MeanStdDev(grayRoi, out _, out Scalar deviation);
+                cancellationToken.ThrowIfCancellationRequested();
                 candidate.ContrastStdDev = deviation.Val0;
                 candidate.EdgeDensity = Cv2.CountNonZero(edgeRoi) / (double)(rect.Width * rect.Height);
+                cancellationToken.ThrowIfCancellationRequested();
                 candidate.QuadrantBalance = CalculateQuadrantBalance(edgeRoi);
 
                 double gradientXSum = Cv2.Sum(gradientXRoi).Val0;
+                cancellationToken.ThrowIfCancellationRequested();
                 double gradientYSum = Cv2.Sum(gradientYRoi).Val0;
+                cancellationToken.ThrowIfCancellationRequested();
                 double maximumGradient = Math.Max(gradientXSum, gradientYSum);
                 candidate.OrientationBalance = maximumGradient > 0d
                     ? Math.Min(gradientXSum, gradientYSum) / maximumGradient
@@ -461,6 +507,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<FeatureCandidate> selected = new List<FeatureCandidate>();
             foreach (FeatureCandidate candidate in passed)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 bool overlaps = selected.Any(existing =>
                     candidate.IsWholeAnalysisRoi == existing.IsWholeAnalysisRoi
                     && CalculateIntersectionOverUnion(candidate.Rect, existing.Rect) > property.MaximumCandidateOverlap);
@@ -484,6 +531,7 @@ namespace OpenVisionLab.Vision2D.Tool
             FeatureCandidate feature,
             EdgeBasedTemplateMatchingTool matcher)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             AutoMPointCandidateResult candidate = new AutoMPointCandidateResult
             {
                 PatternRoi = feature.Rect,
@@ -503,7 +551,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 matcher.SetProperty(CreateMatcherProperty());
                 matcher.SetTemplateImage(template);
 
-                VisionToolResult selfExecution = matcher.Execute(gray);
+                VisionToolResult selfExecution = matcher.Execute(gray, cancellationToken);
                 try
                 {
                     runtimes.Add(selfExecution.Elapsed.TotalMilliseconds);
@@ -548,6 +596,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 List<SyntheticCase> syntheticCases = CreateSyntheticCases();
                 foreach (SyntheticCase syntheticCase in syntheticCases)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     using (Mat matrix = CreateSyntheticMatrix(gray.Size(), syntheticCase))
                     using (Mat transformed = new Mat())
                     {
@@ -558,6 +607,7 @@ namespace OpenVisionLab.Vision2D.Tool
                             gray.Size(),
                             InterpolationFlags.Linear,
                             BorderTypes.Reflect101);
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (Math.Abs(syntheticCase.Contrast - 1d) > 0.000001d
                             || Math.Abs(syntheticCase.Brightness) > 0.000001d)
                         {
@@ -566,10 +616,11 @@ namespace OpenVisionLab.Vision2D.Tool
                                 transformed.Type(),
                                 syntheticCase.Contrast,
                                 syntheticCase.Brightness);
+                            cancellationToken.ThrowIfCancellationRequested();
                         }
 
                         Point2f expectedCenter = TransformPoint(candidate.NativeMatchCenter, matrix);
-                        VisionToolResult execution = matcher.Execute(transformed);
+                        VisionToolResult execution = matcher.Execute(transformed, cancellationToken);
                         try
                         {
                             runtimes.Add(execution.Elapsed.TotalMilliseconds);
@@ -667,9 +718,10 @@ namespace OpenVisionLab.Vision2D.Tool
                 matcher.SetTemplateImage(template);
                 for (int index = 0; index < representativeImages.Count; index++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     using (Mat sampleGray = CreateGrayImage(representativeImages[index]))
                     {
-                        VisionToolResult execution = matcher.Execute(sampleGray);
+                        VisionToolResult execution = matcher.Execute(sampleGray, cancellationToken);
                         try
                         {
                             MatchingResult best = matcher.results
@@ -813,56 +865,68 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private void DrawResult()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat drawing = imageSource.Clone();
-            OpenCvHelper.SetImageChannel3(drawing);
-            Cv2.Rectangle(drawing, analysisRoi, new Scalar(255, 255, 0), 1);
-
-            foreach (AutoMPointCandidateResult candidate in candidates)
+            try
             {
-                if (candidate.Accepted)
+                OpenCvHelper.SetImageChannel3(drawing);
+                Cv2.Rectangle(drawing, analysisRoi, new Scalar(255, 255, 0), 1);
+
+                foreach (AutoMPointCandidateResult candidate in candidates)
                 {
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (candidate.Accepted)
+                    {
+                        continue;
+                    }
+
+                    Scalar color = new Scalar(0, 0, 180);
+                    Cv2.Rectangle(drawing, candidate.PatternRoi, color, 1);
+                    OpenCvSharp.Point patternPoint = new OpenCvSharp.Point(
+                        (int)Math.Round(candidate.PatternCenter.X),
+                        (int)Math.Round(candidate.PatternCenter.Y));
+                    Cv2.Circle(drawing, patternPoint, 4, color, -1, LineTypes.AntiAlias);
+                    Cv2.PutText(
+                        drawing,
+                        "REJECT",
+                        new OpenCvSharp.Point(candidate.PatternRoi.X + 3, candidate.PatternRoi.Y + 18),
+                        HersheyFonts.HersheySimplex,
+                        0.4,
+                        color,
+                        1,
+                        LineTypes.AntiAlias);
                 }
 
-                Scalar color = new Scalar(0, 0, 180);
-                Cv2.Rectangle(drawing, candidate.PatternRoi, color, 1);
-                OpenCvSharp.Point patternPoint = new OpenCvSharp.Point(
-                    (int)Math.Round(candidate.PatternCenter.X),
-                    (int)Math.Round(candidate.PatternCenter.Y));
-                Cv2.Circle(drawing, patternPoint, 4, color, -1, LineTypes.AntiAlias);
-                Cv2.PutText(
-                    drawing,
-                    "REJECT",
-                    new OpenCvSharp.Point(candidate.PatternRoi.X + 3, candidate.PatternRoi.Y + 18),
-                    HersheyFonts.HersheySimplex,
-                    0.4,
-                    color,
-                    1,
-                    LineTypes.AntiAlias);
-            }
+                foreach (AutoMPointCandidateResult candidate in results)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Scalar color = candidate.Rank == 1 ? new Scalar(0, 255, 255) : new Scalar(0, 255, 0);
+                    Cv2.Rectangle(drawing, candidate.PatternRoi, color, candidate.Rank == 1 ? 3 : 2);
+                    OpenCvSharp.Point patternPoint = new OpenCvSharp.Point(
+                        (int)Math.Round(candidate.PatternCenter.X),
+                        (int)Math.Round(candidate.PatternCenter.Y));
+                    Cv2.Circle(drawing, patternPoint, 5, color, 2, LineTypes.AntiAlias);
+                    Cv2.PutText(
+                        drawing,
+                        candidate.RepresentativeImageCount > 0
+                            ? $"#{candidate.Rank} {candidate.RepresentativeSuccessCount}/{candidate.RepresentativeImageCount}"
+                            : $"#{candidate.Rank}",
+                        new OpenCvSharp.Point(candidate.PatternRoi.X + 3, candidate.PatternRoi.Y + 15),
+                        HersheyFonts.HersheySimplex,
+                        0.45,
+                        color,
+                        1,
+                        LineTypes.AntiAlias);
+                }
 
-            foreach (AutoMPointCandidateResult candidate in results)
+                cancellationToken.ThrowIfCancellationRequested();
+                ReplaceResultImage(drawing);
+                drawing = null;
+            }
+            finally
             {
-                Scalar color = candidate.Rank == 1 ? new Scalar(0, 255, 255) : new Scalar(0, 255, 0);
-                Cv2.Rectangle(drawing, candidate.PatternRoi, color, candidate.Rank == 1 ? 3 : 2);
-                OpenCvSharp.Point patternPoint = new OpenCvSharp.Point(
-                    (int)Math.Round(candidate.PatternCenter.X),
-                    (int)Math.Round(candidate.PatternCenter.Y));
-                Cv2.Circle(drawing, patternPoint, 5, color, 2, LineTypes.AntiAlias);
-                Cv2.PutText(
-                    drawing,
-                    candidate.RepresentativeImageCount > 0
-                        ? $"#{candidate.Rank} {candidate.RepresentativeSuccessCount}/{candidate.RepresentativeImageCount}"
-                        : $"#{candidate.Rank}",
-                    new OpenCvSharp.Point(candidate.PatternRoi.X + 3, candidate.PatternRoi.Y + 15),
-                    HersheyFonts.HersheySimplex,
-                    0.45,
-                    color,
-                    1,
-                    LineTypes.AntiAlias);
+                drawing?.Dispose();
             }
-
-            ReplaceResultImage(drawing);
         }
 
         private List<SyntheticCase> CreateSyntheticCases()
@@ -917,15 +981,25 @@ namespace OpenVisionLab.Vision2D.Tool
             return Math.Max(property.ScaleMinimum, Math.Min(property.ScaleMaximum, requested));
         }
 
-        private static Mat CreateSyntheticMatrix(OpenCvSharp.Size imageSize, SyntheticCase syntheticCase)
+        private Mat CreateSyntheticMatrix(OpenCvSharp.Size imageSize, SyntheticCase syntheticCase)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat matrix = Cv2.GetRotationMatrix2D(
                 new Point2f((imageSize.Width - 1) / 2f, (imageSize.Height - 1) / 2f),
                 syntheticCase.Angle,
                 syntheticCase.Scale);
-            matrix.Set(0, 2, matrix.At<double>(0, 2) + syntheticCase.OffsetX);
-            matrix.Set(1, 2, matrix.At<double>(1, 2) + syntheticCase.OffsetY);
-            return matrix;
+            try
+            {
+                matrix.Set(0, 2, matrix.At<double>(0, 2) + syntheticCase.OffsetX);
+                matrix.Set(1, 2, matrix.At<double>(1, 2) + syntheticCase.OffsetY);
+                cancellationToken.ThrowIfCancellationRequested();
+                return matrix;
+            }
+            catch
+            {
+                matrix.Dispose();
+                throw;
+            }
         }
 
         private static Point2f TransformPoint(Point2f point, Mat matrix)
@@ -1030,18 +1104,29 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private static Mat CreateGrayImage(Mat source)
+        private Mat CreateGrayImage(Mat source)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat gray = source.Clone();
-            OpenCvHelper.SetImageChannel1(gray);
-            return gray;
+            try
+            {
+                OpenCvHelper.SetImageChannel1(gray);
+                cancellationToken.ThrowIfCancellationRequested();
+                return gray;
+            }
+            catch
+            {
+                gray.Dispose();
+                throw;
+            }
         }
 
-        private static List<int> CreateAxisPositions(int first, int last, int stride)
+        private List<int> CreateAxisPositions(int first, int last, int stride)
         {
             List<int> values = new List<int>();
             for (int value = first; value <= last; value += stride)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 values.Add(value);
             }
 

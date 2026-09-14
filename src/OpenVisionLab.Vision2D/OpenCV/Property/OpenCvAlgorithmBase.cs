@@ -9,11 +9,14 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace OpenVisionLab.Vision2D.Property
 {
     public abstract class OpenCvAlgorithmBase : IVisionTool, IDisposable
     {
+        private CancellationToken executionCancellationToken;
+
         public OpenCvAlgorithmBase() { }
         public Mat imageSource { get; set; } = new Mat();
         public Mat imageResult { get; set; } = new Mat();
@@ -56,12 +59,30 @@ namespace OpenVisionLab.Vision2D.Property
 
         public virtual string Name => GetType().Name;
 
+        /// <summary>Gets the token for the current synchronous execution.</summary>
+        /// <remarks>The Tool contract forbids concurrent execution of the same instance.</remarks>
+        protected CancellationToken ExecutionCancellationToken => executionCancellationToken;
+
         public virtual VisionToolResult Execute(Mat source)
         {
+            return ExecuteCore(source, false, CancellationToken.None);
+        }
+
+        /// <summary>Runs with cooperative cancellation and propagates cancellation to the caller.</summary>
+        protected VisionToolResult ExecuteWithCancellation(Mat source, CancellationToken cancellationToken)
+        {
+            return ExecuteCore(source, true, cancellationToken);
+        }
+
+        private VisionToolResult ExecuteCore(Mat source, bool propagateCancellation, CancellationToken cancellationToken)
+        {
             Stopwatch stopwatch = Stopwatch.StartNew();
+            CancellationToken previousCancellationToken = executionCancellationToken;
+            executionCancellationToken = cancellationToken;
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (OpenCvHelper.IsImageEmpty(source))
                 {
                     stopwatch.Stop();
@@ -72,8 +93,10 @@ namespace OpenVisionLab.Vision2D.Property
                 }
 
                 SetSourceImage(source);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!TryValidateBeforeRun(out VisionToolErrorCode validationErrorCode, out string validationMessage))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     stopwatch.Stop();
                     return VisionToolResult.Failed(
                         validationErrorCode,
@@ -81,20 +104,52 @@ namespace OpenVisionLab.Vision2D.Property
                         stopwatch.Elapsed);
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 Run();
+                cancellationToken.ThrowIfCancellationRequested();
                 stopwatch.Stop();
 
                 if (!TryValidateAfterRun(out VisionToolErrorCode runErrorCode, out string runMessage))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     VisionToolResult failedResult = VisionToolResult.Failed(
                         runErrorCode,
                         runMessage,
                         stopwatch.Elapsed);
-                    AttachExecutionDetails(failedResult);
-                    return failedResult;
+                    try
+                    {
+                        AttachExecutionDetails(failedResult);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return failedResult;
+                    }
+                    catch
+                    {
+                        failedResult.Dispose();
+                        throw;
+                    }
                 }
 
-                return VisionToolResult.Passed(CreateResultImageSnapshot(), stopwatch.Elapsed, CollectMetrics(), CollectOverlays());
+                cancellationToken.ThrowIfCancellationRequested();
+                Mat resultImage = CreateResultImageSnapshot();
+                try
+                {
+                    IDictionary<string, double> metrics = CollectMetrics();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    IEnumerable<VisionToolOverlay> overlays = CollectOverlays();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    VisionToolResult result = VisionToolResult.Passed(resultImage, stopwatch.Elapsed, metrics, overlays);
+                    resultImage = null;
+                    return result;
+                }
+                finally
+                {
+                    resultImage?.Dispose();
+                }
+            }
+            catch (OperationCanceledException) when (propagateCancellation)
+            {
+                stopwatch.Stop();
+                throw;
             }
             catch (Exception ex)
             {
@@ -104,6 +159,10 @@ namespace OpenVisionLab.Vision2D.Property
                     ex.GetBaseException().Message,
                     stopwatch.Elapsed,
                     ex);
+            }
+            finally
+            {
+                executionCancellationToken = previousCancellationToken;
             }
         }
 

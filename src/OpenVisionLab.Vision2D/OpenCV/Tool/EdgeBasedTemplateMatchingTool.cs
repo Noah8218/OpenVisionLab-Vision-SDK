@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
@@ -11,7 +12,7 @@ using OpenCvSharp;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
-    public sealed class EdgeBasedTemplateMatchingTool : OpenCvAlgorithmBase
+    public sealed class EdgeBasedTemplateMatchingTool : OpenCvAlgorithmBase, ICancellableVisionTool
     {
         public IOpenCVPropertyEdgeBasedTemplateMatching property;
         public List<MatchingResult> results = new List<MatchingResult>();
@@ -54,6 +55,7 @@ namespace OpenVisionLab.Vision2D.Tool
         private CandidateDiagnostics candidateDiagnostics = new CandidateDiagnostics();
         private VisionToolErrorCode lastMatchingErrorCode = VisionToolErrorCode.MatchingNoResult;
         private string lastMatchingMessage = "Edge based template matching found no result.";
+        private CancellationToken CurrentCancellationToken => ExecutionCancellationToken;
 
         public bool CollectPhaseTimings { get; set; }
         public IReadOnlyDictionary<string, double> LastPhaseElapsedMs => phaseElapsedMs;
@@ -91,13 +93,32 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override VisionToolResult Execute(Mat source)
         {
-            VisionToolResult result = base.Execute(source);
-            if (result != null)
-            {
-                result.EdgeBasedMatchingDiagnostics = CreateDiagnosticEvidence(result);
-            }
+            return AttachDiagnosticEvidence(base.Execute(source), CancellationToken.None);
+        }
 
-            return result;
+        public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
+        {
+            return AttachDiagnosticEvidence(ExecuteWithCancellation(source, cancellationToken), cancellationToken);
+        }
+
+        private VisionToolResult AttachDiagnosticEvidence(VisionToolResult result, CancellationToken cancellationToken)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (result != null)
+                {
+                    result.EdgeBasedMatchingDiagnostics = CreateDiagnosticEvidence(result);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
+            }
+            catch
+            {
+                result?.Dispose();
+                throw;
+            }
         }
 
         protected override bool TryValidateBeforeRun(out VisionToolErrorCode errorCode, out string message)
@@ -281,6 +302,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            CurrentCancellationToken.ThrowIfCancellationRequested();
             swTaktTimems.Restart();
             results.Clear();
             ResetMatchingFailure();
@@ -295,6 +317,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             long modelCacheStart = StartPhaseTiming();
             TemplateModelCache modelCache = GetTemplateModelCache();
+            CurrentCancellationToken.ThrowIfCancellationRequested();
             StopPhaseTiming("ModelCache", modelCacheStart);
             EdgeTemplateModel model = modelCache?.Model;
             if (model == null)
@@ -323,10 +346,13 @@ namespace OpenVisionLab.Vision2D.Tool
                 RunRoi(modelCache, roi, property.USE_ROI);
             }
 
+            CurrentCancellationToken.ThrowIfCancellationRequested();
+
             if (property.USE_DRAW_IMAGE || results.Count > 0)
             {
                 long drawStart = StartPhaseTiming();
                 DrawResultImage();
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("DrawResult", drawStart);
             }
 
@@ -342,22 +368,29 @@ namespace OpenVisionLab.Vision2D.Tool
 
             foreach (Rect roi in property.CvROIS)
             {
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 RunRoi(modelCache, NormalizeRoi(roi), true);
             }
         }
 
         private void RunRoi(TemplateModelCache modelCache, Rect roi, bool useRoi)
         {
+            CurrentCancellationToken.ThrowIfCancellationRequested();
             long preprocessStart = StartPhaseTiming();
             Mat source = CreatePreprocessedImage(roi, useRoi, property);
             StopPhaseTiming("Preprocess", preprocessStart);
             using (source)
             {
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 long gradientStart = StartPhaseTiming();
-                GradientImage gradients = GradientImage.Create(source, property.MIN_GRADIENT_MAGNITUDE);
+                GradientImage gradients = GradientImage.Create(
+                    source,
+                    property.MIN_GRADIENT_MAGNITUDE,
+                    CurrentCancellationToken);
                 StopPhaseTiming("SourceGradient", gradientStart);
                 using (gradients)
                 {
+                    CurrentCancellationToken.ThrowIfCancellationRequested();
                     EdgeTemplateModel model = modelCache.Model;
                     Mat template = modelCache.PreparedTemplate;
                     List<RotatedEdgeTemplateModel> searchModels = ShouldUseCoarseToFineAngleSearch()
@@ -382,6 +415,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                     for (int i = 0; i < localMatchCount; i++)
                     {
+                        CurrentCancellationToken.ThrowIfCancellationRequested();
                         long proposalStart = StartPhaseTiming();
                         MatchCandidate imageProposal = CreateHybridImageProposalCandidate(
                             gradients,
@@ -514,6 +548,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             while (results.Count < targetResultCount)
             {
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 List<MatchCandidate> availableSeeds = CreateAvailableCandidateSeeds(seedPool, suppressedBounds);
                 MatchCandidate fallback = availableSeeds.Count > 0 ? availableSeeds[0] : null;
                 if (fallback == null)
@@ -533,6 +568,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             while (results.Count < targetResultCount)
             {
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 if (ShouldUseHybridVerify())
                 {
                     candidateDiagnostics.FallbackSearchCount++;
@@ -1023,6 +1059,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private CandidateDiagnostics candidateDiagnostics => owner.candidateDiagnostics;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         private List<MatchingResult> results => owner.results;
 
         private void SetMatchingFailure(VisionToolErrorCode errorCode, string message)
@@ -1037,6 +1075,7 @@ namespace OpenVisionLab.Vision2D.Tool
             MatchCandidate selected,
             Mat template)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!property.USE_UNIQUE_MATCH_VALIDATION
                 || selected == null
                 || OpenCvHelper.IsImageEmpty(template))
@@ -1054,6 +1093,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             foreach (MatchCandidate candidate in candidates ?? Enumerable.Empty<MatchCandidate>())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (candidate == null
                     || IsSameCandidate(candidate, selected)
                     || candidate.Score < property.SCORE_MIN)
@@ -1485,6 +1525,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private EdgeTemplateModelStore modelStore => owner.modelStore;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         private long StartPhaseTiming() => owner.StartPhaseTiming();
 
         private void StopPhaseTiming(string phaseName, long startTimestamp) => owner.StopPhaseTiming(phaseName, startTimestamp);
@@ -1501,6 +1543,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<RectangleF> suppressedBounds,
             out List<MatchCandidate> candidateSeeds)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryFindBestCandidateFromPyramidPositionProposal(
                 source,
                 gradients,
@@ -1552,6 +1595,7 @@ namespace OpenVisionLab.Vision2D.Tool
             long verifyStart = StartPhaseTiming();
             foreach (MatchCandidate proposal in proposals)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 candidateDiagnostics.MaxPyramidProposalScore = Math.Max(
                     candidateDiagnostics.MaxPyramidProposalScore,
                     proposal.Score);
@@ -1560,6 +1604,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 double proposedTemplateCenterY = proposal.TemplateCenter.Y / PyramidPositionProposalScale;
                 foreach (double angle in CreatePyramidProposalRefineAngles(proposal.Angle))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     RotatedEdgeTemplateModel model = modelCache.GetRotatedModel(angle);
                     // The proposal is produced by a separately scaled template model.
                     // Convert through the visual template center, then re-derive the full-resolution
@@ -1638,8 +1683,12 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             using (Mat scaledSource = ResizeForPyramidProposal(source, PyramidPositionProposalScale))
             using (Mat scaledTemplate = ResizeForPyramidProposal(modelCache.PreparedTemplate, PyramidPositionProposalScale))
-            using (GradientImage scaledGradients = GradientImage.Create(scaledSource, property.MIN_GRADIENT_MAGNITUDE))
+            using (GradientImage scaledGradients = GradientImage.Create(
+                scaledSource,
+                property.MIN_GRADIENT_MAGNITUDE,
+                cancellationToken))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 EdgeTemplateModel scaledModel = modelStore.CreateModel(scaledTemplate);
                 if (scaledModel.Points.Count < ModelLowEdgePointThreshold)
                 {
@@ -1673,6 +1722,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 : Math.Max(property.FIND_ANGLE, property.COARSE_ANGLE_STEP);
             foreach (double angle in CreateSearchAnglesInRange(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, step))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angle;
             }
         }
@@ -1691,6 +1741,7 @@ namespace OpenVisionLab.Vision2D.Tool
             double radius = Math.Max(property.FIND_ANGLE, proposalStep / 2D);
             foreach (double angle in CreateSearchAnglesAround(proposalAngle, radius, property.FIND_ANGLE))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angle;
             }
         }
@@ -1704,6 +1755,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<MatchCandidate> candidates = new List<MatchCandidate>(capacity);
             foreach (RotatedEdgeTemplateModel model in models ?? Enumerable.Empty<RotatedEdgeTemplateModel>())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 FindTopCandidates(gradients, model, candidates, capacity, step);
             }
 
@@ -1731,8 +1783,14 @@ namespace OpenVisionLab.Vision2D.Tool
             step = Math.Max(1, step);
             for (int y = minCenterY; y <= maxCenterY; y += step)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int x = minCenterX; x <= maxCenterX; x += step)
                 {
+                    if ((x & 31) == 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
                     double score = ScoreCandidate(scoreContext, x, y);
                     if (!ShouldTrackCandidateSeed(candidates, score, capacity))
                     {
@@ -1767,8 +1825,14 @@ namespace OpenVisionLab.Vision2D.Tool
             MatchCandidate best = null;
             for (int y = minCenterY; y <= maxCenterY; y++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int x = minCenterX; x <= maxCenterX; x++)
                 {
+                    if ((x & 31) == 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
                     RectangleF bounds = CreateLocalBounds(x, y, model);
                     if (hasSuppressedBounds && IsSuppressed(bounds, suppressedBounds))
                     {
@@ -1786,19 +1850,29 @@ namespace OpenVisionLab.Vision2D.Tool
             return best;
         }
 
-        private static Mat ResizeForPyramidProposal(Mat source, double scale)
+        private Mat ResizeForPyramidProposal(Mat source, double scale)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat resized = new Mat();
-            Cv2.Resize(
-                source,
-                resized,
-                new OpenCvSharp.Size(
-                    Math.Max(1, (int)Math.Round(source.Width * scale)),
-                    Math.Max(1, (int)Math.Round(source.Height * scale))),
-                0D,
-                0D,
-                InterpolationFlags.Area);
-            return resized;
+            try
+            {
+                Cv2.Resize(
+                    source,
+                    resized,
+                    new OpenCvSharp.Size(
+                        Math.Max(1, (int)Math.Round(source.Width * scale)),
+                        Math.Max(1, (int)Math.Round(source.Height * scale))),
+                    0D,
+                    0D,
+                    InterpolationFlags.Area);
+                cancellationToken.ThrowIfCancellationRequested();
+                return resized;
+            }
+            catch
+            {
+                resized.Dispose();
+                throw;
+            }
         }
 
         private MatchCandidate FindBestCandidateFromModels(
@@ -1821,8 +1895,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 object sync = new object();
                 List<MatchCandidate> mergedSeeds = candidateSeeds;
                 MatchCandidate parallelBest = null;
-                Parallel.ForEach(models, searchModel =>
+                Parallel.ForEach(models, new ParallelOptions { CancellationToken = cancellationToken }, searchModel =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     List<MatchCandidate> modelSeeds;
                     MatchCandidate candidate = FindBestCandidate(
                         gradients,
@@ -1854,6 +1929,7 @@ namespace OpenVisionLab.Vision2D.Tool
             MatchCandidate best = null;
             foreach (RotatedEdgeTemplateModel searchModel in models)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 List<MatchCandidate> modelSeeds;
                 MatchCandidate candidate = FindBestCandidate(
                     gradients,
@@ -1888,8 +1964,9 @@ namespace OpenVisionLab.Vision2D.Tool
             if (ShouldUseParallelModelSearch(models.Length))
             {
                 object sync = new object();
-                Parallel.ForEach(models, searchModel =>
+                Parallel.ForEach(models, new ParallelOptions { CancellationToken = cancellationToken }, searchModel =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     MatchCandidate candidate = FindBestCandidate(gradients, searchModel, suppressedBounds, false);
                     if (candidate == null)
                     {
@@ -1907,6 +1984,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             foreach (RotatedEdgeTemplateModel model in models)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 MatchCandidate candidate = FindBestCandidate(gradients, model, suppressedBounds, true);
                 if (candidate != null)
                 {
@@ -1945,8 +2023,10 @@ namespace OpenVisionLab.Vision2D.Tool
             double fineRadius = coarseStep / 2D;
             foreach (MatchCandidate coarseCandidate in coarseBest)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 foreach (double angle in CreateSearchAnglesAround(coarseCandidate.Angle, fineRadius, property.FIND_ANGLE))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     double normalizedAngle = Math.Round(angle, 6);
                     double normalizedScale = NormalizeScale(coarseCandidate.Scale);
                     string modelKey = CreateAngleScaleKey(normalizedAngle, normalizedScale);
@@ -1968,6 +2048,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 candidateSeeds = seedCapacity > 0 ? new List<MatchCandidate>(seedCapacity) : null;
                 foreach (MatchCandidate coarseCandidate in coarseBest)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     TrackCandidateSeed(candidateSeeds, coarseCandidate, seedCapacity);
                 }
             }
@@ -2033,7 +2114,8 @@ namespace OpenVisionLab.Vision2D.Tool
                     seedCapacity,
                     useSpatialSeeds,
                     hasSuppressedBounds,
-                    out candidateSeeds);
+                    out candidateSeeds,
+                    cancellationToken);
                 if (usePositionRefine && best != null)
                 {
                     best = RefineBestCandidate(
@@ -2046,7 +2128,8 @@ namespace OpenVisionLab.Vision2D.Tool
                         minCenterY,
                         maxCenterX,
                         maxCenterY,
-                        step);
+                        step,
+                        cancellationToken);
                 }
 
                 TrackCandidateSeed(candidateSeeds, best, seedCapacity);
@@ -2069,8 +2152,14 @@ namespace OpenVisionLab.Vision2D.Tool
 
             for (int y = minCenterY; y <= maxCenterY; y += step)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int x = minCenterX; x <= maxCenterX; x += step)
                 {
+                    if ((x & 31) == 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
                     RectangleF bounds = default;
                     bool boundsCreated = false;
                     if (hasSuppressedBounds)
@@ -2134,7 +2223,8 @@ namespace OpenVisionLab.Vision2D.Tool
                     minCenterY,
                     maxCenterX,
                     maxCenterY,
-                    step);
+                    step,
+                    cancellationToken);
             }
 
             MergeCandidateSeeds(candidateSeeds, spatialSeeds?.GetCandidates(), seedCapacity);
@@ -2155,7 +2245,8 @@ namespace OpenVisionLab.Vision2D.Tool
             int seedCapacity,
             bool useSpatialSeeds,
             bool hasSuppressedBounds,
-            out List<MatchCandidate> candidateSeeds)
+            out List<MatchCandidate> candidateSeeds,
+            CancellationToken cancellationToken)
         {
             int rowCount = ((maxCenterY - minCenterY) / step) + 1;
             object sync = new object();
@@ -2170,6 +2261,7 @@ namespace OpenVisionLab.Vision2D.Tool
             Parallel.For(
                 0,
                 rowCount,
+                new ParallelOptions { CancellationToken = cancellationToken },
                 () => new CandidateSearchState(
                     seedCapacity,
                     useSpatialSeeds,
@@ -2179,9 +2271,15 @@ namespace OpenVisionLab.Vision2D.Tool
                     maxCenterY),
                 (rowIndex, loopState, localState) =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     int y = minCenterY + (rowIndex * step);
                     for (int x = minCenterX; x <= maxCenterX; x += step)
                     {
+                        if ((x & 31) == 0)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+
                         if (hasSuppressedBounds
                             && IsSuppressed(CreateLocalBounds(x, y, model), suppressedBounds))
                         {
@@ -2216,7 +2314,8 @@ namespace OpenVisionLab.Vision2D.Tool
             int minCenterY,
             int maxCenterX,
             int maxCenterY,
-            int radius)
+            int radius,
+            CancellationToken cancellationToken)
         {
             if (coarseSeeds == null || coarseSeeds.Count == 0)
             {
@@ -2227,6 +2326,7 @@ namespace OpenVisionLab.Vision2D.Tool
             bool hasSuppressedBounds = HasSuppressedBounds(suppressedBounds);
             foreach (MatchCandidate seed in coarseSeeds)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 int coarseCenterX = (int)Math.Round(seed.Center.X);
                 int coarseCenterY = (int)Math.Round(seed.Center.Y);
                 int refineMinX = Math.Max(minCenterX, coarseCenterX - radius);
@@ -2236,6 +2336,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 for (int y = refineMinY; y <= refineMaxY; y++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     for (int x = refineMinX; x <= refineMaxX; x++)
                     {
                         RectangleF bounds = default;
@@ -2272,6 +2373,7 @@ namespace OpenVisionLab.Vision2D.Tool
             TemplateModelCache modelCache,
             MatchCandidate candidate)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (property?.USE_SUBPIXEL_REFINE != true
                 || candidate == null
                 || gradients == null
@@ -2553,6 +2655,11 @@ namespace OpenVisionLab.Vision2D.Tool
             double minScoreMinusOne = minScore - 1d;
             for (int i = 0; i < pointCount; i++)
             {
+                if ((i & 255) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
                 int processed = i + 1;
                 double breakScore = Math.Min(
                     minScoreMinusOne + normGreediness * processed,
@@ -2646,6 +2753,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public List<RotatedEdgeTemplateModel> GetSearchModels(TemplateModelCache modelCache, double angleStep)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return modelCache.GetSearchModels(
                 CreateSearchModelCacheKey(angleStep),
                 CreateSearchAngles(angleStep),
@@ -2674,6 +2782,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public IEnumerable<double> CreateSearchAngles(double angleStep)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!property.USE_FIND_ANGLE)
             {
                 yield return 0D;
@@ -2682,6 +2791,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             foreach (double angle in CreateSearchAnglesInRange(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, angleStep))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angle;
             }
         }
@@ -2692,12 +2802,14 @@ namespace OpenVisionLab.Vision2D.Tool
             double maxAngle = Math.Min(Math.Max(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX), centerAngle + radius);
             foreach (double angle in CreateSearchAnglesInRange(minAngle, maxAngle, angleStep))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angle;
             }
         }
 
         public IEnumerable<double> CreateSearchScales()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!property.USE_FIND_SCALE)
             {
                 yield return 1D;
@@ -2709,6 +2821,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 property.FIND_SCALE_MAX,
                 property.FIND_SCALE_STEP))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return scale;
             }
         }
@@ -2880,10 +2993,12 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private Mat CreatePreparedGrayImage(Mat source)
         {
+            CurrentCancellationToken.ThrowIfCancellationRequested();
             Mat image = source.Clone();
             try
             {
                 ApplyCommonPreprocessing(image, property);
+                CurrentCancellationToken.ThrowIfCancellationRequested();
                 return image;
             }
             catch
@@ -2907,6 +3022,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private IOpenCVPropertyEdgeBasedTemplateMatching property => owner.property;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         public TemplateModelCache Current => templateModelCache;
 
         public void SetTemplate(Mat image)
@@ -2924,6 +3041,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public TemplateModelCache GetTemplateModelCache()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat template = GetTemplateForRun();
             string key = CreateTemplateModelCacheKey(template);
             if (templateModelCache != null && string.Equals(templateModelCache.Key, key, StringComparison.Ordinal))
@@ -2933,9 +3051,18 @@ namespace OpenVisionLab.Vision2D.Tool
 
             Clear();
             Mat preparedTemplate = owner.CreatePreparedGrayImage(template);
-            EdgeTemplateModel model = CreateModel(preparedTemplate);
-            templateModelCache = new TemplateModelCache(key, preparedTemplate, model, CreateTemplateModel);
-            return templateModelCache;
+            try
+            {
+                EdgeTemplateModel model = CreateModel(preparedTemplate);
+                cancellationToken.ThrowIfCancellationRequested();
+                templateModelCache = new TemplateModelCache(key, preparedTemplate, model, CreateTemplateModel);
+                preparedTemplate = null;
+                return templateModelCache;
+            }
+            finally
+            {
+                preparedTemplate?.Dispose();
+            }
         }
 
         public void Clear()
@@ -2996,9 +3123,14 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private EdgeTemplateModel CreateTemplateModel(Mat template, double scale)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using (Mat edges = new Mat())
-            using (GradientImage gradients = GradientImage.Create(template, property.MIN_GRADIENT_MAGNITUDE))
+            using (GradientImage gradients = GradientImage.Create(
+                template,
+                property.MIN_GRADIENT_MAGNITUDE,
+                cancellationToken))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Canny(
                     template,
                     edges,
@@ -3006,6 +3138,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     property.CANNY_HIGH,
                     NormalizeCannyAperture(property.CANNY_APERTURE_SIZE),
                     property.USE_L2_GRADIENT);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 Cv2.FindContours(
                     edges,
@@ -3013,13 +3146,16 @@ namespace OpenVisionLab.Vision2D.Tool
                     out _,
                     property.CONTOUR_RETRIEVAL_MODE,
                     property.CONTOUR_APPROXIMATION_MODE);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 List<TemplateEdgePoint> points = new List<TemplateEdgePoint>();
                 HashSet<long> seen = new HashSet<long>();
                 foreach (OpenCvSharp.Point[] contour in contours)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     foreach (OpenCvSharp.Point point in contour)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         long key = ((long)point.Y << 32) | (uint)point.X;
                         if (!seen.Add(key))
                         {
@@ -3053,6 +3189,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 Point2d center = new Point2d(points.Average(point => point.X), points.Average(point => point.Y));
                 foreach (TemplateEdgePoint point in points)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     point.OffsetX = (int)Math.Round(point.X - center.X);
                     point.OffsetY = (int)Math.Round(point.Y - center.Y);
                 }
@@ -3219,6 +3356,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private CandidateDiagnostics candidateDiagnostics => owner.candidateDiagnostics;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         private double ScoreCandidate(GradientImage gradients, RotatedEdgeTemplateModel model, int centerX, int centerY)
             => owner.ScoreCandidate(gradients, model, centerX, centerY);
 
@@ -3262,6 +3401,7 @@ namespace OpenVisionLab.Vision2D.Tool
             TemplateModelCache modelCache,
             List<RectangleF> suppressedBounds)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!ShouldUseHybridVerify()
                 || property.USE_FIND_SCALE
                 || OpenCvHelper.IsImageEmpty(source)
@@ -3285,8 +3425,11 @@ namespace OpenVisionLab.Vision2D.Tool
             EdgeTemplateModel baseModel = modelCache.Model;
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MatchTemplate(source, template, result, TemplateMatchModes.CCoeffNormed);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MinMaxLoc(result, out _, out double maxValue, out _, out OpenCvSharp.Point maxLocation);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 RotatedEdgeTemplateModel model = CreateRotatedModel(baseModel, 0D);
                 int centerX = (int)Math.Round(maxLocation.X + baseModel.Center.X);
@@ -3368,16 +3511,19 @@ namespace OpenVisionLab.Vision2D.Tool
                 // Keep this resize outside the angle loop; only rotated templates change per angle.
                 if (useScaledProposal)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     long scaleSourceStart = StartPhaseTiming();
                     Cv2.Resize(source, scaledSource, new OpenCvSharp.Size(), proposalScale, proposalScale, InterpolationFlags.Area);
+                    cancellationToken.ThrowIfCancellationRequested();
                     StopPhaseTiming("HybridProposal.ScaleSource", scaleSourceStart);
                 }
 
                 if (ShouldUseParallelHybridProposal(angleArray.Length))
                 {
                     object sync = new object();
-                    Parallel.ForEach(angleArray, angle =>
+                    Parallel.ForEach(angleArray, new ParallelOptions { CancellationToken = cancellationToken }, angle =>
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         MatchCandidate candidate = CreateHybridImageProposalCandidateForAngle(
                             gradients,
                             source,
@@ -3409,6 +3555,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 {
                     foreach (double angle in angleArray)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         MatchCandidate candidate = CreateHybridImageProposalCandidateForAngle(
                             gradients,
                             source,
@@ -3454,6 +3601,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<RectangleF> suppressedBounds,
             out double imageScore)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             imageScore = double.NaN;
             long rotateStart = StartPhaseTiming();
             using (Mat verifyTemplate = CreateHybridVerifyTemplate(template, angle))
@@ -3503,9 +3651,12 @@ namespace OpenVisionLab.Vision2D.Tool
             imageScore = double.NaN;
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 long fullMatchStart = StartPhaseTiming();
                 Cv2.MatchTemplate(source, verifyTemplate, result, TemplateMatchModes.CCoeffNormed);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MinMaxLoc(result, out _, out double maxValue, out _, out OpenCvSharp.Point maxLocation);
+                cancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("HybridProposal.FullMatch", fullMatchStart);
                 imageScore = NormalizeTemplateMatchScore(maxValue);
                 return CreateHybridImageProposalCandidateFromLocation(
@@ -3542,8 +3693,10 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat scaledTemplate = new Mat())
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 long scaleTemplateStart = StartPhaseTiming();
                 Cv2.Resize(verifyTemplate, scaledTemplate, new OpenCvSharp.Size(), scale, scale, InterpolationFlags.Area);
+                cancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("HybridProposal.ScaleTemplate", scaleTemplateStart);
                 if (scaledTemplate.Width > scaledSource.Width || scaledTemplate.Height > scaledSource.Height)
                 {
@@ -3552,6 +3705,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 long scaledMatchStart = StartPhaseTiming();
                 Cv2.MatchTemplate(scaledSource, scaledTemplate, result, TemplateMatchModes.CCoeffNormed);
+                cancellationToken.ThrowIfCancellationRequested();
                 List<TemplateMatchLocation> locations = FindTopTemplateMatchLocations(
                     result,
                     HybridProposalScaledTopK,
@@ -3562,6 +3716,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 double bestImageScore = double.MinValue;
                 foreach (TemplateMatchLocation location in locations)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     double predictedX = location.Location.X / scale;
                     double predictedY = location.Location.Y / scale;
                     if (!TryRefineHybridTemplateLocation(
@@ -3676,7 +3831,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 && scaledTemplateHeight >= HybridProposalMinScaledTemplateSize;
         }
 
-        private static List<TemplateMatchLocation> FindTopTemplateMatchLocations(
+        private List<TemplateMatchLocation> FindTopTemplateMatchLocations(
             Mat result,
             int count,
             int suppressionRadius)
@@ -3687,7 +3842,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 int limit = Math.Max(1, count);
                 for (int i = 0; i < limit; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Cv2.MinMaxLoc(work, out _, out double maxValue, out _, out OpenCvSharp.Point maxLocation);
+                    cancellationToken.ThrowIfCancellationRequested();
                     locations.Add(new TemplateMatchLocation(maxLocation, maxValue));
 
                     int left = Math.Max(0, maxLocation.X - suppressionRadius);
@@ -3752,9 +3909,12 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat sourcePatch = new Mat(source, patchRect))
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 long refineStart = StartPhaseTiming();
                 Cv2.MatchTemplate(sourcePatch, verifyTemplate, result, TemplateMatchModes.CCoeffNormed);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MinMaxLoc(result, out _, out double maxValue, out _, out OpenCvSharp.Point localLocation);
+                cancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("HybridProposal.RefineMatch", refineStart);
                 location = new OpenCvSharp.Point(patchRect.X + localLocation.X, patchRect.Y + localLocation.Y);
                 score = NormalizeTemplateMatchScore(maxValue);
@@ -3789,6 +3949,7 @@ namespace OpenVisionLab.Vision2D.Tool
             IEnumerable<MatchCandidate> candidateSeeds,
             MatchCandidate imageProposal)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!ShouldUseHybridVerify() || fallback == null)
             {
                 return fallback;
@@ -3810,6 +3971,7 @@ namespace OpenVisionLab.Vision2D.Tool
             MatchCandidate bestImageCandidate = null;
             foreach (MatchCandidate candidate in candidates)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 double imageScore = candidate.ImageVerifyScore;
                 if (double.IsNaN(imageScore)
                     && !TryComputeHybridImageScore(source, template, candidate, out imageScore))
@@ -3828,6 +3990,7 @@ namespace OpenVisionLab.Vision2D.Tool
             MatchCandidate best = fallback;
             foreach (HybridVerificationScore verifiedScore in verifiedScores)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 MatchCandidate candidate = verifiedScore.Candidate;
                 double imageScore = verifiedScore.ImageScore;
                 double descriptorScore = double.NaN;
@@ -3929,6 +4092,7 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat verifyTemplate = CreateHybridVerifyTemplate(template, candidate.Angle, candidate.Scale))
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Rect patchRect = CreateTemplatePatchRect(source, verifyTemplate, candidate);
                 if (patchRect.Width <= 0 || patchRect.Height <= 0)
                 {
@@ -3939,7 +4103,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 {
                     long imageScoreStart = StartPhaseTiming();
                     Cv2.MatchTemplate(sourcePatch, verifyTemplate, result, TemplateMatchModes.CCoeffNormed);
+                    cancellationToken.ThrowIfCancellationRequested();
                     Cv2.MinMaxLoc(result, out _, out double maxValue, out _, out _);
+                    cancellationToken.ThrowIfCancellationRequested();
                     StopPhaseTiming("HybridVerify.ImageScore", imageScoreStart);
                     imageScore = NormalizeTemplateMatchScore(maxValue);
                     return true;
@@ -3983,6 +4149,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 using (Mat sourcePatch = new Mat(source, patchRect))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     long descriptorTemplateStart = StartPhaseTiming();
                     Cv2.Canny(
                         verifyTemplate,
@@ -3991,6 +4158,7 @@ namespace OpenVisionLab.Vision2D.Tool
                         property.CANNY_HIGH,
                         NormalizeCannyAperture(property.CANNY_APERTURE_SIZE),
                         property.USE_L2_GRADIENT);
+                    cancellationToken.ThrowIfCancellationRequested();
                     StopPhaseTiming("HybridVerify.DescriptorTemplateCanny", descriptorTemplateStart);
                     return TryComputeHybridEdgeDescriptorScore(sourcePatch, templateEdges, out score);
                 }
@@ -4011,6 +4179,7 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat sourceEdges = new Mat())
             using (Mat result = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 long descriptorSourceStart = StartPhaseTiming();
                 Cv2.Canny(
                     sourcePatch,
@@ -4019,6 +4188,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     property.CANNY_HIGH,
                     NormalizeCannyAperture(property.CANNY_APERTURE_SIZE),
                     property.USE_L2_GRADIENT);
+                cancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("HybridVerify.DescriptorSourceCanny", descriptorSourceStart);
 
                 if (Cv2.CountNonZero(sourceEdges) == 0 || Cv2.CountNonZero(templateEdges) == 0)
@@ -4028,7 +4198,9 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 long descriptorMatchStart = StartPhaseTiming();
                 Cv2.MatchTemplate(sourceEdges, templateEdges, result, TemplateMatchModes.CCoeffNormed);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MinMaxLoc(result, out _, out double maxValue, out _, out _);
+                cancellationToken.ThrowIfCancellationRequested();
                 StopPhaseTiming("HybridVerify.DescriptorMatch", descriptorMatchStart);
                 score = NormalizeTemplateMatchScore(maxValue);
                 return true;
@@ -4053,31 +4225,51 @@ namespace OpenVisionLab.Vision2D.Tool
             return new Rect(x, y, template.Width, template.Height);
         }
 
-        private static Mat CreateHybridVerifyTemplate(Mat template, double angle)
+        private Mat CreateHybridVerifyTemplate(Mat template, double angle)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Math.Abs(angle) <= 0.0001D)
             {
-                return template.Clone();
+                Mat clone = template.Clone();
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return clone;
+                }
+                catch
+                {
+                    clone.Dispose();
+                    throw;
+                }
             }
 
             Mat rotated = new Mat();
-            Point2f center = new Point2f((template.Width - 1) / 2f, (template.Height - 1) / 2f);
-            using (Mat rotation = Cv2.GetRotationMatrix2D(center, angle, 1D))
+            try
             {
-                Cv2.WarpAffine(
-                    template,
-                    rotated,
-                    rotation,
-                    template.Size(),
-                    InterpolationFlags.Linear,
-                    BorderTypes.Constant,
-                    Scalar.Black);
-            }
+                Point2f center = new Point2f((template.Width - 1) / 2f, (template.Height - 1) / 2f);
+                using (Mat rotation = Cv2.GetRotationMatrix2D(center, angle, 1D))
+                {
+                    Cv2.WarpAffine(
+                        template,
+                        rotated,
+                        rotation,
+                        template.Size(),
+                        InterpolationFlags.Linear,
+                        BorderTypes.Constant,
+                        Scalar.Black);
+                }
 
-            return rotated;
+                cancellationToken.ThrowIfCancellationRequested();
+                return rotated;
+            }
+            catch
+            {
+                rotated.Dispose();
+                throw;
+            }
         }
 
-        private static Mat CreateHybridVerifyTemplate(Mat template, double angle, double scale)
+        private Mat CreateHybridVerifyTemplate(Mat template, double angle, double scale)
         {
             using (Mat scaledTemplate = ResizeTemplateForScale(template, scale))
             {
@@ -4477,28 +4669,36 @@ namespace OpenVisionLab.Vision2D.Tool
             public double[] UnitDxValues { get; }
             public double[] UnitDyValues { get; }
 
-            public static GradientImage Create(Mat image, double unitMagnitudeThreshold)
+            public static GradientImage Create(
+                Mat image,
+                double unitMagnitudeThreshold,
+                CancellationToken cancellationToken)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 using (Mat dx = new Mat())
                 using (Mat dy = new Mat())
                 using (Mat magnitude = new Mat())
                 {
                     Cv2.Sobel(image, dx, MatType.CV_64F, 1, 0, 3);
+                    cancellationToken.ThrowIfCancellationRequested();
                     Cv2.Sobel(image, dy, MatType.CV_64F, 0, 1, 3);
+                    cancellationToken.ThrowIfCancellationRequested();
                     Cv2.Magnitude(dx, dy, magnitude);
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     // Scoring visits gradient values for every candidate center and template point.
                     // Cache compact arrays once so the hot loop avoids repeated Mat.At<T>() calls.
-                    double[] dxValues = CopyMatToArray(dx);
-                    double[] dyValues = CopyMatToArray(dy);
-                    double[] magnitudeValues = CopyMatToArray(magnitude);
+                    double[] dxValues = CopyMatToArray(dx, cancellationToken);
+                    double[] dyValues = CopyMatToArray(dy, cancellationToken);
+                    double[] magnitudeValues = CopyMatToArray(magnitude, cancellationToken);
                     CreateUnitGradientArrays(
                         dxValues,
                         dyValues,
                         magnitudeValues,
                         unitMagnitudeThreshold,
                         out double[] unitDxValues,
-                        out double[] unitDyValues);
+                        out double[] unitDyValues,
+                        cancellationToken);
 
                     return new GradientImage(
                         image.Width,
@@ -4541,7 +4741,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 return (y * Width) + x;
             }
 
-            private static double[] CopyMatToArray(Mat mat)
+            private static double[] CopyMatToArray(Mat mat, CancellationToken cancellationToken)
             {
                 int width = mat.Width;
                 int height = mat.Height;
@@ -4549,6 +4749,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 int index = 0;
                 for (int y = 0; y < height; y++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     for (int x = 0; x < width; x++)
                     {
                         values[index++] = mat.At<double>(y, x);
@@ -4564,13 +4765,19 @@ namespace OpenVisionLab.Vision2D.Tool
                 double[] magnitudeValues,
                 double magnitudeThreshold,
                 out double[] unitDxValues,
-                out double[] unitDyValues)
+                out double[] unitDyValues,
+                CancellationToken cancellationToken)
             {
                 int length = magnitudeValues?.Length ?? 0;
                 unitDxValues = new double[length];
                 unitDyValues = new double[length];
                 for (int i = 0; i < length; i++)
                 {
+                    if ((i & 4095) == 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
                     double magnitude = magnitudeValues[i];
                     if (magnitude <= magnitudeThreshold)
                     {

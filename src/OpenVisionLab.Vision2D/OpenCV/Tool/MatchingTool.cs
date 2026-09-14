@@ -11,16 +11,22 @@ using OpenCvSharp;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
-    public class MatchingTool : OpenCvAlgorithmBase
+    public class MatchingTool : OpenCvAlgorithmBase, ICancellableVisionTool
     {
         public IOpenCVPropertyMatching property;
         public List<MatchingResult> results = new List<MatchingResult>();
         private Mat originalTemplate = new Mat();
         private readonly MatchingSearchEngine searchEngine;
+        private CancellationToken CurrentCancellationToken => ExecutionCancellationToken;
 
         public MatchingTool()
         {
             searchEngine = new MatchingSearchEngine(this);
+        }
+
+        public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
+        {
+            return ExecuteWithCancellation(source, cancellationToken);
         }
 
         public void SetTemplateImage(Mat Image)
@@ -158,6 +164,7 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             foreach (Rect sourceBounds in GetMatchingSourceBounds())
             {
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
                 int sourceWidth = (int)(sourceBounds.Width / property.MAGNIFIATION);
                 int sourceHeight = (int)(sourceBounds.Height / property.MAGNIFIATION);
 
@@ -171,6 +178,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 bool hasValidScale = false;
                 foreach (double scale in searchEngine.CreateSearchScales())
                 {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
                     int templateWidth = (int)(Math.Round(template.Width * scale) / property.MAGNIFIATION);
                     int templateHeight = (int)(Math.Round(template.Height * scale) / property.MAGNIFIATION);
                     if (templateWidth > 0
@@ -234,7 +242,9 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             searchEngine.Run();
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
         }
 
         public bool ImagePyramidsMultiRun()
@@ -269,6 +279,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private System.Diagnostics.Stopwatch swTaktTimems => owner.swTaktTimems;
 
+        private CancellationToken cancellationToken => owner.CurrentCancellationToken;
+
         public Mat GetTemplateForRun()
         {
             return OpenCvHelper.IsImageEmpty(originalTemplate) ? imageTemplate : originalTemplate;
@@ -276,18 +288,31 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private Mat CreatePreparedTemplate()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Mat template = GetTemplateForRun().Clone();
-            ApplyMatchingPreprocessing(template);
-            return template;
+            try
+            {
+                ApplyMatchingPreprocessing(template);
+                cancellationToken.ThrowIfCancellationRequested();
+                return template;
+            }
+            catch
+            {
+                template.Dispose();
+                throw;
+            }
         }
 
         private void ApplyMatchingPreprocessing(Mat image)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             OpenCvHelper.SetImageChannel1(image);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (property.USE_THRESHOLD)
             {
                 Cv2.Threshold(image, image, property.THRESHOLD, 255, property.THRESHOLD_TYPES);
+                cancellationToken.ThrowIfCancellationRequested();
             }
             else if (property.USE_ADAPTIVE_THRESHOLD)
             {
@@ -299,24 +324,39 @@ namespace OpenVisionLab.Vision2D.Tool
                     property.ADAPTIVE_THRESHOLD_TYPES,
                     property.BlockSize,
                     property.Weight);
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             if (property.USE_CANNY)
             {
                 Cv2.GaussianBlur(image, image, new OpenCvSharp.Size(3, 3), 1, 1, BorderTypes.Default);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Canny(image, image, property.CANNY_LOW, property.CANNY_HIGH, 3, true);
+                cancellationToken.ThrowIfCancellationRequested();
             }
         }
 
         private Mat ResizeByMagnification(Mat image)
         {
-            return image.Resize(new OpenCvSharp.Size(
+            cancellationToken.ThrowIfCancellationRequested();
+            Mat resized = image.Resize(new OpenCvSharp.Size(
                 (int)(image.Width / property.MAGNIFIATION),
                 (int)(image.Height / property.MAGNIFIATION)));
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return resized;
+            }
+            catch
+            {
+                resized.Dispose();
+                throw;
+            }
         }
 
-        private static Mat ResizeTemplateForScale(Mat template, double scale)
+        private Mat ResizeTemplateForScale(Mat template, double scale)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             double normalizedScale = NormalizeScale(scale);
             if (Math.Abs(normalizedScale - 1D) <= 0.000001D)
             {
@@ -324,16 +364,25 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             Mat resized = new Mat();
-            Cv2.Resize(
-                template,
-                resized,
-                new OpenCvSharp.Size(
-                    Math.Max(1, (int)Math.Round(template.Width * normalizedScale)),
-                    Math.Max(1, (int)Math.Round(template.Height * normalizedScale))),
-                0D,
-                0D,
-                normalizedScale < 1D ? InterpolationFlags.Area : InterpolationFlags.Linear);
-            return resized;
+            try
+            {
+                Cv2.Resize(
+                    template,
+                    resized,
+                    new OpenCvSharp.Size(
+                        Math.Max(1, (int)Math.Round(template.Width * normalizedScale)),
+                        Math.Max(1, (int)Math.Round(template.Height * normalizedScale))),
+                    0D,
+                    0D,
+                    normalizedScale < 1D ? InterpolationFlags.Area : InterpolationFlags.Linear);
+                cancellationToken.ThrowIfCancellationRequested();
+                return resized;
+            }
+            catch
+            {
+                resized.Dispose();
+                throw;
+            }
         }
 
         private void FindTemplate(Mat ImageSorce, Mat Template, ConcurrentBag<MatchingResult> Results_T, double angle, OpenCvSharp.Rect CvROI, bool applyRoiOffset)
@@ -343,12 +392,15 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private void FindTemplate(Mat ImageSorce, Mat Template, ConcurrentBag<MatchingResult> Results_T, double angle, double scale, OpenCvSharp.Rect CvROI, bool applyRoiOffset, double minimumScore)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using (Mat imageMatching = new Mat())
             {
                 Cv2.MatchTemplate(ImageSorce, Template, imageMatching, property.MATCH_MODE, null);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 for (int attempt = 0; attempt < 64; attempt++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!TryGetBestMatch(imageMatching, minimumScore, out OpenCvSharp.Point matchLocation, out double qualityScore))
                     {
                         break;
@@ -386,12 +438,14 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private bool TryGetBestMatch(Mat imageMatching, double minimumScore, out OpenCvSharp.Point matchLocation, out double qualityScore)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Cv2.MinMaxLoc(
                 imageMatching,
                 out double minScore,
                 out double maxScore,
                 out OpenCvSharp.Point minLocation,
                 out OpenCvSharp.Point maxLocation);
+            cancellationToken.ThrowIfCancellationRequested();
 
             bool lowerScoreIsBetter = IsLowerScoreBetter(property.MATCH_MODE);
             double rawScore = lowerScoreIsBetter ? minScore : maxScore;
@@ -432,8 +486,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 || matchMode == TemplateMatchModes.SqDiffNormed;
         }
 
-        private static bool IsValidMatchingCandidate(Mat imageSource, Mat template, OpenCvSharp.Point location)
+        private bool IsValidMatchingCandidate(Mat imageSource, Mat template, OpenCvSharp.Point location)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Rect candidateRect = new Rect(location, template.Size());
             if (candidateRect.X < 0
                 || candidateRect.Y < 0
@@ -446,7 +501,9 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat candidate = imageSource.SubMat(candidateRect))
             {
                 Cv2.MeanStdDev(template, out _, out Scalar templateStdDev);
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MeanStdDev(candidate, out _, out Scalar candidateStdDev);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 double templateDeviation = templateStdDev.Val0;
                 double candidateDeviation = candidateStdDev.Val0;
@@ -465,12 +522,15 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private static double GetMeanAbsoluteDifference(Mat candidate, Mat template)
+        private double GetMeanAbsoluteDifference(Mat candidate, Mat template)
         {
             using (Mat difference = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Absdiff(candidate, template, difference);
+                cancellationToken.ThrowIfCancellationRequested();
                 Scalar mean = Cv2.Mean(difference);
+                cancellationToken.ThrowIfCancellationRequested();
                 int channels = Math.Max(1, difference.Channels());
                 double sum = mean.Val0;
                 if (channels > 1)
@@ -517,12 +577,24 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private RotatedTemplateLease GetOrCreateRotatedTemplate(Mat template, double angle, ulong templateHash, bool useCache)
         {
-            return RotatedTemplateCache.GetOrCreate(
+            cancellationToken.ThrowIfCancellationRequested();
+            RotatedTemplateLease lease = RotatedTemplateCache.GetOrCreate(
                 template,
                 angle,
                 templateHash,
                 useCache,
-                property.USE_PADDING_COLOR_WHITE);
+                property.USE_PADDING_COLOR_WHITE,
+                cancellationToken);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return lease;
+            }
+            catch
+            {
+                lease.Dispose();
+                throw;
+            }
         }
 
         private sealed class RotatedTemplateCache
@@ -539,18 +611,35 @@ namespace OpenVisionLab.Vision2D.Tool
 
             public static Mat Rotate(Mat src, double angle, bool paddingWhite)
             {
-                Mat rotate = new Mat(src.Size(), src.Type());
-                Mat matrix = Cv2.GetRotationMatrix2D(new Point2f(src.Width / 2, src.Height / 2), angle, 1);
-                if (paddingWhite)
-                {
-                    Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Constant, new Scalar(255, 255, 255));
-                }
-                else
-                {
-                    Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Reflect);
-                }
+                return Rotate(src, angle, paddingWhite, CancellationToken.None);
+            }
 
-                return rotate;
+            private static Mat Rotate(Mat src, double angle, bool paddingWhite, CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Mat rotate = new Mat(src.Size(), src.Type());
+                try
+                {
+                    using (Mat matrix = Cv2.GetRotationMatrix2D(new Point2f(src.Width / 2, src.Height / 2), angle, 1))
+                    {
+                        if (paddingWhite)
+                        {
+                            Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Constant, new Scalar(255, 255, 255));
+                        }
+                        else
+                        {
+                            Cv2.WarpAffine(src, rotate, matrix, src.Size(), InterpolationFlags.Linear, BorderTypes.Reflect);
+                        }
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return rotate;
+                }
+                catch
+                {
+                    rotate.Dispose();
+                    throw;
+                }
             }
 
             public static RotatedTemplateLease GetOrCreate(
@@ -558,8 +647,10 @@ namespace OpenVisionLab.Vision2D.Tool
                 double angle,
                 ulong templateHash,
                 bool useCache,
-                bool paddingWhite)
+                bool paddingWhite,
+                CancellationToken cancellationToken)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (OpenCvHelper.IsImageEmpty(template))
                 {
                     return RotatedTemplateLease.CreateUncached(new Mat());
@@ -568,7 +659,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 double normalizedAngle = NormalizeCacheAngle(angle);
                 if (!useCache)
                 {
-                    return RotatedTemplateLease.CreateUncached(Rotate(template, normalizedAngle, paddingWhite));
+                    return RotatedTemplateLease.CreateUncached(Rotate(template, normalizedAngle, paddingWhite, cancellationToken));
                 }
 
                 RotatedTemplateCacheKey key = new RotatedTemplateCacheKey(
@@ -585,7 +676,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     return cached;
                 }
 
-                Mat rotated = Rotate(template, normalizedAngle, paddingWhite);
+                Mat rotated = Rotate(template, normalizedAngle, paddingWhite, cancellationToken);
                 return StoreOrUseRotatedTemplate(key, rotated);
             }
 
@@ -714,8 +805,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 return Math.Abs(normalized) < 0.000001D ? 0D : normalized;
             }
 
-            public static unsafe ulong ComputeContentHash(Mat image)
+            public static unsafe ulong ComputeContentHash(Mat image, CancellationToken cancellationToken)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (OpenCvHelper.IsImageEmpty(image))
                 {
                     return 0;
@@ -742,6 +834,11 @@ namespace OpenVisionLab.Vision2D.Tool
                     byte* data = (byte*)image.Data.ToPointer();
                     for (long i = 0; i < length; i++)
                     {
+                        if ((i & 4095L) == 0L)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+
                         AddByte(data[i]);
                     }
 
@@ -752,6 +849,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 long step = image.Step();
                 for (int y = 0; y < image.Rows; y++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     byte* current = row + step * y;
                     for (long x = 0; x < rowBytes; x++)
                     {
@@ -765,6 +863,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public void Run()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (property.USE_MULTI_ROI)
             {
                 ImagePyramidsMultiRun();
@@ -773,6 +872,7 @@ namespace OpenVisionLab.Vision2D.Tool
             {
                 ImagePyramidsSingleRun();
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         public bool ImagePyramidsMultiRun()
@@ -788,10 +888,12 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat preparedSource = imageSource.Clone())
             using (Mat preparedTemplate = CreatePreparedTemplate())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 ApplyMatchingPreprocessing(preparedSource);
 
                 for (int i = 0; i < property.CvROIS.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Rect roi = property.CvROIS[i];
                     if (roi.Width == 0 || roi.Height == 0)
                     {
@@ -822,6 +924,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             using (Mat preparedSource = imageSource.Clone())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 ApplyMatchingPreprocessing(preparedSource);
                 Rect roi = property.USE_ROI && property.CvROI.Width > 0 && property.CvROI.Height > 0
                     ? property.CvROI
@@ -829,6 +932,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 using (Mat preparedTemplate = CreatePreparedTemplate())
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!RunMatchingForSource(preparedSource, preparedTemplate, roi, property.USE_ROI, property.USE_ROI))
                     {
                         return false;
@@ -842,6 +946,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private bool RunMatchingForSource(Mat preparedSource, Mat preparedTemplate, Rect roi, bool useRoiCrop, bool applyRoiOffset)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (OpenCvHelper.IsImageEmpty(preparedSource) || OpenCvHelper.IsImageEmpty(preparedTemplate))
             {
                 return false;
@@ -859,12 +964,14 @@ namespace OpenVisionLab.Vision2D.Tool
                 int attempts = Math.Max(maxCount * 4, maxCount + 3);
                 while (maxCount > 0 && attempts > 0)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Thread.Sleep(0);
                     attempts--;
 
                     using (Mat imageSubMat = ResizeByMagnification(imageSrc))
                     {
                         MatchingResult highestScoreResult = FindBestMatchingCandidate(imageSubMat, searchTemplates.Items, roi, applyRoiOffset);
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (highestScoreResult == null)
                         {
                             break;
@@ -878,6 +985,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                         maxCount--;
                         MatchingResult refinedResult = TryRefineMatchingResult(imageSrc, selectedTemplate.PreparedTemplate, roi, highestScoreResult, applyRoiOffset);
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (refinedResult != null && !AddFinalMatchingResult(refinedResult))
                         {
                             maxCount++;
@@ -896,27 +1004,41 @@ namespace OpenVisionLab.Vision2D.Tool
             int sourceHeight = Math.Max(1, (int)(imageSrc.Height / property.MAGNIFIATION));
             foreach (double scale in CreateSearchScales())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Mat scaledTemplate = ResizeTemplateForScale(preparedTemplate, scale);
-                int workingWidth = (int)(scaledTemplate.Width / property.MAGNIFIATION);
-                int workingHeight = (int)(scaledTemplate.Height / property.MAGNIFIATION);
-                if (workingWidth <= 0 || workingHeight <= 0)
+                try
                 {
-                    scaledTemplate.Dispose();
-                    continue;
-                }
+                    int workingWidth = (int)(scaledTemplate.Width / property.MAGNIFIATION);
+                    int workingHeight = (int)(scaledTemplate.Height / property.MAGNIFIATION);
+                    if (workingWidth <= 0 || workingHeight <= 0)
+                    {
+                        continue;
+                    }
 
-                Mat workingTemplate = ResizeByMagnification(scaledTemplate);
-                if (workingTemplate.Width <= 0
-                    || workingTemplate.Height <= 0
-                    || workingTemplate.Width > sourceWidth
-                    || workingTemplate.Height > sourceHeight)
+                    Mat workingTemplate = ResizeByMagnification(scaledTemplate);
+                    try
+                    {
+                        if (workingTemplate.Width <= 0
+                            || workingTemplate.Height <= 0
+                            || workingTemplate.Width > sourceWidth
+                            || workingTemplate.Height > sourceHeight)
+                        {
+                            continue;
+                        }
+
+                        templates.Add(new MatchingSearchTemplate(scale, scaledTemplate, workingTemplate));
+                        scaledTemplate = null;
+                        workingTemplate = null;
+                    }
+                    finally
+                    {
+                        workingTemplate?.Dispose();
+                    }
+                }
+                finally
                 {
-                    workingTemplate.Dispose();
-                    scaledTemplate.Dispose();
-                    continue;
+                    scaledTemplate?.Dispose();
                 }
-
-                templates.Add(new MatchingSearchTemplate(scale, scaledTemplate, workingTemplate));
             }
 
             return new SearchTemplateCollection(templates);
@@ -936,6 +1058,7 @@ namespace OpenVisionLab.Vision2D.Tool
             ConcurrentBag<MatchingResult> candidates = new ConcurrentBag<MatchingResult>();
             foreach (MatchingSearchTemplate searchTemplate in searchTemplates)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 MatchingResult candidate = FindBestMatchingCandidate(imageSubMat, searchTemplate.WorkingTemplate, searchTemplate.Scale, roi, applyRoiOffset);
                 if (candidate != null)
                 {
@@ -966,16 +1089,19 @@ namespace OpenVisionLab.Vision2D.Tool
 
             using (Mat sourcePyramid = ResizeForPyramidProposal(imageSubMat, PyramidProposalScale))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (OpenCvHelper.IsImageEmpty(sourcePyramid))
                 {
                     return null;
                 }
 
                 ConcurrentBag<MatchingResult> verifiedCandidates = new ConcurrentBag<MatchingResult>();
-                Parallel.ForEach(searchTemplates, searchTemplate =>
+                Parallel.ForEach(searchTemplates, new ParallelOptions { CancellationToken = cancellationToken }, searchTemplate =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     using (Mat templatePyramid = ResizeForPyramidProposal(searchTemplate.WorkingTemplate, PyramidProposalScale))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (OpenCvHelper.IsImageEmpty(templatePyramid)
                             || templatePyramid.Width > sourcePyramid.Width
                             || templatePyramid.Height > sourcePyramid.Height)
@@ -985,6 +1111,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                         foreach (PyramidPositionProposal proposal in FindPyramidPositionProposals(sourcePyramid, templatePyramid))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             MatchingResult verified = VerifyPyramidPositionProposal(
                                 imageSubMat,
                                 searchTemplate.WorkingTemplate,
@@ -1011,9 +1138,12 @@ namespace OpenVisionLab.Vision2D.Tool
             double minScore = Clamp01(property.PYRAMID_POSITION_MIN_SCORE);
             using (Mat imageMatching = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MatchTemplate(sourcePyramid, templatePyramid, imageMatching, property.MATCH_MODE, null);
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int attempt = 0; attempt < topN; attempt++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!TryGetBestMatch(imageMatching, minScore, out OpenCvSharp.Point matchLocation, out double qualityScore))
                     {
                         break;
@@ -1046,7 +1176,9 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat searchImage = imageSubMat.SubMat(searchRect))
             using (Mat imageMatching = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MatchTemplate(searchImage, template, imageMatching, property.MATCH_MODE, null);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!TryGetBestMatch(imageMatching, property.SCORE_MIN, out OpenCvSharp.Point matchLocation, out double qualityScore))
                 {
                     return null;
@@ -1084,24 +1216,34 @@ namespace OpenVisionLab.Vision2D.Tool
                 source);
         }
 
-        private static Mat ResizeForPyramidProposal(Mat image, double scale)
+        private Mat ResizeForPyramidProposal(Mat image, double scale)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (OpenCvHelper.IsImageEmpty(image))
             {
                 return new Mat();
             }
 
             Mat resized = new Mat();
-            Cv2.Resize(
-                image,
-                resized,
-                new OpenCvSharp.Size(
-                    Math.Max(1, (int)Math.Round(image.Width * scale)),
-                    Math.Max(1, (int)Math.Round(image.Height * scale))),
-                0D,
-                0D,
-                InterpolationFlags.Area);
-            return resized;
+            try
+            {
+                Cv2.Resize(
+                    image,
+                    resized,
+                    new OpenCvSharp.Size(
+                        Math.Max(1, (int)Math.Round(image.Width * scale)),
+                        Math.Max(1, (int)Math.Round(image.Height * scale))),
+                    0D,
+                    0D,
+                    InterpolationFlags.Area);
+                cancellationToken.ThrowIfCancellationRequested();
+                return resized;
+            }
+            catch
+            {
+                resized.Dispose();
+                throw;
+            }
         }
 
         private MatchingResult FindBestMatchingCandidate(Mat imageSubMat, Mat imageTpl, double scale, Rect roi, bool applyRoiOffset)
@@ -1121,43 +1263,75 @@ namespace OpenVisionLab.Vision2D.Tool
             ConcurrentBag<MatchingResult> candidates = new ConcurrentBag<MatchingResult>();
             double angleStep = property.FIND_ANGLE;
             bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(imageTpl);
-            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(imageTpl) : 0UL;
+            ulong templateHash = useRotatedTemplateCache
+                ? RotatedTemplateCache.ComputeContentHash(imageTpl, cancellationToken)
+                : 0UL;
 
             Task firstTask = Task.Run(() =>
             {
                 FindTemplate(imageSubMat, imageTpl, candidates, 0, scale, roi, applyRoiOffset, property.SCORE_MIN);
-            });
+            }, cancellationToken);
+
+            Task plusTask = null;
+            Task minusTask = null;
 
             if (property.USE_FIND_ANGLE)
             {
-                Task plusTask = Task.Run(() =>
+                plusTask = Task.Run(() =>
                 {
-                    Parallel.ForEach(CreatePositiveSearchAngles(angleStep), angle =>
+                    Parallel.ForEach(
+                        CreatePositiveSearchAngles(angleStep),
+                        new ParallelOptions { CancellationToken = cancellationToken },
+                        angle =>
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         using (RotatedTemplateLease rotated = GetOrCreateRotatedTemplate(imageTpl, angle, templateHash, useRotatedTemplateCache))
                         {
                             FindTemplate(imageSubMat, rotated.Image, candidates, angle, scale, roi, applyRoiOffset, property.SCORE_MIN);
                         }
                     });
-                });
+                }, cancellationToken);
 
-                Task minusTask = Task.Run(() =>
+                minusTask = Task.Run(() =>
                 {
-                    Parallel.ForEach(CreateNegativeSearchAngles(angleStep), angle =>
+                    Parallel.ForEach(
+                        CreateNegativeSearchAngles(angleStep),
+                        new ParallelOptions { CancellationToken = cancellationToken },
+                        angle =>
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         using (RotatedTemplateLease rotated = GetOrCreateRotatedTemplate(imageTpl, angle, templateHash, useRotatedTemplateCache))
                         {
                             FindTemplate(imageSubMat, rotated.Image, candidates, angle, scale, roi, applyRoiOffset, property.SCORE_MIN);
                         }
                     });
-                });
-
-                plusTask.Wait();
-                minusTask.Wait();
+                }, cancellationToken);
             }
 
-            firstTask.Wait();
+            WaitForSearchTasks(firstTask, plusTask, minusTask);
+            cancellationToken.ThrowIfCancellationRequested();
             return candidates.OrderByDescending(r => r.Score).FirstOrDefault();
+        }
+
+        private void WaitForSearchTasks(Task firstTask, Task plusTask, Task minusTask)
+        {
+            if (!cancellationToken.CanBeCanceled)
+            {
+                plusTask?.Wait();
+                minusTask?.Wait();
+                firstTask.Wait();
+                return;
+            }
+
+            try
+            {
+                Task.WaitAll(new[] { firstTask, plusTask, minusTask }.Where(task => task != null).ToArray());
+            }
+            catch (AggregateException) when (cancellationToken.IsCancellationRequested)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                throw;
+            }
         }
 
         private MatchingResult FindBestMatchingCandidateCoarseToFine(Mat imageSubMat, Mat imageTpl, double scale, Rect roi, bool applyRoiOffset)
@@ -1188,8 +1362,10 @@ namespace OpenVisionLab.Vision2D.Tool
             HashSet<double> fineAngles = new HashSet<double>();
             foreach (MatchingResult candidate in coarseBest)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 foreach (double angle in CreateSearchAnglesAround(candidate.Angle, coarseStep, property.FIND_ANGLE))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     fineAngles.Add(angle);
                 }
             }
@@ -1218,9 +1394,12 @@ namespace OpenVisionLab.Vision2D.Tool
             double minimumScore)
         {
             bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(imageTpl);
-            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(imageTpl) : 0UL;
-            Parallel.ForEach(angles, angle =>
+            ulong templateHash = useRotatedTemplateCache
+                ? RotatedTemplateCache.ComputeContentHash(imageTpl, cancellationToken)
+                : 0UL;
+            Parallel.ForEach(angles, new ParallelOptions { CancellationToken = cancellationToken }, angle =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (Math.Abs(angle) < 0.000001D)
                 {
                     FindTemplate(imageSubMat, imageTpl, candidates, 0D, scale, roi, applyRoiOffset, minimumScore);
@@ -1236,9 +1415,11 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private IEnumerable<double> CreateSearchAngles(double angleStep)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             HashSet<double> emitted = new HashSet<double>();
             foreach (double angle in CreateSearchAnglesInRange(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, angleStep))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (emitted.Add(angle))
                 {
                     yield return angle;
@@ -1257,6 +1438,7 @@ namespace OpenVisionLab.Vision2D.Tool
             double maxAngle = Math.Min(property.FIND_ANGLE_MAX, centerAngle + radius);
             foreach (double angle in CreateSearchAnglesInRange(minAngle, maxAngle, angleStep))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angle;
             }
         }
@@ -1282,6 +1464,7 @@ namespace OpenVisionLab.Vision2D.Tool
             int count = (int)(property.FIND_ANGLE_MAX / angleStep);
             for (int i = 1; i <= count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angleStep * i;
             }
         }
@@ -1291,12 +1474,14 @@ namespace OpenVisionLab.Vision2D.Tool
             int count = Math.Abs((int)(property.FIND_ANGLE_MIN / angleStep));
             for (int i = 1; i <= count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return angleStep * i * -1;
             }
         }
 
         public IEnumerable<double> CreateSearchScales()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!property.USE_FIND_SCALE)
             {
                 yield return 1D;
@@ -1308,6 +1493,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 property.FIND_SCALE_MAX,
                 property.FIND_SCALE_STEP))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 yield return scale;
             }
         }
@@ -1397,6 +1583,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private MatchingResult TryRefineMatchingResult(Mat imageSrc, Mat preparedTemplate, Rect roi, MatchingResult highestScoreResult, bool applyRoiOffset)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (CanUseCoarseMatchAsFinalResult(highestScoreResult))
             {
                 SuppressCoarseMatchRegion(imageSrc, preparedTemplate, roi, highestScoreResult, applyRoiOffset);
@@ -1411,7 +1598,9 @@ namespace OpenVisionLab.Vision2D.Tool
             using (RotatedTemplateLease rotatedTemplate = CreateRefineTemplateLease(imageTplPy, highestScoreResult.Angle))
             using (Mat imageMatching = new Mat())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Cv2.MatchTemplate(imageSubMatPy, rotatedTemplate.Image, imageMatching, property.MATCH_MODE, null);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!TryGetBestMatch(imageMatching, out OpenCvSharp.Point ptMaxLocation, out double qualityScore))
                 {
                     return null;
@@ -1478,7 +1667,9 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             bool useRotatedTemplateCache = RotatedTemplateCache.ShouldUse(template);
-            ulong templateHash = useRotatedTemplateCache ? RotatedTemplateCache.ComputeContentHash(template) : 0UL;
+            ulong templateHash = useRotatedTemplateCache
+                ? RotatedTemplateCache.ComputeContentHash(template, cancellationToken)
+                : 0UL;
             return GetOrCreateRotatedTemplate(template, angle, templateHash, useRotatedTemplateCache);
         }
 
@@ -1490,7 +1681,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 && Math.Abs(result.Angle) < 0.0001;
         }
 
-        private static void SuppressCoarseMatchRegion(Mat imageSrc, Mat preparedTemplate, Rect roi, MatchingResult result, bool applyRoiOffset)
+        private void SuppressCoarseMatchRegion(Mat imageSrc, Mat preparedTemplate, Rect roi, MatchingResult result, bool applyRoiOffset)
         {
             int x = (int)Math.Round(result.Bounding.X);
             int y = (int)Math.Round(result.Bounding.Y);
@@ -1538,8 +1729,9 @@ namespace OpenVisionLab.Vision2D.Tool
             return new Rect(0, 0, imageSrc.Width, imageSrc.Height);
         }
 
-        private static void SuppressMatchedRegion(Mat image, Rect maskRect)
+        private void SuppressMatchedRegion(Mat image, Rect maskRect)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (image == null || image.Empty())
             {
                 return;
@@ -1551,12 +1743,14 @@ namespace OpenVisionLab.Vision2D.Tool
 
                 for (int y = 0; y < patch.Height; y += 4)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Scalar color = ((y / 4) % 2 == 0) ? Scalar.Black : Scalar.White;
                     Cv2.Line(patch, new OpenCvSharp.Point(0, y), new OpenCvSharp.Point(patch.Width - 1, y), color, 1);
                 }
 
                 for (int x = 0; x < patch.Width; x += 4)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Scalar color = ((x / 4) % 2 == 0) ? Scalar.White : Scalar.Black;
                     Cv2.Line(patch, new OpenCvSharp.Point(x, 0), new OpenCvSharp.Point(x, patch.Height - 1), color, 1);
                 }

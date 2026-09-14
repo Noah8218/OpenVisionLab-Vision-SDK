@@ -1,6 +1,8 @@
 using OpenVisionLab.Vision2D.Tool;
 using OpenCvSharp;
 using System;
+using System.Diagnostics;
+using System.Threading;
 
 namespace OpenVisionLab.Vision2D.Pipeline
 {
@@ -37,7 +39,18 @@ namespace OpenVisionLab.Vision2D.Pipeline
         /// </summary>
         public VisionPipelineRunResult Run(VisionPipeline pipeline, VisionPipelineContext context)
         {
-            return RunCore(pipeline, context, false);
+            return RunCore(pipeline, context, false, false, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Runs the configured steps with cooperative cancellation. Cancellation is propagated to the caller.
+        /// </summary>
+        public VisionPipelineRunResult Run(
+            VisionPipeline pipeline,
+            VisionPipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return RunCore(pipeline, context, false, true, cancellationToken);
         }
 
         /// <summary>
@@ -46,10 +59,26 @@ namespace OpenVisionLab.Vision2D.Pipeline
         /// </summary>
         public VisionPipelineRunResult RunWithFailureResults(VisionPipeline pipeline, VisionPipelineContext context)
         {
-            return RunCore(pipeline, context, true);
+            return RunCore(pipeline, context, true, false, CancellationToken.None);
         }
 
-        private VisionPipelineRunResult RunCore(VisionPipeline pipeline, VisionPipelineContext context, bool captureStepFailures)
+        /// <summary>
+        /// Runs the configured steps with cooperative cancellation and records cancellation as one failed step result.
+        /// </summary>
+        public VisionPipelineRunResult RunWithFailureResults(
+            VisionPipeline pipeline,
+            VisionPipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return RunCore(pipeline, context, true, true, cancellationToken);
+        }
+
+        private VisionPipelineRunResult RunCore(
+            VisionPipeline pipeline,
+            VisionPipelineContext context,
+            bool captureStepFailures,
+            bool cancellationEnabled,
+            CancellationToken cancellationToken)
         {
             if (pipeline == null)
             {
@@ -81,6 +110,17 @@ namespace OpenVisionLab.Vision2D.Pipeline
                         continue;
                     }
 
+                    if (StopForCancellation(
+                        runResult,
+                        step,
+                        captureStepFailures,
+                        cancellationEnabled,
+                        TimeSpan.Zero,
+                        cancellationToken))
+                    {
+                        break;
+                    }
+
                     IVisionTool tool = null;
                     Mat input = null;
 
@@ -89,6 +129,17 @@ namespace OpenVisionLab.Vision2D.Pipeline
                         if (captureStepFailures)
                         {
                             input = context.GetLayer(step.InputLayer);
+                            if (StopForCancellation(
+                                runResult,
+                                step,
+                                captureStepFailures,
+                                cancellationEnabled,
+                                TimeSpan.Zero,
+                                cancellationToken))
+                            {
+                                break;
+                            }
+
                             if (input == null)
                             {
                                 AddFailureResult(
@@ -104,6 +155,14 @@ namespace OpenVisionLab.Vision2D.Pipeline
                         {
                             tool = toolFactory(step);
                         }
+                        catch (OperationCanceledException exception)
+                            when (captureStepFailures
+                                && cancellationEnabled
+                                && cancellationToken.IsCancellationRequested)
+                        {
+                            AddCancellationResult(runResult, step, TimeSpan.Zero, exception);
+                            break;
+                        }
                         catch (Exception exception) when (captureStepFailures)
                         {
                             AddFailureResult(
@@ -112,6 +171,17 @@ namespace OpenVisionLab.Vision2D.Pipeline
                                 VisionToolErrorCode.ToolFactoryFailed,
                                 $"Vision tool creation failed for step '{step.Name}': {exception.Message}",
                                 exception);
+                            break;
+                        }
+
+                        if (StopForCancellation(
+                            runResult,
+                            step,
+                            captureStepFailures,
+                            cancellationEnabled,
+                            TimeSpan.Zero,
+                            cancellationToken))
+                        {
                             break;
                         }
 
@@ -130,15 +200,50 @@ namespace OpenVisionLab.Vision2D.Pipeline
                         if (!captureStepFailures)
                         {
                             input = context.GetLayer(step.InputLayer);
+                            if (StopForCancellation(
+                                runResult,
+                                step,
+                                captureStepFailures,
+                                cancellationEnabled,
+                                TimeSpan.Zero,
+                                cancellationToken))
+                            {
+                                break;
+                            }
                         }
 
-                        VisionToolResult toolResult;
+                        VisionToolResult toolResult = null;
+                        Stopwatch executionStopwatch = Stopwatch.StartNew();
                         try
                         {
-                            toolResult = tool.Execute(input);
+                            toolResult = cancellationEnabled && tool is ICancellableVisionTool cancellableTool
+                                ? cancellableTool.Execute(input, cancellationToken)
+                                : tool.Execute(input);
+                            executionStopwatch.Stop();
+
+                            if (cancellationEnabled && cancellationToken.IsCancellationRequested)
+                            {
+                                toolResult?.Dispose();
+                                toolResult = null;
+                                cancellationToken.ThrowIfCancellationRequested();
+                            }
+                        }
+                        catch (OperationCanceledException exception)
+                            when (cancellationEnabled && cancellationToken.IsCancellationRequested)
+                        {
+                            executionStopwatch.Stop();
+                            toolResult?.Dispose();
+                            if (captureStepFailures)
+                            {
+                                AddCancellationResult(runResult, step, executionStopwatch.Elapsed, exception);
+                                break;
+                            }
+
+                            throw;
                         }
                         catch (Exception exception) when (captureStepFailures)
                         {
+                            executionStopwatch.Stop();
                             AddFailureResult(
                                 runResult,
                                 step,
@@ -196,6 +301,49 @@ namespace OpenVisionLab.Vision2D.Pipeline
             }
 
             return runResult;
+        }
+
+        private static bool StopForCancellation(
+            VisionPipelineRunResult runResult,
+            VisionPipelineStep step,
+            bool captureStepFailures,
+            bool cancellationEnabled,
+            TimeSpan elapsed,
+            CancellationToken cancellationToken)
+        {
+            if (!cancellationEnabled || !cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            OperationCanceledException exception = new OperationCanceledException(cancellationToken);
+            if (!captureStepFailures)
+            {
+                throw exception;
+            }
+
+            AddCancellationResult(runResult, step, elapsed, exception);
+            return true;
+        }
+
+        private static void AddCancellationResult(
+            VisionPipelineRunResult runResult,
+            VisionPipelineStep step,
+            TimeSpan elapsed,
+            OperationCanceledException exception)
+        {
+            string message = $"Pipeline step '{step.Name}' was canceled.";
+            runResult.StepResults.Add(new VisionPipelineStepResult
+            {
+                Step = step,
+                ToolResult = VisionToolResult.Failed(
+                    VisionToolErrorCode.StepCanceled,
+                    message,
+                    elapsed,
+                    exception),
+                AcceptancePassed = false,
+                AcceptanceMessage = message
+            });
         }
 
         private static void AddFailureResult(

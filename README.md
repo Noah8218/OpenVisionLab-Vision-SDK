@@ -662,6 +662,9 @@ Pipeline configuration fails closed:
 - `UseAcceptance = true` makes the acceptance contract authoritative. Metric values and active metric/time limits must be finite; `ExpectedSuccess = false` is supported only on the final enabled step and never creates a synthetic output layer.
 - `MaxElapsedMilliseconds` is a post-execution acceptance limit. It does not abort a
   Tool call.
+- `MatchingTool`, `EdgeBasedTemplateMatchingTool`, `AutoMPointTool`, and `SiftTool`
+  implement `ICancellableVisionTool`. The token overloads of `Run` and
+  `RunWithFailureResults` use that contract and stop before later steps.
 
 Example:
 
@@ -720,9 +723,15 @@ still throw before execution. See the
 The [Vision2D package guide](src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction)
 contains the resolver, parameter-format, integrity, and ownership example.
 
+Both methods also have `CancellationToken` overloads. Cancellable `Run` propagates
+`OperationCanceledException`. Cancellable `RunWithFailureResults` records one
+`StepCanceled` result with status `Canceled`; both forms dispose any unreturned
+step results and stop before a later step. Cancellation is cooperative and cannot
+interrupt a native OpenCV call already in progress.
+
 ## Native Image Resource Ownership
 
-- The caller continues to own the input `Mat` passed to `Execute(Mat source)`. Neither a tool nor a runner disposes this input.
+- The caller continues to own the input `Mat` passed to either `Execute` overload. Neither a tool nor a runner disposes this input.
 - An `OpenCvAlgorithmBase`-based tool owns its internal source, result, and template copies, so dispose the tool after use.
 - `VisionToolResult` owns `ResultImage`. Call `VisionToolResult.Dispose()` after consuming the result, and do not use an existing `ResultImage` reference afterward.
 - `VisionPipelineContext.SetLayer` stores a clone of the input image. `GetLayer` returns a new copy that the caller must dispose.

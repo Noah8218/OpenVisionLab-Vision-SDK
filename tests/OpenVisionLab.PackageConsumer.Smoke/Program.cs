@@ -265,6 +265,22 @@ using (VisionPipelineRunResult missingLayerResult = new VisionPipelineRuntime()
     }
 }
 
+using (CancellationTokenSource pipelineCancellation = new CancellationTokenSource())
+using (VisionPipelineContext canceledPipelineContext = new VisionPipelineContext())
+{
+    canceledPipelineContext.SetLayer("input", image);
+    pipelineCancellation.Cancel();
+    using VisionPipelineRunResult canceledPipelineResult = new VisionPipelineRuntime()
+        .RunWithFailureResults(restoredPipeline, canceledPipelineContext, pipelineCancellation.Token);
+    if (canceledPipelineResult.Success
+        || canceledPipelineResult.StepResults.Count != 1
+        || canceledPipelineResult.StepResults[0].ToolResult.ErrorCode != VisionToolErrorCode.StepCanceled
+        || canceledPipelineResult.StepResults[0].ToolResult.ResultStatus != VisionToolResultStatus.Canceled)
+    {
+        throw new InvalidOperationException("Pipeline cooperative cancellation package contract failed.");
+    }
+}
+
 if (VisionPipelineToolFactory.Descriptors.Count != 14
     || VisionPipelineBlobToolFactory.Descriptors.Count != 15
     || !VisionPipelineBlobToolFactory.TryGetDescriptor("BlobTool", out VisionPipelineToolDescriptor blobDescriptor)
@@ -354,6 +370,20 @@ if (!matchingResult.Success || matching.results.Count != 1)
 {
     throw new InvalidOperationException(
         $"Matching package example failed: {matchingResult.ErrorName}: {matchingResult.Message}");
+}
+
+using (CancellationTokenSource matchingCancellation = new CancellationTokenSource())
+{
+    matchingCancellation.Cancel();
+    try
+    {
+        using VisionToolResult unexpected = ((ICancellableVisionTool)matching)
+            .Execute(matchingSource, matchingCancellation.Token);
+        throw new InvalidOperationException("Pre-canceled Matching package execution did not stop.");
+    }
+    catch (OperationCanceledException exception) when (exception.CancellationToken == matchingCancellation.Token)
+    {
+    }
 }
 
 EdgeBasedTemplateMatchingToolProperty edgeMatchingProperty = new EdgeBasedTemplateMatchingToolProperty();
