@@ -1,18 +1,16 @@
 # OpenVisionLab Vision SDK Current Status
 
 Updated: 2026-09-14
-Project work item: `PL-0014`
-Overall state: `blocked`
+Project work item: `PL-0013`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0014.json` records the active OpenCvSharp.Blob rights-scope
-request and external-response blocker. `.proofline/issues/PL-0013.json` records the
-completed third-party redistribution-evidence revalidation.
-`.proofline/issues/PL-0012.json` preserves the completed
+`.proofline/issues/PL-0013.json` records the completed third-party redistribution-
+evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
 measured-performance analyzer review. `.proofline/issues/PL-0011.json` preserves
 the completed 3.x public-compatibility analyzer review, while
 `.proofline/issues/PL-0010.json` preserves the
@@ -56,13 +54,6 @@ five packages: `OpenVisionLab.Core`, `OpenVisionLab.Vision2D`,
 
 ## Current progress
 
-`PL-0014` has reviewed the relevant upstream history and submitted the exact
-OpenCvSharp.Blob scope request as
-[OpenCvSharp issue #2136](https://github.com/shimat/opencvsharp/issues/2136).
-Earlier issue #1200 and merged removal PR #1201 show that the OpenCvSharp maintainer
-recognized the Blob/top-level license difference and removed Blob, but they do not
-define the exact 2020 assembly scope or downstream fulfillment conditions. The new
-issue is open with no response, so redistribution clearance remains blocked.
 `PL-0002`, `PL-0003`, and `PL-0004` are resolved for their approved functional,
 package-source traceability, and exact third-party technical-provenance scopes.
 `PL-0004` completion does not make a legal determination or authorize commercial
@@ -113,64 +104,6 @@ no-regression boundary are recorded below.
 `PL-0006` has completed the missed SIFT success diagnostic, preprocessing Mat release,
 consumer API contracts, and numeric/success-path verification. `PL-0005`'s earlier
 F7 closure is corrected below; the other audited changes retain their prior evidence.
-
-## PL-0014 work contract
-
-Status: `Blocked` by an external rights-scope response.
-
-Completed scope: inspect the active upstream repository and its exact issue template,
-search related public records, evaluate issue #1200 and merged removal PR #1201,
-submit an exact-release clarification request, and preserve the posted body and
-metadata. The public request is
-[OpenCvSharp issue #2136](https://github.com/shimat/opencvsharp/issues/2136).
-
-Implement now: no SDK source or package change. Once an authorized upstream answer
-arrives, preserve it and assess each of the five questions in
-[`THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md`](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
-Only after that assessment may the identified project distribution/legal owner use
-the checklist to approve, reject, or request more evidence.
-
-Review later: if the OpenCvSharp maintainer cannot speak for the cvBlob-derived
-rights, route only the unanswered cvBlob questions to the identified original rights
-holder and retain that response. Do not infer permission from silence, Blob's later
-removal, or a link to a current license.
-
-Out of scope: a legal determination, package publication, stable version, tag,
-release, deployment, consumer-repository mutation, third-party binary replacement,
-or self-approval on behalf of the project distribution/legal owner.
-
-Acceptance criteria:
-
-- C1 — Pass. The active OpenCvSharp repository accepts wrapper-specific issues and
-  has no Discussions. Issue #1200 and merged PR #1201 were reviewed; they prove the
-  license difference was recognized and Blob was removed, but do not answer the
-  exact assembly-scope and fulfillment questions.
-- C2 — Pass. Issue #2136 was submitted by `Noah8218` for package
-  `OpenCvSharp4 4.4.0.20200915`, commit `daa955c6e0263a7ba201404e5aa72f4c1bd144ae`,
-  and Blob DLL SHA-256
-  `E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54`.
-  The fetched public body exactly matches local request SHA-256
-  `3524C621DCA8ECA50B544182B482D929661A63F3C0748B99101BCF427DC67343`.
-- C3 — Blocked. No authorized response currently answers all five questions for the
-  exact binary and commit.
-- C4 — Blocked. Project distribution/legal-owner review must follow C3 and has not
-  been performed.
-
-Verification: the fetched GitHub issue body matches the local request byte for byte;
-all 14 issue-ledger records validate; `git diff --check` passes; and all 91 checked
-local targets across 25 tracked Markdown files resolve.
-
-Evidence: submission and upstream-history evidence is under
-`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0014`.
-`submission-verification.json` has SHA-256
-`554345355908F80161339971A04B91928A83CC17280E49EDBBC98CC8E692664A`;
-`documentation-links.json` has SHA-256
-`2B2C297E44EFC2213FD778B2B3232699C5823C5D0FABAAB15B6DA59B7D67D889`;
-`.proofline/issues/PL-0014.json` is the machine-readable state record.
-
-Boundary / next dependency: wait for an answer at issue #2136. Another source edit,
-test run, or analyzer pass cannot replace that external answer, and the unanswered
-request does not establish redistribution clearance.
 
 ## PL-0013 work contract
 
@@ -1156,16 +1089,14 @@ another RID or .NET Framework runtime, run real sensors/calibration/Gauge R&R, o
 establish commercial redistribution clearance. The latter remains blocked by the
 prerequisites recorded above.
 
-## Next priority — upstream answer, then project approval
+## Next priority — two external redistribution approvals
 
-Prerequisite: receive a written answer to
-[OpenCvSharp issue #2136](https://github.com/shimat/opencvsharp/issues/2136) that
-resolves the five exact Blob scope questions. Then obtain project
-distribution/legal-owner approval of the final notice bundle, LGPL source/relinking
-fulfillment method, Intel conditions, and exact distribution workflow. The decision
-template is
+Prerequisites: obtain written OpenCvSharp/cvBlob rights-holder clarification of the
+Blob license scope, then obtain project distribution/legal-owner approval of the
+final notice bundle, LGPL source/relinking fulfillment method, Intel conditions, and
+exact distribution workflow. The actionable request and decision template is
 [`THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md`](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
-Until that external response exists, another implementation or model run cannot
+Until both approvals are retained, another implementation or model run cannot
 establish redistribution clearance, so no model-token recommendation is made.
 
 ## Historical PL-0002 priority 1 — 2D result-contract correctness

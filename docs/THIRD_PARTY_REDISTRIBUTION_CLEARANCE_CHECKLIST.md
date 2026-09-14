@@ -13,22 +13,6 @@ Send the request to a person who can authoritatively speak for the applicable
 OpenCvSharp and cvBlob rights. Retain the complete response, sender identity, date,
 and stable URL or message export with the release evidence.
 
-### Request status
-
-- Submitted to the active OpenCvSharp repository as
-  [issue #2136](https://github.com/shimat/opencvsharp/issues/2136) on
-  2026-09-14. The request identifies the exact package, source commit, binary hash,
-  conflicting declarations, and all five questions below.
-- Earlier [issue #1200](https://github.com/shimat/opencvsharp/issues/1200) records
-  the maintainer's decision to remove Blob after its license difference was raised;
-  merged [PR #1201](https://github.com/shimat/opencvsharp/pull/1201) performed that
-  removal. Neither record defines the license scope or fulfillment conditions for
-  the exact 2020 assembly, so it is supporting context rather than clearance.
-- As of 2026-09-14, issue #2136 is open with no response. Submission evidence is
-  preserved under
-  `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0014` and tracked by
-  `.proofline/issues/PL-0014.json`.
-
 ### Facts to include
 
 - NuGet package: `OpenCvSharp4 4.4.0.20200915`.
