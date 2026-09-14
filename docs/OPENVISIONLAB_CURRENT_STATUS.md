@@ -2,14 +2,14 @@
 
 Updated: 2026-09-15
 Project work item: `PL-0015`
-Overall state: `doing`
+Overall state: `resolved`
 
 ## Authority
 
 This file is the single current human-readable authority for product identity,
 ordered engineering priorities, completion criteria, and verification boundaries.
 [`docs/README.md`](README.md) is the navigation index. The machine-readable
-`.proofline/issues/PL-0015.json` preserves the active 2D descriptor and safe model-
+`.proofline/issues/PL-0015.json` preserves the completed 2D descriptor and safe model-
 reconstruction work. `.proofline/issues/PL-0014.json` preserves the completed SDK
 direction and Pipeline failure-result work. `.proofline/issues/PL-0013.json` preserves the completed
 third-party redistribution-evidence revalidation. `.proofline/issues/PL-0012.json` preserves the completed
@@ -61,7 +61,7 @@ contract, and ordered follow-up work are defined in
 
 ## Current progress
 
-`PL-0015` has an implementation candidate for all 15 non-legacy 2D Tools. The Core
+`PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
 package composes the fifteenth. Matching, edge-based matching, and SIFT restore
 host-owned encoded templates only after versioned metadata and SHA-256 validation.
@@ -69,8 +69,10 @@ Schema 2 carries those references while explicit schema 1 and original unversion
 XML remain readable. Pipeline-focused Smoke passes 11/11 and the analyzer passes at
 411 reviewed diagnostics, including 186 exact compatibility and 225 exact retained
 performance identities. The full 237-case Smoke/coverage gate, 3,350-entry exact
-public API, third-party lock, and all 96 local document targets also pass. Commit-
-fixed package consumption and exact remote CI remain the completion boundary.
+public API, third-party lock, all 96 local document targets, commit-fixed package
+consumption, and exact remote CI also pass. Implementation commit
+`2e16c7ecb0fa1928b37acf4221061cadd46a4258` is on `origin/main`; exact evidence is
+recorded in the work contract below.
 
 `PL-0014` completed the first product-direction batch identified by the 2026-09-14
 full audit. The SDK now has one durable rule-based capability/error matrix, a
@@ -132,15 +134,15 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0015 work contract
 
-Status: `Incomplete` — source and focused verification pass; exact-commit package
-consumption and remote CI evidence are still required.
+Status: `Complete` at implementation commit
+`2e16c7ecb0fa1928b37acf4221061cadd46a4258` on `origin/main`.
 
 Scope: expose machine-readable descriptors and package-owned, reflection-free
 factories for all 15 public non-legacy 2D Tools; add safe host-resolved template
 restoration for Matching, edge-based matching, and SIFT; and preserve prior Pipeline
 XML, typed Tool, error, and ownership contracts.
 
-Implement now: the 14-Tool `VisionPipelineToolFactory` catalog/factory, the Blob
+Completed implementation: the 14-Tool `VisionPipelineToolFactory` catalog/factory, the Blob
 package's 15-Tool composite, schema 2 artifact references, version 1/unversioned
 read compatibility, invariant parameter parsing, SHA-256-before-decode validation,
 focused tests, package consumer coverage, and developer guidance.
@@ -196,21 +198,21 @@ Pipeline cases in `Vision2DSmokeSuite.cs` and the package-only consumer.
 
 Acceptance criteria:
 
-- C1 — Pass in focused source verification. The two catalogs expose the exact 14/
+- C1 — Pass. The two catalogs expose the exact 14/
   15 Tool sets; the descriptor test compares every parameter name and value type
   with its concrete writable property model, excluding only model host paths.
-- C2 — Pass in focused source verification. Explicit mappings construct all 15
+- C2 — Pass. Explicit mappings construct all 15
   Tools and reject unknown, duplicate, malformed, non-finite, and undefined enum
   parameter values without property reflection or global registration.
-- C3 — Pass in focused source verification. All three model Tools require one
+- C3 — Pass. All three model Tools require one
   versioned template reference; metadata and SHA-256 are checked before decode,
   caller/factory/Tool release owners are exercised, and host paths are rejected.
-- C4 — Pass in focused source verification. Schema 2 round-trips artifact metadata;
+- C4 — Pass. Schema 2 round-trips artifact metadata;
   schema 1/unversioned XML loads; invalid versions, metadata, schema-1 artifacts,
   duplicate parameters, and DTD input fail closed; loading is inert.
-- C5 — Partial. Full integrated, coverage, exact API/document, and third-party
-  checks pass. Commit-fixed package, isolated consumer/native-copy, and exact remote
-  CI evidence must still pass.
+- C5 — Pass. Full integrated, coverage, exact API/document, third-party,
+  commit-fixed package, four negative provenance, isolated consumer/native-copy,
+  and exact remote CI checks pass.
 
 Verification: Release build has zero warnings/errors; Pipeline-focused Smoke passes
 11/11; full Smoke passes 237/237; coverage passes at Core 37.35%, Inspection 69.92%,
@@ -218,13 +220,27 @@ Vision2D 76.60%, Vision2D.Blob 74.55%, and Vision3D 90.97%; the exact public API
 3,350 entries; analyzer passes at 411 diagnostics with 186 compatibility and 225
 performance identities; third-party provenance remains exact; and all 96 local
 targets across 26 Markdown files resolve. Current integrated evidence is under
-`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0015\precommit-3`. Commit-
-fixed package and remote evidence is pending.
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0015\precommit-3`.
+Commit-fixed package version `3.0.1-pl0015.2e16c7e.1` passes provenance, all four
+negative probes, isolated package-only execution, and the exact one-file Windows
+x64 native-copy check. Package SHA-256 values are Core
+`12A556D6A680FEB3C67A7AB98B846BE78CF436A763803915686E0A25414AC996`, Inspection
+`11FB67D01D11070ABBCEFEF17647D7D5CC8C908C357C9EFA702FE2126404A359`, Vision2D
+`BC4DD1C11B99E3843DBD1294D4D3AC9AC2E457CAC3BD8A6917787252E9968B66`, Vision2D.Blob
+`E19E1AF8FB703781B1C28DA6E338833B97D21D83AD7949E999329993F9A8C775`, and Vision3D
+`B1EAE39CD120895AA7C88D8F72E51A022E0B39F2E17441BA848223C2941EC6FF`. GitHub Actions
+[Build run 34864055796](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/actions/runs/34864055796)
+passes every step for the exact implementation commit. Reusable package, consumer,
+native-copy, monitor, and remote evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0015\final-2e16c7e-20260915-a1`;
+`validation-summary.json` has SHA-256
+`9C54F41AF4C2DE72D7AC01D50DA485014ABA70710778DBA5D850BA1C3D5C8A7F`.
 
-Boundary / next dependency: this local evidence does not establish package-only or
-remote behavior until C5 passes. It does not establish sensor accuracy,
-calibration validity, Gauge R&R, production error rates/Takt, other native runtimes,
-or commercial redistribution clearance.
+Boundary / next dependency: this completion proves source, package-only, and remote
+CI behavior for the current `net8.0/win-x64` consumer. It does not establish sensor
+accuracy, calibration validity, Gauge R&R, production error rates/Takt, other native
+runtimes, or commercial redistribution clearance. No NuGet package, tag, release,
+deployment, or consumer repository was changed.
 
 ## PL-0014 work contract
 
@@ -956,12 +972,12 @@ readability diagnostics selected by their owner reviews. PL-0011 exact-locked al
 performance suggestions, removed the 32 deterministic empty-array allocations and
 the nine single-task `WaitAll` params-array allocations, and exact-locked the 231
 retained identities. PL-0015 then removed six private `VisionPipelineToolFactory`
-CA1859 findings while adding the explicit construction paths. The current candidate
-reports **411 diagnostics in eight emitted codes**, including 186 compatibility and
-225 retained performance identities. PL-0012's exact-commit package and remote
-evidence remain recorded under `PL-0012/final-8c5dd02` and Build run 34804351066;
-PL-0015's exact evidence remains pending. This is a reviewed no-regression boundary,
-not a zero-warning claim.
+CA1859 findings while adding the explicit construction paths. Implementation commit
+`2e16c7ecb0fa1928b37acf4221061cadd46a4258` reports **411 diagnostics in eight
+emitted codes**, including 186 compatibility and 225 retained performance identities.
+Its exact package evidence is under `PL-0015/final-2e16c7e-20260915-a1`, and Build
+run 34864055796 passes. This is a reviewed no-regression boundary, not a zero-warning
+claim.
 
 | Category | Codes / count | Review decision |
 | --- | --- | --- |

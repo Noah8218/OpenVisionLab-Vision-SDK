@@ -17,9 +17,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "The existing factory covers 6 of 15 public 2D Tools and discovers valid parameter names with reflection; model-backed Tools have no serialized artifact reference or integrity-checked host resolver.",
-    "next_action": "Implement explicit descriptors, reflection-free factories, versioned artifact references, focused tests, consumer guidance, and exact verification."
+    "status": "resolved",
+    "current_summary": "Cause: the Pipeline factory covered only 6 of 15 public 2D Tools and lacked a safe model-artifact contract. Change: PL-0015 added immutable descriptors, explicit package-owned factories for all 15 Tools, schema-2 host-resolved artifact validation, compatibility loading, tests, and guidance. Result: exact local, commit-fixed package, isolated consumer/native-copy, and remote CI gates pass at implementation commit 2e16c7ecb0fa1928b37acf4221061cadd46a4258 without publishing packages."
   },
   "objective": {
     "summary": "Make every public non-legacy 2D Tool discoverable and safely reconstructible through package-owned Pipeline factories, including integrity-checked host-resolved templates.",
@@ -35,27 +34,46 @@
     {
       "id": "C1",
       "text": "Machine-readable descriptors expose canonical IDs, aliases, property identity, parameters/defaults/types, and artifact requirements for all 15 public non-legacy 2D Tools across their owning packages.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E1",
+        "E4"
+      ]
     },
     {
       "id": "C2",
       "text": "Package-owned factories construct all 15 Tools from invariant validated parameters without reflection or global registration, and reject unsupported or malformed values deterministically.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E1",
+        "E4"
+      ]
     },
     {
       "id": "C3",
       "text": "Matching, edge-based matching, and SIFT templates are reconstructed from host-resolved encoded bytes only after stable ID, format version, and SHA-256 validation; decoded Mats and created Tools have explicit release ownership.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E1",
+        "E3",
+        "E4"
+      ]
     },
     {
       "id": "C4",
       "text": "Pipeline schema version 2 round-trips artifact references, version 1 and unversioned fixtures remain readable, invalid artifact metadata fails closed, and deserialization does not invoke the resolver or execute a Tool.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E1",
+        "E4"
+      ]
     },
     {
       "id": "C5",
       "text": "Focused/full smoke, Release build, exact API/analyzer/document gates, commit-fixed packages, isolated package consumer/native-copy checks, and exact remote CI pass with reusable evidence and updated current documentation.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
     }
   ],
   "relations": [
@@ -95,7 +113,46 @@
     }
   ],
   "artifacts": [],
-  "evidence": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0015/precommit-3/precommit-summary.json",
+      "observation": "Release build passed with 0 warnings/errors; Pipeline-focused Smoke passed 11/11; full Smoke passed 237/237; all five coverage floors, the exact 3,350-entry API, 411-diagnostic analyzer contract, third-party provenance, and 96 local documentation targets passed.",
+      "observed_at": "2026-09-15T00:39:07.8918342+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "artifact",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0015/final-2e16c7e-20260915-a1/package-provenance.json",
+      "observation": "Five packages at version 3.0.1-pl0015.2e16c7e.1 passed clean-worktree provenance for exact implementation commit 2e16c7ecb0fa1928b37acf4221061cadd46a4258; four package-mutation probes also failed closed.",
+      "observed_at": "2026-09-15T00:48:58.7712506+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0015/final-2e16c7e-20260915-a1/validation-summary.json",
+      "observation": "The isolated package-only consumer restored from a fresh D-drive cache and executed the 2D descriptors/factories/model resolver plus existing 2D/3D contracts; exactly one root OpenCvSharpExtern.dll matched the reviewed SHA-256.",
+      "observed_at": "2026-09-15T00:46:59.1287513+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "ci",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0015/final-2e16c7e-20260915-a1/remote-ci.json",
+      "observation": "GitHub Actions Build run 34864055796 passed every build, Smoke/coverage, API, analyzer, pack/provenance, negative-probe, isolated-consumer, and native-copy step for exact commit 2e16c7ecb0fa1928b37acf4221061cadd46a4258.",
+      "observed_at": "2026-09-15T00:46:04+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "artifact",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0015/final-2e16c7e-20260915-a1/validation-summary.json",
+      "observation": "The validation summary binds all five clean-worktree package hashes and provenance at version 3.0.1-pl0015.2e16c7e.1 to the exact implementation commit and separately records all four local mutation probes as fail-closed.",
+      "observed_at": "2026-09-15T00:46:59.1287513+09:00",
+      "supersedes": [
+        "E2"
+      ]
+    }
+  ],
   "events": [
     {
       "id": "D1",
@@ -103,8 +160,16 @@
       "at": "2026-09-14T23:37:04.5555776+09:00",
       "summary": "Reuse VisionPipelineToolFactory as the Vision2D owner, add a Blob-package composite factory, represent model inputs as host-resolved encoded bytes, and freeze version 1 while introducing schema version 2.",
       "evidence_refs": []
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-09-15T00:48:58.7712506+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "All PL-0015 acceptance criteria passed at the exact implementation commit; package publication and production qualification remain outside this issue."
     }
   ],
   "created_at": "2026-09-14T23:37:04.5555776+09:00",
-  "updated_at": "2026-09-14T23:37:04.5555776+09:00"
+  "updated_at": "2026-09-14T15:49:57.001Z"
 }
