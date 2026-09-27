@@ -24,6 +24,7 @@ namespace OpenVisionLab.Inspection.Smoke
                 runner.Run(Vision2DSmokeSuite.Cases());
                 runner.Run(Vision2DCancellationSmokeSuite.Cases());
                 runner.Run(VisionObjectCandidateSmokeSuite.Cases());
+                runner.Run(BinaryShapeCompatibilitySmokeSuite.Cases());
                 runner.Run(LegacyApiCompatibilitySmokeSuite.Cases());
                 runner.Run(CombinedInspectionSmokeSuite.Cases());
                 runner.Run(ThreeDToolExecutionSmokeSuite.Cases());

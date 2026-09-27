@@ -6,10 +6,10 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using OpenVisionLab.Core;
+using OpenVisionLab.Vision2D.Components;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
 using OpenCvSharp;
-using OpenCvSharp.Blob;
 
 namespace OpenVisionLab.Vision2D.Blob
 {
@@ -67,32 +67,30 @@ namespace OpenVisionLab.Vision2D.Blob
                     // 검출하려고 하는 물체가 검은색이면 반전으로 검출해야함
                     if (property.USE_BITWISENOT) Cv2.BitwiseNot(ImageBlob, ImageBlob);
 
-                    CvBlobs Blobs = new CvBlobs();
-                    Blobs.Label(ImageBlob);
-                    Blobs.FilterByArea(property.MIN_AREA, property.MAX_AREA);
+                    IReadOnlyList<BinaryComponent> blobs = BinaryShapeCompatibility.LabelComponents(ImageBlob)
+                        .Where(item => item.Area >= property.MIN_AREA && item.Area <= property.MAX_AREA)
+                        .ToList();
 
                     ConcurrentBag<CResultBlob> defectsS = new ConcurrentBag<CResultBlob>();
-                    Parallel.ForEach(Blobs, (item, state, index) =>
+                    Parallel.ForEach(blobs, (item, state, index) =>
                     {
-                        CvBlob b = item.Value;
-
                         Rect rect = new Rect();
                         Point2d Center = new Point2d();
 
                         if (property.USE_ROI)
                         {
-                            rect.X = b.Rect.X + property.CvROI.X;
-                            rect.Y = b.Rect.Y + property.CvROI.Y;
-                            rect.Width = b.Rect.Width;
-                            rect.Height = b.Rect.Height;
+                            rect.X = item.Bounds.X + property.CvROI.X;
+                            rect.Y = item.Bounds.Y + property.CvROI.Y;
+                            rect.Width = item.Bounds.Width;
+                            rect.Height = item.Bounds.Height;
 
-                            Center.X = b.Centroid.X + property.CvROI.X;
-                            Center.Y = b.Centroid.Y + property.CvROI.Y;
+                            Center.X = item.Center.X + property.CvROI.X;
+                            Center.Y = item.Center.Y + property.CvROI.Y;
                         }
                         else
                         {
-                            rect = b.Rect;
-                            Center = b.Centroid;
+                            rect = item.Bounds;
+                            Center = item.Center;
                         }
 
                         bool Masking = false;
@@ -108,7 +106,7 @@ namespace OpenVisionLab.Vision2D.Blob
 
                         if (!Masking)
                         {
-                            defectsS.Add(new CResultBlob((int)index, b.Area, Center, rect, b.Angle()));
+                            defectsS.Add(new CResultBlob((int)index, item.Area, Center, rect, item.Angle));
                         }
                     });
                     results = defectsS.OrderBy(c => c.Index).ToList();
@@ -163,32 +161,30 @@ namespace OpenVisionLab.Vision2D.Blob
 
                         Stopwatch sw_TaktTimems2 = Stopwatch.StartNew();
 
-                        CvBlobs Blobs = new CvBlobs();
-                        Blobs.Label(ImageBlob);
-                        Blobs.FilterByArea(property.MIN_AREA, property.MAX_AREA);
+                        IReadOnlyList<BinaryComponent> blobs = BinaryShapeCompatibility.LabelComponents(ImageBlob)
+                            .Where(item => item.Area >= property.MIN_AREA && item.Area <= property.MAX_AREA)
+                            .ToList();
 
                         ConcurrentBag<CResultBlob> defectsS = new ConcurrentBag<CResultBlob>();
-                        Parallel.ForEach(Blobs, (item, state, index) =>
+                        Parallel.ForEach(blobs, (item, state, index) =>
                         {
-                            CvBlob b = item.Value;
-
                             Rect rect = new Rect();
                             Point2d Center = new Point2d();
 
                             if (property.USE_ROI)
                             {
-                                rect.X = b.Rect.X + property.CvROIS[i].X;
-                                rect.Y = b.Rect.Y + property.CvROIS[i].Y;
-                                rect.Width = b.Rect.Width;
-                                rect.Height = b.Rect.Height;
+                                rect.X = item.Bounds.X + property.CvROIS[i].X;
+                                rect.Y = item.Bounds.Y + property.CvROIS[i].Y;
+                                rect.Width = item.Bounds.Width;
+                                rect.Height = item.Bounds.Height;
 
-                                Center.X = b.Centroid.X + property.CvROIS[i].X;
-                                Center.Y = b.Centroid.Y + property.CvROIS[i].Y;
+                                Center.X = item.Center.X + property.CvROIS[i].X;
+                                Center.Y = item.Center.Y + property.CvROIS[i].Y;
                             }
                             else
                             {
-                                rect = b.Rect;
-                                Center = b.Centroid;
+                                rect = item.Bounds;
+                                Center = item.Center;
                             }
 
                             bool Masking = false;
@@ -204,7 +200,7 @@ namespace OpenVisionLab.Vision2D.Blob
 
                             if (!Masking)
                             {
-                                defectsS.Add(new CResultBlob((int)index, b.Area, Center, rect, b.Angle()));
+                                defectsS.Add(new CResultBlob((int)index, item.Area, Center, rect, item.Angle));
                             }
                         });
                         results.AddRange(defectsS.OrderBy(c => c.Index).ToList());

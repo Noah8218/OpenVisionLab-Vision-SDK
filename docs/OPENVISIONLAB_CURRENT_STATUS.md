@@ -1,6 +1,6 @@
 # OpenVisionLab Vision SDK Current Status
 
-Updated: 2026-09-15
+Updated: 2026-09-27
 Project work item: `PL-0016`
 Overall state: `doing`
 
@@ -69,10 +69,14 @@ contract, and ordered follow-up work are defined in
 1–4. It selects an independent typed 3D adapter/report runner, additive cooperative
 2D cancellation, an exact-behavior Blob/Contour replacement before OpenCvSharp4
 4.13 qualification, and a fail-closed calibrated-data gate before any physical-unit
-metrology/golden/color API. Fixed probes passed 1,600/1,600 exact contour sequence
-comparisons and 500/500 exact component comparisons. The isolated 4.13 source build
-passes after one `MatType` cache-key adjustment and passes the first 192 smoke cases;
-the next old-Blob case fails, proving Blob removal is a migration prerequisite.
+metrology/golden/color API. A fresh public-baseline differential run passes 2,000
+exact Blob comparisons and 16,000 exact Contour comparisons with identical result
+file SHA-256 values. The isolated 4.13 source candidate builds with zero warnings and
+errors, passes `253/253` from its output directory, and passes package-only
+consumption. It fails at the first OpenCV-dependent case when that same smoke DLL is
+launched by absolute path from the repository root because the direct-reference
+native asset is not discovered. The current managed 4.4/native 4.3 bytes are retained
+to preserve the documented source-checkout workflow.
 M2 is complete at implementation commit
 `b3c31a9a0df6909fcdd73c16717c412d1af71c84`. The separate typed 3D
 adapter/report owner passed eight focused cases, full 245-case Smoke/coverage, the
@@ -86,7 +90,12 @@ zero-warning Release build, the exact 3,398-entry API, and the unchanged 411-
 diagnostic analyzer contract. Five commit-fixed packages at
 `3.0.1-pl0016.m3.6d92357.1789407712613` passed provenance and isolated consumption
 with exactly one native output DLL. M4 Blob/Contour replacement and OpenCvSharp4
-4.13 qualification is now active.
+4.13 qualification are complete locally. The current source smoke passes 253/253,
+the Core provenance gate sees two binaries and 21 evidence documents, and the
+isolated 4.13 package-only consumer passes with exactly one native DLL. M5's portable,
+fail-closed calibrated-data manifest gate passes its synthetic contract and all nine
+new negative boundary cases. Production qualification remains blocked by missing
+approved real-sensor data.
 
 `PL-0015` completed reconstruction support for all 15 non-legacy 2D Tools. The Core
 factory now exposes 14 explicit descriptors and construction paths; the Blob
@@ -114,8 +123,9 @@ package-source traceability, and exact third-party technical-provenance scopes.
 redistribution. PL-0013 has now confirmed exact official sources for the Blob
 `LGPL-3.0-or-later` version, IPPICV 2020 redistribution terms, and ittnotify's BSD
 selection. Those texts and the other identified OpenCV 4.3 third-party notices are
-fixed into the Core package and fail-closed manifest. Commercial clearance
-remains blocked by the two approvals below.
+fixed into the Core package and fail-closed manifest. The current Core bundle has two
+vendored binaries and 21 evidence documents. Commercial clearance remains blocked by
+one distribution-owner approval for that exact bundle.
 `PL-0012` classified all 272 performance suggestions by rule, owner, project
 layer, access, and call behavior. Thirty-two zero-length allocations now use
 `Array.Empty<T>()`, and nine single-task `Task.WaitAll` calls now use `Task.Wait()`;
@@ -161,8 +171,8 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0016 work contract
 
-Status: `In progress`; detailed analysis, M2 typed 3D execution, and M3 cooperative
-2D cancellation are complete.
+Status: `In progress`; detailed analysis and M2–M5 implementation slices are complete,
+while the final integrated candidate and external prerequisites remain open.
 
 Scope: add an independent typed 3D execution adapter/report; add additive cooperative
 cancellation to the 2D runtime and four matching/search Tools; replace
@@ -186,9 +196,12 @@ internal component/contour compatibility engine reused by `ContourTool` and the
 friend Blob package. The host remains the owner of calibration, real data, and final
 acceptance.
 
-Immediate next action: implement and verify the M4 internal Blob/Contour
-compatibility engine, remove `OpenCvSharp.Blob`, and qualify OpenCvSharp4 4.13. The
-remaining ordered project work after M4 is the calibrated-data gate.
+Immediate next action: complete the integrated source checks, commit the verified
+candidate on `main`, and run the exact-commit package/consumer gate before the
+repository-authorized push to `origin/main`.
+The calibrated-data gate must remain fail-closed until an approved real-sensor data
+set supplies the manifest files, calibration/frame/unit contract, independent
+ground truth, tolerances, error policy, and cold/warm performance context.
 
 M2 durable evidence: source and coverage summary under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M2`; exact package and
@@ -204,6 +217,32 @@ summary has SHA-256
 `B4D85C020D61D2B043C7B9A65252E86F983E5699D9D0413EF58D46329CC78F09`. This M3
 checkpoint does not replace the full smoke/coverage run required for the final
 PL-0016 source candidate.
+
+M4 durable evidence: the current source candidate's full smoke, compatibility cases,
+and third-party gate are recorded in
+`docs/SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md`. The 2,000 Blob and 16,000 Contour
+exact comparisons, isolated 4.13 build, output-directory `253/253` pass,
+repository-root `156/157` native-discovery failure, five-package layout, and
+package-only consumer evidence are under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M4-regenerated-1790511248536`.
+
+M5 durable evidence: the executable contract is
+`eng/Verify-Calibrated2DBaseline.ps1` with template
+`docs/CALIBRATED_2D_BASELINE_MANIFEST_TEMPLATE.json`. The portable-path synthetic
+pass and nine-case UTC/range, integer, duplicate-ID, path, and hash fail-closed matrix
+are under the regenerated M4/M5 evidence root's `calibrated-contract` directory.
+This is contract evidence only; it is not sensor accuracy, calibration approval,
+Gauge R&R, false-accept/reject, production Takt, or commercial clearance evidence.
+
+Current integrated source-candidate evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\final-source-1790513034242`:
+Release build `0/0`, full smoke `253/253`, coverage Core `37.35%`, Inspection
+`70.34%`, Vision2D `77.08%`, Vision2D.Blob `74.66%`, Vision3D `90.97%`, exact
+public API `3,398/3,398`, and analyzer `410` diagnostics (`186` compatibility plus
+`224` performance) pass. Third-party verification passes with two exact binaries and
+21 evidence documents, and no Blob dependency or current Blob-specific evidence file
+remains. Commit-fixed package provenance and isolated consumption remain pending
+until the implementation commit exists.
 
 Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
 4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,
@@ -1399,17 +1438,16 @@ prerequisites recorded above.
 
 1. Complete: typed 3D adapter/report.
 2. Complete: cooperative 2D matching/search cancellation.
-3. Active: Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-4. Pending: calibrated representative-data gate | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+3. Complete: Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification; 4.13 is retained as not adopted because its source/direct-reference native discovery breaks repository-root execution | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
+4. Complete: calibrated representative-data contract and fail-closed verifier; production data gate remains blocked | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+5. Pending: final integrated source-candidate verification and commit-fixed evidence | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
 
 Priority 4 public physical metrology/golden/color algorithms remain blocked until a
 manifested and approved real-sensor data set supplies the acquisition, calibration,
 ground-truth uncertainty, tolerance/error policy, and performance prerequisites in
-the detailed analysis. The current two third-party approval questions also remain
-applicable while the old Blob component is shipped. After its verified removal, the
-component-specific question must be retired and the distribution owner must review
-the remaining exact binary/notice bundle. Source changes cannot make that legal
-decision.
+the detailed analysis. The former Blob-specific redistribution question is retired
+with the dependency removal; the distribution owner must review the remaining exact
+two-binary/notice bundle. Source changes cannot make that legal decision.
 
 ## Historical PL-0002 priority 1 — 2D result-contract correctness
 

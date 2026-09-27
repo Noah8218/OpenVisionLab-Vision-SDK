@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "dataset": {
+    "id": "synthetic-contract-example",
+    "revision": "2026-09-15.1",
+    "purpose": "synthetic",
+    "sourceCommit": "0000000000000000000000000000000000000000",
+    "split": "development",
+    "approvalId": "synthetic-contract-not-production"
+  },
+  "sensor": {
+    "model": "example-camera",
+    "serial": "example-serial",
+    "firmware": "example-firmware",
+    "lens": "example-lens",
+    "acquisition": {
+      "exposureUs": 1000,
+      "gain": 0,
+      "lighting": "example-lighting",
+      "trigger": "software",
+      "fixture": "example-fixture"
+    }
+  },
+  "calibration": {
+    "id": "calibration-example",
+    "path": "calibration/calibration.json",
+    "sha256": "<64-hex-sha256>",
+    "frameId": "camera-frame",
+    "unit": "mm",
+    "validFromUtc": "2026-01-01T00:00:00Z",
+    "validToUtc": "2027-01-01T00:00:00Z",
+    "approvalId": "calibration-approval-record"
+  },
+  "recipe": {
+    "id": "recipe-example",
+    "version": "1.0.0",
+    "path": "recipe/recipe.json",
+    "sha256": "<64-hex-sha256>"
+  },
+  "samples": [
+    {
+      "id": "nominal-001",
+      "sourcePath": "raw/nominal-001.bin",
+      "sourceSha256": "<64-hex-sha256>",
+      "partFamily": "example-family",
+      "lot": "example-lot",
+      "fixture": "example-fixture",
+      "operator": "example-operator",
+      "labels": ["nominal"],
+      "groundTruthPath": "ground-truth/nominal-001.json",
+      "groundTruthSha256": "<64-hex-sha256>",
+      "groundTruth": {
+        "method": "independent-reference",
+        "unit": "mm",
+        "frameId": "camera-frame",
+        "uncertainty": 0.01,
+        "repeatCount": 3,
+        "independent": true
+      }
+    },
+    {
+      "id": "defect-001",
+      "sourcePath": "raw/defect-001.bin",
+      "sourceSha256": "<64-hex-sha256>",
+      "partFamily": "example-family",
+      "lot": "example-lot",
+      "fixture": "example-fixture",
+      "operator": "example-operator",
+      "labels": ["defect:example"],
+      "groundTruthPath": "ground-truth/defect-001.json",
+      "groundTruthSha256": "<64-hex-sha256>",
+      "groundTruth": {
+        "method": "independent-reference",
+        "unit": "mm",
+        "frameId": "camera-frame",
+        "uncertainty": 0.01,
+        "repeatCount": 3,
+        "independent": true
+      }
+    }
+  ],
+  "groundTruth": {
+    "method": "independent-reference",
+    "unit": "mm",
+    "frameId": "camera-frame",
+    "uncertainty": 0.01,
+    "repeatCount": 3,
+    "independent": true
+  },
+  "tolerance": {
+    "unit": "mm",
+    "outputs": [
+      {
+        "name": "example-feature",
+        "lsl": -0.1,
+        "usl": 0.1
+      }
+    ],
+    "falseAcceptRate": 0.001,
+    "falseRejectRate": 0.001,
+    "ambiguousPolicy": "reject-and-escalate"
+  },
+  "performance": {
+    "targetHardware": "example-industrial-pc",
+    "runtime": "Windows x64 / .NET 8",
+    "cold": {
+      "count": 30,
+      "medianMs": 10,
+      "p95Ms": 15,
+      "p99Ms": 20
+    },
+    "warm": {
+      "count": 100,
+      "medianMs": 5,
+      "p95Ms": 8,
+      "p99Ms": 10
+    },
+    "memoryMb": 256,
+    "taktMs": 50
+  }
+}

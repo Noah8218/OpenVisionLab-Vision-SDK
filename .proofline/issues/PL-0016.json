@@ -19,8 +19,8 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "M1 analysis, M2 typed 3D adapter/report, and M3 cooperative 2D cancellation are complete. M3 commit 6d92357a7c3c8a072a605105cadc1c08892f9d04 adds the optional ICancellableVisionTool contract, Pipeline token overloads, managed/native-boundary checkpoints in Matching, EdgeBasedTemplateMatching, AutoMPoint and Sift, and caller-token-only StepCanceled classification. Release build 0/0, 5/5 focused cancellation cases, exact 3,398 API entries, the unchanged 411 analyzer diagnostics, five commit-fixed packages, isolated package consumption, and one native output DLL passed. M4 Blob/Contour replacement and OpenCvSharp4 4.13 qualification is active.",
-    "next_action": "Replace Blob/Contour internals with the characterized compatibility engine, remove the OpenCvSharp.Blob dependency and shipped asset, then run the isolated OpenCvSharp4 4.13 build/smoke/package/native-layout qualification."
+    "current_summary": "M1 analysis, M2 typed 3D adapter/report, M3 cooperative 2D cancellation, M4 Blob/Contour replacement, and M5 portable calibrated-data contract are implemented. The current source candidate passes Release 0/0, smoke 253/253, five coverage floors, exact 3,398 API entries, analyzer 410, and two-binary/21-document provenance. Fresh differential evidence matches the public baseline for 2,000 Blob and 16,000 Contour executions. OpenCvSharp4 4.13 remains not adopted because repository-root direct-reference execution cannot discover its native asset. Exact-commit package evidence and final clean-clone verification remain.",
+    "next_action": "Commit the verified implementation candidate, run exact-commit five-package provenance and isolated consumption, update closure evidence, push main under the repository workflow, and verify the pushed commit from a fresh clone. Keep public physical metrology/comparison APIs blocked until an approved real-sensor manifest passes M5."
   },
   "objective": {
     "summary": "SDK 우선순위 1~4를 분석으로 먼저 고정하고, 3.x 호환성과 증거 경계를 보존하면서 검증 가능한 순서로 구현한다.",
@@ -63,24 +63,31 @@
     {
       "id": "C4",
       "text": "Blob/Contour의 관찰 가능 결과가 고정된 상태로 OpenCvSharp.Blob source/project/package 의존성과 shipped DLL이 제거되고 package consumer가 통과한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E8"
+      ]
     },
     {
       "id": "C5",
       "text": "Blob 제거 후 OpenCvSharp4 4.13을 격리된 build/smoke/package/native-layout 게이트로 평가하고 adoption 또는 retention 결정을 정확한 실패·성공 증거와 함께 기록한다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E9"
+      ]
     },
     {
       "id": "C6",
       "text": "calibrated 2D representative-data manifest와 fail-closed verifier가 검증되고, 실측 데이터가 없으면 public metrology/golden/color API가 차단된 상태와 exact prerequisite가 기록된다.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E10"
+      ]
     },
     {
       "id": "C7",
       "text": "완료된 source candidate가 focused/full smoke, Release build, coverage, exact API/analyzer, documentation, provenance, commit-fixed package와 isolated consumer gate를 통과하며 게시·릴리스는 수행되지 않는다.",
       "evidence_refs": [
-        "E4",
-        "E5"
+        "E8",
+        "E9",
+        "E11"
       ]
     }
   ],
@@ -118,7 +125,7 @@
     {
       "id": "M4",
       "summary": "Blob/Contour 호환 엔진으로 OpenCvSharp.Blob을 제거하고 OpenCvSharp4 4.13 격리 migration gate를 완료한다.",
-      "status": "doing",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4",
@@ -129,7 +136,7 @@
     {
       "id": "M5",
       "summary": "calibrated 2D representative-data 계약과 verifier를 구현하고 실측 prerequisite에 따라 algorithm 경계를 결정한다.",
-      "status": "pending",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C6",
@@ -236,6 +243,34 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M3/final-6d92357-1789407712613/validation-summary.json",
       "observation": "Five packages at 3.0.1-pl0016.m3.6d92357.1789407712613 passed clean exact-commit provenance for 6d92357a7c3c8a072a605105cadc1c08892f9d04. The isolated D-drive package consumer exercised the new cancellation API with existing 2D/Blob/3D contracts and produced exactly one root OpenCvSharpExtern.dll with SHA-256 C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249.",
       "observed_at": "2026-09-15T02:43:29.1828283+09:00"
+    },
+    {
+      "id": "E8",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/final-source-1790513034242",
+      "observation": "BinaryShapeCompatibility is the internal stateless owner used by BlobTool, CVBlob, and ContourTool. A public-baseline differential run produced exact matches for 2,000 Blob and 16,000 Contour executions with identical result-file SHA-256. The integrated candidate passes Release build 0/0, full smoke 253/253, all five coverage floors, exact public API 3,398, analyzer 410 (186 compatibility and 224 performance), and two-binary/21-document third-party provenance.",
+      "observed_at": "2026-09-27T21:47:06.5710300+09:00"
+    },
+    {
+      "id": "E9",
+      "kind": "artifact",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M4-regenerated-1790511248536",
+      "observation": "The isolated OpenCvSharp4 4.13 source candidate builds 0/0 and passes 253/253 from the smoke output directory after candidate compatibility changes; its package-only consumer passes with one native DLL. The same smoke DLL launched by absolute path from the repository root fails at the first OpenCV-dependent case after 156/157 because OpenCvSharpExtern is not discovered in the vendored direct-reference route. Absolute native loading and direct OS imports succeed. The current managed 4.4/native 4.3 bytes are retained to preserve source-checkout portability.",
+      "observed_at": "2026-09-27T21:47:06.5710300+09:00"
+    },
+    {
+      "id": "E10",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/M4-regenerated-1790511248536/calibrated-contract",
+      "observation": "Verify-Calibrated2DBaseline.ps1 accepts caller-selected storage, passes a complete synthetic contract as synthetic-contract, and reports algorithmsExecuted=false, calibrationApproved=false, and dataCopied=false. Nine negative cases for UTC/range, fractional repeat/count, duplicate sample/output IDs, invalid/escaping paths, and hash mismatch exit 1 with the expected stable code. The approved real-sensor prerequisite remains absent, so no physical metrology/comparison API was added.",
+      "observed_at": "2026-09-27T21:47:06.5710300+09:00"
+    },
+    {
+      "id": "E11",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-Vision-SDK/PL-0016/final-source-1790513034242",
+      "observation": "The uncommitted integrated source candidate passes Release build 0/0, full smoke 253/253, coverage Core 37.35%, Inspection 70.34%, Vision2D 77.08%, Vision2D.Blob 74.66%, Vision3D 90.97%, exact public API 3,398/3,398, analyzer 410 diagnostics, and third-party provenance at two binaries/21 documents. Exact-commit package provenance remains pending until the implementation commit exists.",
+      "observed_at": "2026-09-27T21:47:06.5710300+09:00"
     }
   ],
   "events": [
@@ -250,5 +285,5 @@
     }
   ],
   "created_at": "2026-09-15T01:34:39.4459136+09:00",
-  "updated_at": "2026-09-15T02:43:29.1828283+09:00"
+  "updated_at": "2026-09-27T21:47:06.5710300+09:00"
 }

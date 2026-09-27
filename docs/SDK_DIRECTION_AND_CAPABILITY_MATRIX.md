@@ -205,12 +205,14 @@ order:
    report while retaining every typed result.
 2. **Complete (`PL-0016` M3):** add cooperative cancellation first to long-running
    matching/search loops.
-3. **Active (`PL-0016` M4):** characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, then test an
-   OpenCvSharp4 4.13 migration. Treat OpenCvSharp5/.NET 8 as a separate 4.0 decision
-   | Recommended model: `gpt-6-astra` | Reasoning effort: `high`
-4. **Pending (`PL-0016` M5):** after the contract and representative-data gates exist, add calibrated 2D
-   fixture/metrology, gauge primitives, golden comparison and color inspection |
-   Recommended model: `gpt-6-astra` | Reasoning effort: `high`
+3. **Complete (`PL-0016` M4):** characterize Blob/Contour behavior, replace `OpenCvSharp.Blob`, and retain the
+   current production bytes after the isolated OpenCvSharp4 4.13 source/direct-reference native-discovery failure. Treat
+   OpenCvSharp5/.NET 8 as a separate 4.0 decision |
+     Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
+4. **Complete (`PL-0016` M5 contract boundary):** add the executable calibrated-data manifest and fail-closed
+   verifier. Calibrated 2D fixture/metrology, gauge primitives, golden comparison and color inspection remain
+   blocked until approved representative data passes the gate |
+     Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
 
 Production qualification remains blocked until sensor/acquisition settings,
 calibration ID/hash, representative normal/defect data, independent ground truth

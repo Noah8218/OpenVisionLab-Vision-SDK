@@ -53,7 +53,7 @@ if ([string]::IsNullOrWhiteSpace($ProvenancePath)) {
     $ProvenancePath = Join-Path $repositoryRoot 'src/OpenVisionLab.Core/ThirdParty/provenance.json'
 }
 $provenanceFile = (Resolve-Path -LiteralPath $ProvenancePath).Path
-$expectedProvenanceSha256 = '0E8DC840D5D41A6B732401477A225C7C6C36D22C31C3C76F899FEE8D5F6DD164'
+$expectedProvenanceSha256 = 'AC6393D2A5BEE8FE8F4542F037507BB2CEA44D9D94F2BB985EF7366FC01176C9'
 $actualProvenanceSha256 = Get-Sha256 $provenanceFile
 if (-not [string]::Equals(
         $actualProvenanceSha256,
@@ -76,26 +76,22 @@ if (-not [string]::Equals(
         [string] $provenance.licenseEvidence.redistributionClearance,
         'blocked',
         [StringComparison]::Ordinal)) {
-    throw "Third-party redistribution clearance must remain blocked until the two remaining approvals are retained."
+    throw "Third-party redistribution clearance must remain blocked until the remaining distribution-owner approval is retained."
 }
-if (@($provenance.licenseEvidence.resolvedFindings).Count -ne 3 -or
-    @($provenance.licenseEvidence.remainingQuestions).Count -ne 2 -or
+if (@($provenance.licenseEvidence.resolvedFindings).Count -ne 2 -or
+    @($provenance.licenseEvidence.remainingQuestions).Count -ne 1 -or
     [string]::IsNullOrWhiteSpace([string] $provenance.licenseEvidence.unblockCondition)) {
-    throw "Third-party license evidence must preserve three resolved findings, two remaining approvals, and the unblock condition."
+    throw "Third-party license evidence must preserve two resolved findings, one remaining approval, and the unblock condition."
 }
-$blobFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'OpenCvSharp.Blob')
 $ippFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'Intel IPPICV/IW 2020')
 $ittFinding = @($provenance.licenseEvidence.resolvedFindings | Where-Object component -eq 'ittnotify')
-if ($blobFinding.Count -ne 1 -or
-    -not [string]::Equals([string] $blobFinding[0].offeredLicense, 'LGPL-3.0-or-later', [StringComparison]::Ordinal) -or
-    -not [string]::Equals([string] $blobFinding[0].representativeSourceSha256, '5FAB4C425363DF975466DD20A50256102464096016EE4C3D1F87E53BC5BDBD5B', [StringComparison]::Ordinal) -or
-    $ippFinding.Count -ne 1 -or
+if ($ippFinding.Count -ne 1 -or
     -not [string]::Equals([string] $ippFinding[0].archiveMd5, '879741A7946B814455EEE6C6FFDE2984', [StringComparison]::Ordinal) -or
     -not [string]::Equals([string] $ippFinding[0].archiveSha256, 'E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7', [StringComparison]::Ordinal) -or
     $ittFinding.Count -ne 1 -or
     -not [string]::Equals([string] $ittFinding[0].selectedLicense, 'BSD-3-Clause', [StringComparison]::Ordinal) -or
     -not [string]::Equals([string] $ittFinding[0].sourceSha256, '5F6D683FCC91D23FEFCB7BC382DA1DB8292D1FE696B8F7664AC0B163ED601F80', [StringComparison]::Ordinal)) {
-    throw "Third-party license evidence does not match the reviewed Blob, IPPICV, and ittnotify resolutions."
+    throw "Third-party license evidence does not match the reviewed IPPICV and ittnotify resolutions."
 }
 
 $expectedBinaries = @{
@@ -111,19 +107,6 @@ $expectedBinaries = @{
         officialVersion = '4.4.0.20200915'
         officialContainerSha256 = 'D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1'
         officialEntryPath = 'lib/netstandard2.0/OpenCvSharp.dll'
-    }
-    'src/OpenVisionLab.Core/DLL/OpenCvSharp.Blob.dll' = [ordered] @{
-        packagePath = 'lib/netstandard2.0/OpenCvSharp.Blob.dll'
-        size = 40960
-        sha256 = 'E03FE75D2C9D88886384EDBC445C63DA051EE3450286C8D0982FCD9F4BC24D54'
-        gitBlob = 'd2fc535d357ea483ee3a822a2b990760ef3f66c8'
-        format = 'managed'
-        assemblyName = 'OpenCvSharp.Blob'
-        officialType = 'NuGet'
-        officialId = 'OpenCvSharp4'
-        officialVersion = '4.4.0.20200915'
-        officialContainerSha256 = 'D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1'
-        officialEntryPath = 'lib/netstandard2.0/OpenCvSharp.Blob.dll'
     }
     'src/OpenVisionLab.Core/DLL/OpenCvSharpExtern.dll' = [ordered] @{
         packagePath = 'runtimes/win-x64/native/OpenCvSharpExtern.dll'
@@ -276,8 +259,6 @@ foreach ($sourcePath in $expectedBinaries.Keys) {
 $expectedDocumentPaths = @(
     'src/OpenVisionLab.Core/ThirdParty/NOTICE.md',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp-BSD-3-Clause.txt',
-    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-GPL-3.0.txt',
-    'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCvSharp.Blob-LGPL-3.0.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-4.3-BSD-3-Clause.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-Contrib-BSD-3-Clause.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-dnn-torch-COPYRIGHT.txt',
@@ -295,8 +276,6 @@ $expectedDocumentPaths = @(
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-SoftFloat-COPYING.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/OpenCV-zlib-README.txt',
     'src/OpenVisionLab.Core/ThirdParty/licenses/Intel-IPPICV-2020-Simplified-Software-License.rtf',
-    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-LGPL-3.0-or-later-header.txt',
-    'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCvSharp.Blob-ReadMe.txt',
     'src/OpenVisionLab.Core/ThirdParty/evidence/OpenCV-ittnotify-dual-license-header.txt',
     'src/OpenVisionLab.Core/ThirdParty/evidence/Intel-IPPICV-2020-third-party-programs.txt'
 )
@@ -334,11 +313,10 @@ foreach ($sourcePath in $expectedDocumentPaths) {
 $noticePath = Get-RepositoryPath -Root $repositoryRoot -RelativePath 'src/OpenVisionLab.Core/ThirdParty/NOTICE.md'
 $notice = Get-Content -LiteralPath $noticePath -Raw
 $requiredNoticeValues = @(
-    'Redistribution status: blocked pending two approvals',
+    'Redistribution status: blocked pending distribution-owner approval',
     '4.4.0.20200915',
     '4.3.0.20200708',
     'BSD-3-Clause',
-    'LGPL-3.0-or-later',
     'IPPICV',
     'ittnotify',
     'E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7',

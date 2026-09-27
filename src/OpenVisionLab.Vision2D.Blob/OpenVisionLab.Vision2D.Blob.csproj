@@ -13,10 +13,6 @@
       <HintPath>..\OpenVisionLab.Core\DLL\OpenCvSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="OpenCvSharp.Blob">
-      <HintPath>..\OpenVisionLab.Core\DLL\OpenCvSharp.Blob.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

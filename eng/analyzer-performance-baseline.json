@@ -9,7 +9,7 @@
     "CA1822": 68,
     "CA1825": 0,
     "CA1843": 0,
-    "CA1859": 5,
+    "CA1859": 4,
     "CA1861": 82,
     "CA1869": 1
   },
@@ -17,7 +17,7 @@
     "inputTotal": 272,
     "resolvedDeterministicAllocations": 32,
     "resolvedSingleTaskWaits": 9,
-    "retainedTotal": 225,
+    "retainedTotal": 224,
     "retainedExplicitDefaults": 69,
     "retainedPublicInstanceContracts": 61,
     "retainedUnmeasuredPrivateStaticCandidates": 7,
@@ -49,7 +49,7 @@
     {
       "code": "CA1859",
       "decision": "retain",
-      "rationale": "The five remaining concrete-type suggestions affect collection construction, smoke, or report parsing paths; no measured dispatch bottleneck justifies tighter local contracts."
+      "rationale": "The four remaining concrete-type suggestions affect collection construction, smoke, or report parsing paths; the ContourTool helper identity disappeared when the characterized Blob/Contour compatibility engine replaced the old conversion chain. No measured dispatch bottleneck justifies tighter local contracts."
     },
     {
       "code": "CA1861",
@@ -747,11 +747,6 @@
       "identity": "CA1822|src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool|Execute|public PointPairDimensionsInspectionResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs|OpenVisionLab.Vision2D.Tool.ContourTool|AddContourChain|ICollection<OpenCvSharp.Point[]> destination,|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/ContourTool.cs"
     },
     {
       "identity": "CA1859|src/OpenVisionLab.Vision3D/FeatureExtraction/SurfaceMatching/DeterministicModelKeyPointExtractionTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicModelKeyPointExtractionTool|Select|ICollection<ExtractedModelKeyPoint> keyPoints)|occurrence=1",

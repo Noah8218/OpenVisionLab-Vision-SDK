@@ -243,13 +243,13 @@ full smoke and coverage gate.
 
 ## Priority 3 — remove OpenCvSharp.Blob and qualify OpenCvSharp4 4.13
 
-### Current binary and dependency boundary
+### Baseline binary and dependency boundary
 
 The SDK currently vendors managed `OpenCvSharp.dll` and
 `OpenCvSharp.Blob.dll` from OpenCvSharp4 `4.4.0.20200915` source commit
 `daa955...`, plus a Windows x64 `OpenCvSharpExtern.dll` built with OpenCV 4.3.0.
-Only `BlobTool`, legacy `CVBlob`, `ContourTool`, their project references, and
-package/provenance checks use `OpenCvSharp.Blob`.
+At the M4 baseline, only `BlobTool`, legacy `CVBlob`, `ContourTool`, their
+project references, and package/provenance checks used `OpenCvSharp.Blob`.
 
 No public SDK signature intentionally exposes an `OpenCvSharp.Blob` type. The
 dependency can therefore be removed without changing the current typed consumer
@@ -317,6 +317,39 @@ Completion requires:
   two-binary distribution accurately;
 - unchanged public Blob/Contour result contracts and package-only consumption.
 
+### M4 implementation evidence
+
+`BinaryShapeCompatibility` in
+`src/OpenVisionLab.Vision2D/OpenCV/Components/BinaryShapeCompatibility.cs` is
+the new internal owner for binary component labeling and contour compatibility.
+`ContourTool` calls its contour path; `BlobTool` and legacy `CVBlob` call its
+component path. The engine is stateless. Mutable result state remains owned by
+the existing Tools (`candidates`/`results`), and the public Blob, CVBlob, and
+Contour result and candidate contracts remain unchanged. The shortest code
+reading order is the compatibility engine, `ContourTool` execution methods,
+then `BlobTool` and `CVBlob` execution methods.
+
+The old assembly reference, project/package entries, and shipped
+`OpenCvSharp.Blob.dll` were removed. Core provenance now records two binaries and
+21 current evidence documents; the removed LGPL records remain historical only.
+The focused smoke suite covers 8-connected labeling, source order, moments,
+branch traversal, approximation, holes, retrieval modes, ROI/mask coordinates,
+and legacy parity. Release build passed with zero warnings/errors; full source
+smoke passed `253/253`; the new compatibility cases passed `3/3`, the Blob and
+Contour candidate cases passed `5/5`, coverage passed all five floors, the exact
+public API remained `3,398` entries, and the analyzer passed `410` diagnostics
+(`186` compatibility and `224` performance identities). The obsolete ContourTool
+`CA1859` identity was removed from the exact performance baseline because the old
+conversion helper no longer exists. `eng/Verify-ThirdPartyBinaries.ps1` passed with
+two exact binaries.
+
+A separate public-baseline differential harness generated 2,000 deterministic
+binary images and compared the previous and current public Tool outputs. All 2,000
+Blob executions and all 16,000 Contour mode/approximation executions matched exactly;
+both result files have SHA-256
+`E6FE3D94F3CAA3C62D959A936B813DC003831E6654085789E3FC2DD8C134AA00`. Evidence is
+under the regenerated M4 root's `behavioral-differential` directory.
+
 ### OpenCvSharp4 4.13 qualification result and migration decision
 
 Official signed packages `OpenCvSharp4`, `OpenCvSharp4.runtime.win`, and
@@ -335,23 +368,34 @@ the slim Windows x64 native DLL hash is
 `1FA122BDB8E94175E7719FB8AA8F2AB211268A756F5D0C7A13C710ED79AE30CD`.
 
 One compile change is required: `Mat.Type()` now yields `MatType`, so
-`MatchingTool`'s template cache key must store `MatType` and hash it explicitly.
-With that isolated change the solution builds with zero warnings/errors. Running
-the executable from its output directory passes all 192 cases before the first Blob
-case; the first Blob case then fails because the old 4.4 Blob assembly is not a
-compatible 4.13 extension. A focused SIFT native execution passes. Running through
-`dotnet run` from the repository root also exposed a changed native loader search
-assumption; direct execution from the output directory succeeds. These observations
-mean 4.13 cannot replace production bytes before Blob removal and package-layout
-verification.
+`MatchingTool`'s template cache key stores `MatType` and hashes it explicitly.
+With that isolated change and the candidate-specific legacy SIFT diagnostic
+characterization, the D-drive source copy builds with zero warnings/errors and the
+full smoke suite passes `253/253` when launched from its output directory.
 
-After the Blob replacement, the full source/smoke/package-consumer matrix will be
-rerun against 4.13 in isolation. Adoption requires every current gate, a reviewed
-native module list, exact provenance, and one-root-native-DLL package output. If any
-gate remains unresolved, production stays on the current bytes and the exact failed
-condition is recorded. `PackageReference` migration is not included because it would
-change the SDK's current self-contained/offline package contract. OpenCvSharp5
-requires .NET 8+ and remains a separately versioned 4.0 decision.
+The same built smoke DLL fails at the first OpenCV-dependent case when launched by
+absolute path from the repository root: `156/157` pass before
+`DllNotFoundException: OpenCvSharpExtern`. Loading the exact native DLL by absolute
+path succeeds and all direct Windows imports resolve. The source/direct-reference
+output does not register the vendored `<None>` native file in the application's
+`.deps.json`, while the 4.13 managed loader's discovery depends on the process
+working directory in this route. A package-only consumer succeeds because the
+runtime package registers the native asset. Adopting 4.13 would therefore break the
+documented source-checkout/direct-reference workflow unless the dependency model or
+native resolver changes. OpenCvSharp4 4.13 is **retained as not adopted** and the
+current managed 4.4/native 4.3 bytes remain the shipped bytes. The changed legacy
+SIFT diagnostic remains a recorded migration delta, but is not the retention gate.
+
+The same isolated copy packs all five packages. The Core package contains only
+`OpenCvSharp.dll` and `OpenCvSharpExtern.dll`, no Blob assembly or old Blob evidence,
+and the package-only `net8.0/win-x64` consumer passes. Its output contains exactly
+one `OpenCvSharpExtern.dll` with SHA-256
+`1FA122BDB8E94175E7719FB8AA8F2AB211268A756F5D0C7A13C710ED79AE30CD`. The complete
+regenerated qualification record is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M4-regenerated-1790511248536`.
+`PackageReference` migration is not included because it would change the SDK's
+current self-contained/offline package contract. OpenCvSharp5 requires .NET 8+
+and remains a separately versioned 4.0 decision.
 
 Official references checked on 2026-09-15:
 
@@ -389,16 +433,57 @@ contract and representative-data gates exist” condition in priority 4.
 
 ### Implement-now boundary
 
-The SDK will add an executable representative-data manifest schema, a documented
-template, and `eng/Verify-Calibrated2DBaseline.ps1`. The verifier will fail closed
+The SDK adds an executable representative-data manifest schema, a documented
+template, and `eng/Verify-Calibrated2DBaseline.ps1`. The verifier fails closed
 for missing fields, files, malformed hashes, unit/frame mismatches, missing labels or
-ground truth, absent tolerance/error policy, and absent performance context. It will
-write a deterministic validation report to the caller-selected D-drive output path
+ground truth, invalid calibration validity windows, duplicate sample/output IDs,
+non-integral repeat/count fields, absent tolerance/error policy, and absent
+performance context. It will write a deterministic validation report to the
+caller-selected output path
 and will not execute algorithms, approve calibration, or copy user data.
 
-The canonical physical data root is:
+The contract is now implemented at
+[`docs/CALIBRATED_2D_BASELINE_MANIFEST_TEMPLATE.json`](CALIBRATED_2D_BASELINE_MANIFEST_TEMPLATE.json).
+The required groups are `dataset`, `sensor.acquisition`, `calibration`, `recipe`,
+`samples`, `groundTruth`, `tolerance`, and `performance`. Each referenced source,
+calibration, recipe, and ground-truth file must be relative to the manifest and match
+its declared SHA-256. Ground-truth and tolerance units must match the calibration
+unit, and every ground-truth `frameId` must match the calibration frame. Samples must
+include both `nominal` and `defect:*` labels; ground truth must be independent and
+repeated; tolerance must declare ordered limits, false-accept/false-reject rates, and
+an ambiguous-result policy; performance must
+include cold/warm median, P95, P99, memory, and Takt context. `purpose: synthetic`
+produces a `synthetic-contract` report and never establishes physical evidence;
+`purpose: production` additionally requires a distribution/approval record.
+
+Run the gate with an existing report directory under an owned data root:
+
+```powershell
+$baselineRoot = "C:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\production-baseline" # Choose an owned local data root.
+pwsh -NoProfile -File .\eng\Verify-Calibrated2DBaseline.ps1 `
+  -ManifestPath "$baselineRoot\manifests\<manifest>.json" `
+  -ReportPath "$baselineRoot\reports\<report>.json"
+```
+
+Exit code `0` means the contract and file hashes passed; exit code `1` means the
+manifest is invalid or a referenced file/hash/required group failed. The report is
+sorted and timestamp-free so it can be compared as evidence. The verifier creates no
+directories and has no Preview/Run, calibration-approval, algorithm-execution, or
+data-copy side effect.
+
+The fresh synthetic contract pass and nine-case negative matrix are recorded under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\M4-regenerated-1790511248536\calibrated-contract`.
+Invalid UTC/range, fractional repeat/count, duplicate sample/output IDs, invalid or
+escaping paths, and a modified file hash each exit `1` with the expected stable error
+code. This evidence does not supply the missing real sensor, calibration approval,
+independent ground truth, production tolerance, or Takt prerequisite.
+
+The physical data root on this workstation is:
 
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\production-baseline`.
+
+Another machine may use a different owned root. Manifest file references stay
+relative to the manifest, so the data set can move without rewriting absolute paths.
 
 Once a real manifest and data set pass, the next design review must define each
 algorithm independently: calibrated fixture/frame transform, physical-unit gauge
@@ -423,8 +508,9 @@ The following order minimizes rework and preserves reviewable boundaries:
 1. Add the independent 3D adapter/report owner and focused/package-consumer tests.
 2. Add the cancellable 2D interface, base/runtime overloads, four search-tool
    checkpoints, and lifetime/error tests.
-3. Replace Blob/Contour internals, remove the dependency and shipped asset, then run
-   the isolated OpenCvSharp4 4.13 qualification against the replacement.
+3. Complete: replace Blob/Contour internals and remove the dependency and shipped
+   asset; 4.13 qualification retains the current production bytes after the
+   source/direct-reference native-discovery failure.
 4. Add and test the calibrated-data contract gate. Stop public metrology/comparison
    API work if no real approved data set passes it.
 

@@ -5,10 +5,10 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using OpenVisionLab.Core;
+using OpenVisionLab.Vision2D.Components;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
 using OpenCvSharp;
-using OpenCvSharp.Blob;
 
 namespace OpenVisionLab.Vision2D.Tool
 {
@@ -122,7 +122,7 @@ namespace OpenVisionLab.Vision2D.Tool
             using (Mat imageSrc = CreateWorkingContourImage(roi, property.USE_ROI))
             using (Mat contourInput = CreateFindContoursInput(imageSrc))
             {
-                Contours = FindContours(
+                Contours = BinaryShapeCompatibility.FindContours(
                     contourInput,
                     property.DetectMode,
                     property.ApproximationModes);
@@ -196,7 +196,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 using (Mat imageSrc = CreateWorkingContourImage(roi, true))
                 using (Mat contourInput = CreateFindContoursInput(imageSrc))
                 {
-                    Contours = FindContours(
+                    Contours = BinaryShapeCompatibility.FindContours(
                         contourInput,
                         property.DetectMode,
                         property.ApproximationModes);
@@ -281,60 +281,6 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             return input;
-        }
-
-        private static OpenCvSharp.Point[][] FindContours(
-            Mat input,
-            RetrievalModes retrievalMode,
-            ContourApproximationModes approximationMode)
-        {
-            CvBlobs blobs = new CvBlobs();
-            blobs.Label(input);
-            List<OpenCvSharp.Point[]> contours = new List<OpenCvSharp.Point[]>();
-            foreach (KeyValuePair<int, CvBlob> item in blobs.OrderBy(pair => pair.Key))
-            {
-                AddContourChain(contours, item.Value?.Contour, approximationMode);
-                if (retrievalMode == RetrievalModes.External)
-                {
-                    continue;
-                }
-
-                foreach (CvContourChainCode internalContour in item.Value?.InternalContours
-                    ?? new List<CvContourChainCode>())
-                {
-                    AddContourChain(contours, internalContour, approximationMode);
-                }
-            }
-
-            return contours.ToArray();
-        }
-
-        private static void AddContourChain(
-            ICollection<OpenCvSharp.Point[]> destination,
-            CvContourChainCode chain,
-            ContourApproximationModes approximationMode)
-        {
-            if (destination == null || chain == null)
-            {
-                return;
-            }
-
-            CvContourPolygon polygon = chain.ConvertToPolygon();
-            if (polygon == null || polygon.Count == 0)
-            {
-                return;
-            }
-
-            if (approximationMode != ContourApproximationModes.ApproxNone)
-            {
-                polygon = polygon.Simplify();
-            }
-
-            OpenCvSharp.Point[] points = polygon?.ToArray() ?? Array.Empty<OpenCvSharp.Point>();
-            if (points.Length > 0)
-            {
-                destination.Add(points);
-            }
         }
 
         private bool TryCreateContourCandidate(
@@ -543,7 +489,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 using (Mat imageContour = CreateWorkingContourImage(roi, property.USE_ROI))
                 using (Mat contourInput = CreateFindContoursInput(imageContour))
                 {
-                    OpenCvSharp.Point[][] contours = FindContours(
+                    OpenCvSharp.Point[][] contours = BinaryShapeCompatibility.FindContours(
                         contourInput,
                         property.DetectMode,
                         property.ApproximationModes);

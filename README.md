@@ -33,6 +33,32 @@ It provides application-ready 2D image-processing tools, 3D feature extraction a
 - Run 2D tools with `Execute(Mat source)` and height-map inspection tools with `Execute(HeightMap3D source)`.
 - The SDK has no direct UI-framework dependency. The host application owns rendering, ROI editing, and recipe management around the measurements.
 
+## Clone and Develop on Another PC
+
+Use a short checkout path on a Windows x64 machine. Install Git, the .NET SDK
+selected by [`global.json`](global.json), and PowerShell 7. The first restore needs
+access to NuGet.org. Windows Server also needs the Media Foundation feature used by
+the bundled OpenCV runtime.
+
+```powershell
+git clone https://github.com/Noah8218/OpenVisionLab-Vision-SDK.git C:\Git\OpenVisionLab-Vision-SDK
+Set-Location C:\Git\OpenVisionLab-Vision-SDK
+dotnet --version
+pwsh --version
+dotnet tool restore
+
+$testRoot = Join-Path ([IO.Path]::GetTempPath()) "OpenVisionLab-Vision-SDK-check"
+New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
+dotnet build OpenVisionLab.VisionSdk.sln -c Release --artifacts-path "$testRoot\build"
+$smokeAssembly = "$testRoot\build\bin\OpenVisionLab.Inspection.Smoke\release\OpenVisionLab.Inspection.Smoke.dll"
+dotnet $smokeAssembly
+```
+
+`dotnet --version` must resolve the SDK requested by `global.json`; if it does not,
+install that SDK before building. The console smoke suite is the repository's source
+checkout check. Application projects that reference the SDK source directly must
+also follow the managed/native OpenCvSharp reference example below.
+
 ## Installation and References
 
 NuGet is the recommended consumer path because it carries the managed and native
@@ -1181,7 +1207,7 @@ Framework runtime consumer has been executed.
 
 The Core package also carries `third-party/provenance.json`, the current
 `third-party/NOTICE.md`, and the exact upstream license/scope evidence named by
-that manifest. The package provenance verifier requires those files and all three
+that manifest. The package provenance verifier requires those files and both
 vendored DLLs to be byte-identical to the reviewed repository sources; the other
 four packages must not contain Core's vendored DLL or `third-party/` entries. This
 technical gate does not change the blocked redistribution-clearance status.

@@ -12,8 +12,8 @@ completion criteria, and verification boundaries. The repository
 | [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Active PL-0016 priorities 1–4 implementation, prior closures, and current external prerequisites |
 | [SDK direction and capability matrix](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md) | Rule-based kernel boundary, all 15 2D factory contracts, 3D execution coverage, Pipeline artifact/error contracts, and ordered product priorities |
 | [SDK priorities 1–4 implementation analysis](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md) | PL-0016 owner/call-path analysis, alternatives, compatibility decisions, probe evidence, acceptance criteria, and stop gates |
-| [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the two remaining redistribution approvals |
-| [Third-party redistribution clearance checklist](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md) | Exact facts, questions, and approval record needed to resolve the two remaining external prerequisites |
+| [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the remaining distribution-owner approval |
+| [Third-party redistribution clearance checklist](THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md) | Exact current binary facts and the remaining distribution-owner approval record |
 | [3D inspection contract](three-d-inspection.md) | Complete public 3D Tool catalog, input layers, units, frames, missing samples, outcomes, and verification limits |
 | [2.9.1 to OpenVisionLab 3.0 migration](MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md) | Package/namespace migration; `3.0.0` is the API migration baseline, not a current package-install promise |
 | [Affine Transform 2D](AFFINE_TRANSFORM_2D.md) | Current 2D affine Tool and Pipeline contract |
@@ -22,6 +22,7 @@ completion criteria, and verification boundaries. The repository
 | [Auto MPoint V1](AUTO_MPOINT_V1.md) | Current teaching-time contract with a historical completion-evidence section |
 | [Edge-based global polarity V1](EDGE_BASED_GLOBAL_POLARITY_V1.md) | Current opt-in polarity contract with a historical verification count |
 | [Matching responsibility and production baseline](MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md) | Active SDK/host responsibility boundary and missing sensor-backed production prerequisites |
+| [Calibrated 2D baseline manifest template](CALIBRATED_2D_BASELINE_MANIFEST_TEMPLATE.json) | Executable M5 contract template for representative-data verification |
 | [Legacy C/CV/LineGuage 4.0 removal plan](LEGACY_C_CV_LINEGUAGE_V4_REMOVAL_PLAN_20260805.md) | Active 3.x compatibility policy and separately gated 4.0 removal criteria |
 
 ## Historical records
@@ -121,6 +122,13 @@ for its runnable fresh D-drive pack, manifest, and isolated-consumer sequence. T
 gate requires a clean committed worktree and proves package metadata, required
 contents, assembly commit, and internal dependency declaration consistency; it does
 not publish packages or make the dependency declarations exact pins.
+
+The calibrated-data contract entry point is `eng/Verify-Calibrated2DBaseline.ps1`.
+It requires a manifest and an already-existing caller-selected report directory, validates the
+dataset/sensor/calibration/ground-truth/tolerance/performance groups and referenced
+SHA-256 files, and exits nonzero on any missing or inconsistent contract. A passing
+synthetic report is contract evidence only; it does not approve calibration or prove
+physical accuracy.
 
 The solution also contains
 `tests/OpenVisionLab.Vision3D.Benchmark/OpenVisionLab.Vision3D.Benchmark.csproj`.

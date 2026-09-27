@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
+using OpenVisionLab.Vision2D.Components;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Result;
 using OpenVisionLab.Vision2D.Tool;
 using OpenCvSharp;
-using OpenCvSharp.Blob;
 
 namespace OpenVisionLab.Vision2D.Blob
 {
@@ -205,21 +205,19 @@ namespace OpenVisionLab.Vision2D.Blob
         {
             using (Mat imageBlob = CreatePreprocessedImage(roi, useRoi, property))
             {
-                CvBlobs blobs = new CvBlobs();
-                blobs.Label(imageBlob);
+                IReadOnlyList<BinaryComponent> blobs = BinaryShapeCompatibility.LabelComponents(imageBlob);
 
                 ConcurrentBag<BlobResult> detectedBlobs = new ConcurrentBag<BlobResult>();
                 ConcurrentBag<VisionObjectCandidate> detectedCandidates = new ConcurrentBag<VisionObjectCandidate>();
                 VisionObjectCandidateLimits limits = ResolveCandidateLimits();
                 Parallel.ForEach(blobs, (item, state, index) =>
                 {
-                    CvBlob blob = item.Value;
                     Rect bounds = useRoi
-                        ? new Rect(blob.Rect.X + roi.X, blob.Rect.Y + roi.Y, blob.Rect.Width, blob.Rect.Height)
-                        : blob.Rect;
+                        ? new Rect(item.Bounds.X + roi.X, item.Bounds.Y + roi.Y, item.Bounds.Width, item.Bounds.Height)
+                        : item.Bounds;
                     Point2d center = useRoi
-                        ? new Point2d(blob.Centroid.X + roi.X, blob.Centroid.Y + roi.Y)
-                        : blob.Centroid;
+                        ? new Point2d(item.Center.X + roi.X, item.Center.Y + roi.Y)
+                        : item.Center;
 
                     bool masked = IsMasked(bounds);
                     VisionObjectCandidateDecision decision = masked
@@ -227,7 +225,7 @@ namespace OpenVisionLab.Vision2D.Blob
                             VisionObjectCandidateRejectReasonCode.Masked,
                             "Candidate is inside a configured mask.")
                         : VisionObjectCandidateEvaluator.Evaluate(
-                            blob.Area,
+                            item.Area,
                             bounds.Width,
                             bounds.Height,
                             limits);
@@ -236,13 +234,13 @@ namespace OpenVisionLab.Vision2D.Blob
                         CandidateId = VisionObjectCandidate.CreateCandidateId(
                             VisionObjectCandidateGenerationStage.BlobLabeling,
                             regionIndex,
-                            item.Key),
+                            item.NativeIndex),
                         RegionIndex = regionIndex,
-                        NativeIndex = item.Key,
-                        Area = blob.Area,
+                        NativeIndex = item.NativeIndex,
+                        Area = item.Area,
                         Center = center,
                         Bounding = new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height),
-                        Angle = blob.Angle(),
+                        Angle = item.Angle,
                         Accepted = decision.Accepted,
                         RejectReasonCode = decision.Code,
                         RejectReasonText = decision.Text,
@@ -253,7 +251,7 @@ namespace OpenVisionLab.Vision2D.Blob
                             Label = "Blob candidate",
                             Bounds = new RectangleF(bounds.X, bounds.Y, bounds.Width, bounds.Height),
                             Center = new PointF((float)center.X, (float)center.Y),
-                            Angle = blob.Angle()
+                            Angle = item.Angle
                         },
                         GenerationStage = VisionObjectCandidateGenerationStage.BlobLabeling,
                         CoordinateFrame = VisionObjectCandidateCoordinateFrame.SourceImage
@@ -262,10 +260,10 @@ namespace OpenVisionLab.Vision2D.Blob
                     // Keep the legacy results list area-filtered. The application applies
                     // its existing dimension filter to that list after consuming candidates.
                     if (!masked
-                        && blob.Area >= property.MIN_AREA
-                        && blob.Area <= property.MAX_AREA)
+                        && item.Area >= property.MIN_AREA
+                        && item.Area <= property.MAX_AREA)
                     {
-                        detectedBlobs.Add(new BlobResult((int)index, blob.Area, center, bounds, blob.Angle()));
+                        detectedBlobs.Add(new BlobResult((int)index, item.Area, center, bounds, item.Angle));
                     }
                 });
 

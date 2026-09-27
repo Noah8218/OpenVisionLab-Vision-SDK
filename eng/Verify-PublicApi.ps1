@@ -200,7 +200,7 @@ function Load-ManagedAssembly {
 }
 
 $directory = (Resolve-Path -LiteralPath $AssemblyDirectory).Path
-foreach ($dependency in @('OpenCvSharp.dll', 'OpenCvSharp.Blob.dll')) {
+foreach ($dependency in @('OpenCvSharp.dll')) {
     $dependencyPath = Join-Path $directory $dependency
     if (Test-Path -LiteralPath $dependencyPath) {
         $null = Load-ManagedAssembly $dependencyPath
