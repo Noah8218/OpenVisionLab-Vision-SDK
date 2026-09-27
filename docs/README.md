@@ -9,7 +9,7 @@ completion criteria, and verification boundaries. The repository
 
 | Document | Role |
 | --- | --- |
-| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | Active PL-0016 priorities 1–4 implementation, prior closures, and current external prerequisites |
+| [Current status and work contract](OPENVISIONLAB_CURRENT_STATUS.md) | PL-0016 implementation closure, prior closures, and current external prerequisites |
 | [SDK direction and capability matrix](SDK_DIRECTION_AND_CAPABILITY_MATRIX.md) | Rule-based kernel boundary, all 15 2D factory contracts, 3D execution coverage, Pipeline artifact/error contracts, and ordered product priorities |
 | [SDK priorities 1–4 implementation analysis](SDK_PRIORITY_1_4_IMPLEMENTATION_ANALYSIS.md) | PL-0016 owner/call-path analysis, alternatives, compatibility decisions, probe evidence, acceptance criteria, and stop gates |
 | [Core third-party provenance and notice status](../src/OpenVisionLab.Core/ThirdParty/NOTICE.md) | Exact mixed OpenCvSharp/OpenCV binary origin, preserved license evidence, and the remaining distribution-owner approval |

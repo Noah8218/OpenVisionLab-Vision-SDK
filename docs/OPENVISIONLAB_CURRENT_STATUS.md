@@ -2,7 +2,7 @@
 
 Updated: 2026-09-27
 Project work item: `PL-0016`
-Overall state: `doing`
+Overall state: `blocked` at the external calibrated-data prerequisite
 
 ## Authority
 
@@ -171,8 +171,9 @@ F7 closure is corrected below; the other audited changes retain their prior evid
 
 ## PL-0016 work contract
 
-Status: `In progress`; detailed analysis and M2–M5 implementation slices are complete,
-while the final integrated candidate and external prerequisites remain open.
+Status: `Blocked`; M1–M5 and the exact-commit package boundary are complete at
+implementation commit `ce01795cf0b51aa5150fbe894ce132faa0c95f32`. Approved
+real-sensor data is still required before public calibrated algorithms can proceed.
 
 Scope: add an independent typed 3D execution adapter/report; add additive cooperative
 cancellation to the 2D runtime and four matching/search Tools; replace
@@ -196,9 +197,10 @@ internal component/contour compatibility engine reused by `ContourTool` and the
 friend Blob package. The host remains the owner of calibration, real data, and final
 acceptance.
 
-Immediate next action: complete the integrated source checks, commit the verified
-candidate on `main`, and run the exact-commit package/consumer gate before the
-repository-authorized push to `origin/main`.
+Immediate next action: obtain an approved real-sensor manifest and its referenced
+calibration, representative normal/defect samples, independent ground truth,
+tolerances/error policy, and performance evidence. Do not spend implementation work
+on public calibrated metrology/golden/color APIs until that manifest passes M5.
 The calibrated-data gate must remain fail-closed until an approved real-sensor data
 set supplies the manifest files, calibration/frame/unit contract, independent
 ground truth, tolerances, error policy, and cold/warm performance context.
@@ -234,19 +236,51 @@ are under the regenerated M4/M5 evidence root's `calibrated-contract` directory.
 This is contract evidence only; it is not sensor accuracy, calibration approval,
 Gauge R&R, false-accept/reject, production Takt, or commercial clearance evidence.
 
-Current integrated source-candidate evidence is under
+Integrated source-candidate evidence is under
 `D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\final-source-1790513034242`:
 Release build `0/0`, full smoke `253/253`, coverage Core `37.35%`, Inspection
 `70.34%`, Vision2D `77.08%`, Vision2D.Blob `74.66%`, Vision3D `90.97%`, exact
 public API `3,398/3,398`, and analyzer `410` diagnostics (`186` compatibility plus
 `224` performance) pass. Third-party verification passes with two exact binaries and
 21 evidence documents, and no Blob dependency or current Blob-specific evidence file
-remains. Commit-fixed package provenance and isolated consumption remain pending
-until the implementation commit exists.
+remains. Exact-commit evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\PL-0016\exact-ce01795-1790513472869`.
+All five packages at `3.0.1-pl0016.m45.ce01795.1790513472869` match commit
+`ce01795cf0b51aa5150fbe894ce132faa0c95f32`; four provenance-negative probes pass;
+the isolated .NET SDK `8.0.423`/`win-x64` consumer passes with no Blob DLL and exactly
+one root `OpenCvSharpExtern.dll` whose SHA-256 is
+`C9E02A255DD83C9B06CA56EC6F435F15B53A863435238FCC5D8B9082B035F249`.
 
 Out of scope: UI/acquisition/PLC/MES, process-kill cancellation, OpenCvSharp5/.NET 8,
 4.0 breaking cleanup, NuGet publication, consumer-repository mutation, release,
 deployment, and any production accuracy/Takt claim without approved evidence.
+
+### PL-0016 closure record
+
+Status: `Blocked`
+
+Scope: priorities 1–3 and the priority-4 fail-closed data gate are implemented and
+verified. No public physical metrology, golden-comparison, or color-inspection API
+was created without representative evidence.
+
+Acceptance criteria: C1–C7 and M1–M5 pass for the implemented source and package
+scope. The closure rule stops the remaining calibrated-algorithm boundary because no
+approved production manifest exists.
+
+Verification: .NET SDK `8.0.423`; Release `0` warnings/`0` errors; smoke `253/253`;
+five coverage floors; public API `3,398/3,398`; analyzer `410` with `186` exact
+compatibility and `224` exact performance identities; Blob `2,000/2,000` and Contour
+`16,000/16,000` differential matches; two binaries and 21 third-party documents;
+five exact-commit packages; four negative provenance probes; isolated `net8.0`/
+`win-x64` consumer with one native DLL.
+
+Evidence: implementation commit `ce01795cf0b51aa5150fbe894ce132faa0c95f32`, the
+three D-drive evidence roots above, and `.proofline/issues/PL-0016.json`.
+
+Boundary / next dependency: an authorized owner must supply and approve one complete
+real-sensor manifest and every referenced file required by M5. Commercial package
+redistribution separately remains blocked by the distribution-owner decision in the
+third-party checklist.
 
 ## PL-0015 work contract
 
@@ -1440,7 +1474,7 @@ prerequisites recorded above.
 2. Complete: cooperative 2D matching/search cancellation.
 3. Complete: Blob/Contour replacement and isolated OpenCvSharp4 4.13 qualification; 4.13 is retained as not adopted because its source/direct-reference native discovery breaks repository-root execution | Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
 4. Complete: calibrated representative-data contract and fail-closed verifier; production data gate remains blocked | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
-5. Pending: final integrated source-candidate verification and commit-fixed evidence | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+5. Complete: integrated source verification and exact-commit package/consumer evidence at `ce01795cf0b51aa5150fbe894ce132faa0c95f32` | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
 
 Priority 4 public physical metrology/golden/color algorithms remain blocked until a
 manifested and approved real-sensor data set supplies the acquisition, calibration,
@@ -1448,6 +1482,7 @@ ground-truth uncertainty, tolerance/error policy, and performance prerequisites 
 the detailed analysis. The former Blob-specific redistribution question is retired
 with the dependency removal; the distribution owner must review the remaining exact
 two-binary/notice bundle. Source changes cannot make that legal decision.
+No model-token recommendation applies until the real-data prerequisite is available.
 
 ## Historical PL-0002 priority 1 — 2D result-contract correctness
 
