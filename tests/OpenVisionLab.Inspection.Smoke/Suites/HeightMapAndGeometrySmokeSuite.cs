@@ -34,6 +34,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height-map background subtraction preserves signed deltas and missing pairs", TestHeightMapBackgroundSubtraction);
             yield return new SmokeCase("Height-map background subtraction rejects misalignment and honors cancellation", TestHeightMapBackgroundSubtractionGuards);
             yield return new SmokeCase("Thickness pass preserves declared metadata", TestThicknessPass);
+            yield return new SmokeCase("Thickness rejects unrepresentable statistics and recovers", TestThicknessNumericBoundaries);
             yield return new SmokeCase("Thickness rejects a unit contract mismatch", TestThicknessUnitContractMismatch);
             yield return new SmokeCase("Thickness rejects a frame contract mismatch", TestThicknessFrameContractMismatch);
             yield return new SmokeCase("Thickness rejects insufficient valid coverage with quality evidence", TestThicknessInsufficientCoverage);
@@ -69,7 +70,9 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Reference-grid re-sampling rejects invalid frame axes", TestReferenceGridInvalidAxes);
             yield return new SmokeCase("Median filter removes a spike with the declared kernel", TestDeterministicMedianFilterSpike);
             yield return new SmokeCase("Median filter preserves missing cells and clipped borders", TestDeterministicMedianFilterMissingAndBorder);
+            yield return new SmokeCase("Median filter preserves finite extreme midpoints and recovers", TestDeterministicMedianFilterNumericBoundaries);
             yield return new SmokeCase("Local-median outlier filter excludes the center and preserves the strict threshold", TestDeterministicLocalMedianOutlierFilter);
+            yield return new SmokeCase("Local-median outlier filter preserves constant extreme values and recovers", TestDeterministicLocalMedianOutlierFilterNumericBoundaries);
             yield return new SmokeCase("Level Surface detrends unique reference cells and preserves region evidence", TestLevelSurfaceDetrend);
             yield return new SmokeCase("Level Surface fails closed on insufficient unique reference support", TestLevelSurfaceInsufficientSupport);
             yield return new SmokeCase("Level Frame constructs a deterministic right-handed orthonormal basis", TestLevelFrameBasis);
@@ -689,6 +692,49 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(infinityRejected, "Height-map infinity must be rejected at construction.");
             Require(extentRejected, "A non-finite height-map coordinate extent must be rejected at construction.");
+        }
+
+        private static void TestThicknessNumericBoundaries()
+        {
+            ThicknessInspectionTool tool = new ThicknessInspectionTool(new ThicknessInspectionOptions
+            {
+                MinimumThickness = double.MinValue,
+                MaximumThickness = double.MaxValue,
+                MinimumValidSamples = 1
+            });
+            HeightMap3D overflowMap = new HeightMap3D(
+                1, 2, 0.0, 0.0, 1.0, 1.0,
+                new[] { -1e308, 1e308 }, "mm", "numeric-frame", "overflow");
+            ThreeDInspectionResult overflow = tool.Execute(overflowMap);
+            Require(!overflow.Success && !overflow.HasMeasurement
+                && overflow.MeasurementOutcome == ThreeDMeasurementOutcome.NotMeasured
+                && overflow.ErrorCode == ThreeDInspectionErrorCode.DegenerateGeometry,
+                "Unrepresentable thickness statistics must not become a passed or out-of-tolerance measurement.");
+            Require(overflow.ValidSampleCount == 2 && overflow.ValidCoverageRatio == 1.0
+                && overflow.FrameId == "numeric-frame" && overflow.SourceId == "overflow",
+                "Numeric rejection must preserve input identity and valid-sample evidence.");
+            Require(!overflow.Metrics.ContainsKey(ThreeDInspectionMetricNames.Thickness.Mean)
+                && !overflow.Metrics.ContainsKey(ThreeDInspectionMetricNames.Thickness.Range),
+                "Numeric rejection must not publish corrupted measurement metrics.");
+
+            foreach (double value in new[] { double.MinValue, double.MaxValue })
+            {
+                HeightMap3D constantMap = new HeightMap3D(
+                    1, 2, 0.0, 0.0, 1.0, 1.0,
+                    new[] { value, value }, "mm", "numeric-frame", "constant");
+                ThreeDInspectionResult constant = tool.Execute(constantMap);
+                Require(constant.Success && constant.HasMeasurement, constant.Message);
+                RequireApproximately(constant.Metrics[ThreeDInspectionMetricNames.Thickness.Mean], value, 0.0, "A representable extreme constant must remain measurable.");
+                RequireApproximately(constant.Metrics[ThreeDInspectionMetricNames.Thickness.Range], 0.0, 0.0, "A constant thickness has zero range.");
+            }
+
+            double[] recoveryValues = { 1.0, 3.0 };
+            HeightMap3D recoveryMap = new HeightMap3D(
+                1, 2, 0.0, 0.0, 1.0, 1.0,
+                recoveryValues, "mm", "numeric-frame", "recovery");
+            ThreeDInspectionResult recovery = tool.Execute(recoveryMap);
+            Require(recovery.Success && recovery.MeasurementOutcome == ThreeDMeasurementOutcome.Passed, recovery.Message);
+            RequireApproximately(recovery.Metrics[ThreeDInspectionMetricNames.Thickness.Mean], 2.0, 0.0, "The same Tool must recover after numeric rejection.");
         }
 
         private static void TestThicknessPass()
@@ -1414,6 +1460,66 @@ namespace OpenVisionLab.Inspection.Smoke
                 "Median filter must preserve the source missing mask.");
             Require(border.Success && border.Values.All(value => value == 2.5),
                 "Median filter borders must use available neighbors only.");
+        }
+
+        private static void TestDeterministicMedianFilterNumericBoundaries()
+        {
+            DeterministicMedianFilterTool tool = new DeterministicMedianFilterTool();
+            foreach (int kernelSize in new[] { 3, 5, 7 })
+            {
+                foreach (double value in new[] { double.MinValue, double.MaxValue, double.Epsilon })
+                {
+                    double[] values = { value, value };
+                    DeterministicMedianFilterResult result = tool.Execute(1, 2, values, new DeterministicMedianFilterOptions { KernelSize = kernelSize });
+                    Require(result.Success && result.Values.All(item => item == value) && result.ChangedCount == 0,
+                        "An even finite constant neighborhood must retain its value, including extremes and subnormals.");
+                    Require(values.All(item => item == value), "Median filtering must not mutate its input.");
+                }
+            }
+
+            DeterministicMedianFilterOptions options = new DeterministicMedianFilterOptions { KernelSize = 3 };
+            DeterministicMedianFilterResult mixed = tool.Execute(1, 2, new[] { double.MinValue, double.MaxValue }, options);
+            Require(mixed.Success && mixed.Values.All(value => value == 0.0), "Opposite finite extremes must have zero midpoint.");
+            double[] recoveryValues = { 2.0, 4.0 };
+            DeterministicMedianFilterResult recovery = tool.Execute(1, 2, recoveryValues, options);
+            Require(recovery.Success && recovery.Values.All(value => value == 3.0), "Ordinary midpoint behavior must remain unchanged after extreme inputs.");
+            RequireThrows<OperationCanceledException>(() => tool.Execute(1, 2, recoveryValues, options, new CancellationToken(true)));
+        }
+
+        private static void TestDeterministicLocalMedianOutlierFilterNumericBoundaries()
+        {
+            DeterministicLocalMedianOutlierFilterTool tool = new DeterministicLocalMedianOutlierFilterTool();
+            foreach (int windowSize in new[] { 3, 5, 7 })
+            {
+                foreach (double value in new[] { double.MinValue, double.MaxValue, double.Epsilon })
+                {
+                    double[] values = { value, value, value };
+                    DeterministicLocalMedianOutlierFilterResult result = tool.Execute(1, 3, values, new DeterministicLocalMedianOutlierFilterOptions
+                    {
+                        WindowSize = windowSize,
+                        MaximumAbsoluteDeviation = 1.0,
+                        MinimumValidNeighbors = 1
+                    });
+                    Require(result.Success && result.OutlierIndices.Count == 0 && result.Values.All(item => item == value),
+                        "Constant finite input must not lose its center or border cells through median overflow.");
+                    Require(values.All(item => item == value), "Local-median filtering must not mutate its input.");
+                }
+            }
+
+            DeterministicLocalMedianOutlierFilterOptions options = new DeterministicLocalMedianOutlierFilterOptions
+            {
+                WindowSize = 3,
+                MaximumAbsoluteDeviation = double.MaxValue,
+                MinimumValidNeighbors = 1
+            };
+            DeterministicLocalMedianOutlierFilterResult mixed = tool.Execute(1, 3, new[] { double.MinValue, 0.0, double.MaxValue }, options);
+            Require(mixed.Success && mixed.OutlierIndices.Count == 0 && mixed.Values[1] == 0.0,
+                "Opposite extreme neighbors must preserve the zero center at the inclusive deviation boundary.");
+            double[] recoveryValues = { 1.0, 1.0, 1.0 };
+            DeterministicLocalMedianOutlierFilterResult recovery = tool.Execute(1, 3, recoveryValues, options);
+            Require(recovery.Success && recovery.OutlierIndices.Count == 0 && recovery.Values.All(value => value == 1.0),
+                "The same local-median Tool must retain ordinary values after extreme inputs.");
+            RequireThrows<OperationCanceledException>(() => tool.Execute(1, 3, recoveryValues, options, new CancellationToken(true)));
         }
 
         private static void TestDeterministicLocalMedianOutlierFilter()

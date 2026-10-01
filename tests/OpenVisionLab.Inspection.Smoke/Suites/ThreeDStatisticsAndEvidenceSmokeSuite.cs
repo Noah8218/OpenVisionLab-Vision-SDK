@@ -46,6 +46,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Height deviation preserves peak-side selection and pass decision", TestHeightDeviationInspection);
             yield return new SmokeCase("Height deviation preserves tolerance failure", TestHeightDeviationInspectionFailure);
             yield return new SmokeCase("Height deviation rejects invalid summary evidence", TestHeightDeviationInspectionInvalidInput);
+            yield return new SmokeCase("Height deviation rejects inconsistent or unrepresentable summaries and recovers", TestHeightDeviationInspectionNumericBoundaries);
             yield return new SmokeCase("Declared mesh normal quality accepts dense aligned normals", TestDeclaredMeshNormalQualityValid);
             yield return new SmokeCase("Declared mesh normal quality rejects reversed normals", TestDeclaredMeshNormalQualityReversed);
             yield return new SmokeCase("Declared mesh normal quality rejects partial and invalid topology", TestDeclaredMeshNormalQualityPartialAndInvalidTopology);
@@ -1029,6 +1030,32 @@ namespace OpenVisionLab.Inspection.Smoke
             Require(!result.Success && result.Decision == HeightDeviationDecision.Error,
                 "Invalid height summary must fail closed.");
             Require(double.IsNaN(result.PeakDeviation), "Invalid height summary must not expose a peak value.");
+        }
+
+        private static void TestHeightDeviationInspectionNumericBoundaries()
+        {
+            HeightDeviationInspectionTool tool = new HeightDeviationInspectionTool();
+            double[][] invalidSummaries =
+            {
+                new[] { 10.0, 0.0, 5.0 },
+                new[] { 0.0, 10.0, -1.0 },
+                new[] { 0.0, 10.0, 11.0 },
+                new[] { double.MinValue, double.MaxValue, double.MaxValue / 2.0 }
+            };
+            foreach (double[] summary in invalidSummaries)
+            {
+                HeightDeviationInspectionResult result = tool.Execute(summary[0], summary[1], summary[2], 4, double.MaxValue);
+                Require(!result.Success && result.Decision == HeightDeviationDecision.Error
+                    && double.IsNaN(result.LowDeviation) && double.IsNaN(result.HighDeviation) && double.IsNaN(result.PeakDeviation),
+                    "Inconsistent extrema or unrepresentable deviations must not become a pass or tolerance failure.");
+            }
+
+            HeightDeviationInspectionResult recovery = tool.Execute(0.0, 10.0, 5.0, 3, 5.0);
+            Require(recovery.Success && recovery.Decision == HeightDeviationDecision.Pass, recovery.Message);
+            RequireApproximately(recovery.PeakDeviation, 5.0, 0.0, "The same Tool must recover at the inclusive tolerance boundary.");
+            HeightDeviationInspectionResult constant = tool.Execute(2.0, 2.0, 2.0, 1, 1.0);
+            Require(constant.Success && constant.Decision == HeightDeviationDecision.Pass && constant.PeakDeviation == 0.0,
+                "Equal extrema and mean remain a valid summary.");
         }
 
         private static void TestDeclaredMeshNormalQualityValid()

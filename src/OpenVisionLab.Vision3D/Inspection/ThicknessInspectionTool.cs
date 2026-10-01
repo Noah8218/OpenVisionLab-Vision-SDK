@@ -112,13 +112,21 @@ namespace OpenVisionLab.Vision3D.Inspection
                     }
                 }
 
+                double range = maximum - minimum;
+                if (!ThreeDInspectionMath.IsFinite(mean) || !ThreeDInspectionMath.IsFinite(range))
+                {
+                    ThreeDInspectionResult failure = Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The thickness metrics cannot be represented as finite values.", stopwatch, source, roi);
+                    ThreeDInspectionMath.ApplySampleSummary(failure, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
+                    return failure;
+                }
+
                 stopwatch.Stop();
                 ThreeDInspectionResult result = ThreeDInspectionResult.CreateMeasurement(source, roi, stopwatch.Elapsed);
                 ThreeDInspectionMath.ApplySampleSummary(result, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.Minimum] = minimum;
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.Maximum] = maximum;
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.Mean] = mean;
-                result.Metrics[ThreeDInspectionMetricNames.Thickness.Range] = maximum - minimum;
+                result.Metrics[ThreeDInspectionMetricNames.Thickness.Range] = range;
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.LowerLimit] = Options.MinimumThickness;
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.UpperLimit] = Options.MaximumThickness;
                 result.Metrics[ThreeDInspectionMetricNames.Thickness.BelowLowerLimitCount] = belowLowerLimitCount;

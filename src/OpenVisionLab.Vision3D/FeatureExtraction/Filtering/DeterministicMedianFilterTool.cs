@@ -94,6 +94,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         double median = (count & 1) == 1
                             ? neighbors[count / 2]
                             : (neighbors[(count / 2) - 1] + neighbors[count / 2]) / 2.0;
+                        if (!IsFinite(median))
+                        {
+                            // Preserve ordinary midpoint rounding; halve first only when the sum overflows.
+                            median = neighbors[(count / 2) - 1] / 2.0 + neighbors[count / 2] / 2.0;
+                        }
+
                         output[sourceIndex] = median;
                         if (median != values[sourceIndex])
                         {

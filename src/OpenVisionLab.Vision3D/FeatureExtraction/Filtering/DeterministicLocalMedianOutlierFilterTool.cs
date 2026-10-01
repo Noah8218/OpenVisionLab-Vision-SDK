@@ -139,6 +139,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         double median = (neighborCount & 1) == 0
                             ? (neighbors[middle - 1] + neighbors[middle]) / 2.0
                             : neighbors[middle];
+                        if (!IsFinite(median))
+                        {
+                            // Preserve ordinary midpoint rounding; halve first only when the sum overflows.
+                            median = neighbors[middle - 1] / 2.0 + neighbors[middle] / 2.0;
+                        }
+
                         if (Math.Abs(center - median)
                             > options.MaximumAbsoluteDeviation)
                         {
