@@ -557,7 +557,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         }
                     }
                 }
-                double scale = 1.0;
+                // Convergence is relative to the covariance, independent of coordinate units.
+                double scale = maximumOffDiagonal;
                 for (int diagonal = 0; diagonal < 4; diagonal++)
                 {
                     scale = Math.Max(scale, Math.Abs(matrix[diagonal, diagonal]));

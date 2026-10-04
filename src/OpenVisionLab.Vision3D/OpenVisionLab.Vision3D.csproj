@@ -13,4 +13,8 @@
     <None Include="..\..\docs\three-d-inspection.md" Pack="true" PackagePath="docs" Link="docs\three-d-inspection.md" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\OpenVisionLab.Compute\OpenVisionLab.Compute.csproj" />
+  </ItemGroup>
+
 </Project>

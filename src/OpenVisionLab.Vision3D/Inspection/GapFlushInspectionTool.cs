@@ -77,6 +77,11 @@ namespace OpenVisionLab.Vision3D.Inspection
             double signedGap = secondMinimumU - firstMaximumU;
             double signedFlush = second.ScalarHeightMean - first.ScalarHeightMean;
             double signedReferenceFlush = second.ReferenceHeightMean - first.ReferenceHeightMean;
+            if (!IsFinite(signedGap) || !IsFinite(signedFlush) || !IsFinite(signedReferenceFlush))
+            {
+                throw new InvalidOperationException("Gap/flush calculation produced a non-finite measurement.");
+            }
+
             return new GapFlushInspectionResult(
                 signedGap,
                 signedFlush,

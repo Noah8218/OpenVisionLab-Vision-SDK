@@ -42,6 +42,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     public sealed class LevelSurfaceOptions
     {
         public int MinimumValidSampleCount { get; set; }
+        public DatumPlaneFitOptions DatumPlaneFitOptions { get; set; }
     }
 
     public sealed class LevelSurfaceResult
@@ -59,7 +60,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double referenceResidualPeakToValley,
             double outputReferenceSlopeX,
             double outputReferenceSlopeZ,
-            IReadOnlyList<LevelSurfaceRegionEvidence> regionEvidence)
+            IReadOnlyList<LevelSurfaceRegionEvidence> regionEvidence,
+            DatumPlaneFitResult datumPlaneFitEvidence = null,
+            int[] referenceSampleIndices = null)
         {
             Success = success;
             Message = message ?? string.Empty;
@@ -75,6 +78,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             OutputReferenceSlopeZ = outputReferenceSlopeZ;
             RegionEvidence = regionEvidence
                 ?? Array.Empty<LevelSurfaceRegionEvidence>();
+            DatumPlaneFitEvidence = datumPlaneFitEvidence;
+            ReferenceSampleIndices = Array.AsReadOnly(referenceSampleIndices ?? Array.Empty<int>());
         }
 
         public bool Success { get; }
@@ -90,6 +95,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public double OutputReferenceSlopeX { get; }
         public double OutputReferenceSlopeZ { get; }
         public IReadOnlyList<LevelSurfaceRegionEvidence> RegionEvidence { get; }
+        public DatumPlaneFitResult DatumPlaneFitEvidence { get; }
+        public IReadOnlyList<int> ReferenceSampleIndices { get; }
 
         internal static LevelSurfaceResult Completed(
             IReadOnlyList<double> values,
@@ -99,7 +106,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double referenceResidualPeakToValley,
             double outputReferenceSlopeX,
             double outputReferenceSlopeZ,
-            IReadOnlyList<LevelSurfaceRegionEvidence> regionEvidence)
+            IReadOnlyList<LevelSurfaceRegionEvidence> regionEvidence,
+            DatumPlaneFitResult datumEvidence = null,
+            int[] referenceSampleIndices = null)
         {
             return new LevelSurfaceResult(
                 true,
@@ -114,10 +123,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 referenceResidualPeakToValley,
                 outputReferenceSlopeX,
                 outputReferenceSlopeZ,
-                regionEvidence);
+                regionEvidence,
+                datumEvidence,
+                referenceSampleIndices);
         }
 
-        internal static LevelSurfaceResult Failed(string message)
+        internal static LevelSurfaceResult Failed(string message, DatumPlaneFitResult datumEvidence = null, int[] referenceSampleIndices = null)
         {
             return new LevelSurfaceResult(
                 false,
@@ -132,7 +143,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double.NaN,
                 double.NaN,
                 double.NaN,
-                Array.Empty<LevelSurfaceRegionEvidence>());
+                Array.Empty<LevelSurfaceRegionEvidence>(),
+                datumEvidence,
+                referenceSampleIndices);
         }
     }
 
@@ -206,7 +219,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                                 samples.Add(new HeightFieldPlaneFitSample(
                                     new ThreeDPoint(
                                         column,
-                                        (float)value,
+                                        value,
                                         row),
                                     value));
                             }
@@ -228,30 +241,44 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         + ".");
                 }
 
-                LeastSquaresHeightFieldPlaneFitResult fit =
-                    planeFitTool.Execute(samples);
+                DatumPlaneFitResult datum = null;
+                int[] referenceIndices = Array.Empty<int>();
+                IReadOnlyList<HeightFieldPlaneFitSample> fitSamples = samples;
+                if (options.DatumPlaneFitOptions != null)
+                {
+                    referenceIndices = new int[samples.Count];
+                    for (int index = 0; index < samples.Count; index++)
+                        referenceIndices[index] = checked((int)samples[index].Position.Z * columnCount + (int)samples[index].Position.X);
+                    datum = new DeterministicDatumPlaneFitTool().Execute(samples, options.DatumPlaneFitOptions, cancellationToken);
+                    if (!datum.Success)
+                        return LevelSurfaceResult.Failed("Reference datum was rejected: " + datum.FailureReason + ". " + datum.Message, datum, referenceIndices);
+                    if (datum.InlierSampleCount < options.MinimumValidSampleCount)
+                        return LevelSurfaceResult.Failed("Selected datum has fewer samples than Level Surface MinimumValidSampleCount.", datum, referenceIndices);
+                    fitSamples = datum.InlierSamples;
+                }
+                LeastSquaresHeightFieldPlaneFitResult fit = datum == null ? planeFitTool.Execute(samples) : datum.Plane;
                 double squaredResidualSum = 0.0;
                 double minimumResidual = double.PositiveInfinity;
                 double maximumResidual = double.NegativeInfinity;
                 double targetHeight = 0.0;
                 for (int sampleIndex = 0;
-                     sampleIndex < samples.Count;
+                     sampleIndex < fitSamples.Count;
                      sampleIndex++)
                 {
-                    HeightFieldPlaneFitSample sample = samples[sampleIndex];
-                    double residual = sample.RawHeight
-                        - fit.EvaluateY(sample.Position.X, sample.Position.Z);
-                    squaredResidualSum += residual * residual;
+                    HeightFieldPlaneFitSample sample = fitSamples[sampleIndex];
+                    double residual = datum == null
+                        ? sample.RawHeight - fit.EvaluateY(sample.Position.X, sample.Position.Z)
+                        : datum.HeightResiduals[datum.InlierSampleIndices[sampleIndex]];
+                    if (datum == null) squaredResidualSum += residual * residual;
                     minimumResidual = Math.Min(minimumResidual, residual);
                     maximumResidual = Math.Max(maximumResidual, residual);
-                    targetHeight += sample.RawHeight;
+                    if (datum == null) targetHeight += sample.RawHeight;
                 }
 
-                double referenceResidualRms = Math.Sqrt(
-                    squaredResidualSum / samples.Count);
+                double referenceResidualRms = datum == null ? Math.Sqrt(squaredResidualSum / samples.Count) : datum.InlierHeightResidualRms;
                 double referenceResidualPeakToValley =
                     maximumResidual - minimumResidual;
-                targetHeight /= samples.Count;
+                targetHeight = datum == null ? targetHeight / samples.Count : datum.MeanInlierRawHeight;
 
                 double matrixM21 = -fit.SlopeX;
                 double matrixM22 = 1.0;
@@ -275,16 +302,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
 
                 HeightFieldPlaneFitSample[] outputSamples =
-                    new HeightFieldPlaneFitSample[samples.Count];
+                    new HeightFieldPlaneFitSample[fitSamples.Count];
                 for (int sampleIndex = 0;
-                     sampleIndex < samples.Count;
+                     sampleIndex < fitSamples.Count;
                      sampleIndex++)
                 {
-                    int row = (int)samples[sampleIndex].Position.Z;
-                    int column = (int)samples[sampleIndex].Position.X;
+                    int row = (int)fitSamples[sampleIndex].Position.Z;
+                    int column = (int)fitSamples[sampleIndex].Position.X;
                     double height = output[checked(row * columnCount + column)];
                     outputSamples[sampleIndex] = new HeightFieldPlaneFitSample(
-                        new ThreeDPoint(column, (float)height, row),
+                        new ThreeDPoint(column, height, row),
                         height);
                 }
 
@@ -298,7 +325,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     referenceResidualPeakToValley,
                     outputFit.SlopeX,
                     outputFit.SlopeZ,
-                    evidence);
+                    evidence,
+                    datum,
+                    referenceIndices);
             }
             catch (OperationCanceledException)
             {

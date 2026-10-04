@@ -35,6 +35,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             Coverage = coverage;
         }
 
+        internal DeterministicSurfaceMatchInstance(
+            int order, int evaluatedCandidateCount, RigidSurfacePose pose,
+            DeterministicSurfaceCoverageResult coverage, SurfacePoseRefinementResult refinementEvidence,
+            SurfacePoseAmbiguityEvidence ambiguityEvidence = null,
+            SurfacePoseProposalEvidence proposalEvidence = null,
+            SurfacePoseAmbiguityEvidence finalAmbiguityEvidence = null)
+            : this(order, evaluatedCandidateCount, pose, coverage)
+        {
+            RefinementEvidence = refinementEvidence;
+            AmbiguityEvidence = ambiguityEvidence;
+            ProposalEvidence = proposalEvidence;
+            FinalAmbiguityEvidence = finalAmbiguityEvidence;
+        }
+
         public int Order { get; }
 
         public int EvaluatedCandidateCount { get; }
@@ -42,6 +56,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public RigidSurfacePose Pose { get; }
 
         public DeterministicSurfaceCoverageResult Coverage { get; }
+
+        public SurfacePoseRefinementResult RefinementEvidence { get; }
+
+        public SurfacePoseAmbiguityEvidence AmbiguityEvidence { get; }
+
+        public SurfacePoseProposalEvidence ProposalEvidence { get; }
+
+        public SurfacePoseAmbiguityEvidence FinalAmbiguityEvidence { get; }
     }
 
     public sealed class DeterministicMultipleSurfaceMatchResult

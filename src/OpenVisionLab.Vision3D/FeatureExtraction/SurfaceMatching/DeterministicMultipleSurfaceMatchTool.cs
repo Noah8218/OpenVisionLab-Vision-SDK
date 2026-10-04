@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace OpenVisionLab.Vision3D.FeatureExtraction
@@ -16,8 +15,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public const int AbsoluteMaximumMatchCount = 1000;
         public const int AbsoluteMaximumExpandedCandidateCount = 10000000;
 
-        private readonly DeterministicSurfaceCoverageTool coverageTool =
-            new DeterministicSurfaceCoverageTool();
+        private readonly DeterministicRigidSurfacePoseSearchTool poseSearchTool = new DeterministicRigidSurfacePoseSearchTool();
 
         public DeterministicMultipleSurfaceMatchResult Execute(
             IReadOnlyList<SurfaceMatchSample> modelSamples,
@@ -29,10 +27,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             {
                 SurfaceMatchingContractValidation.ValidateSamples(
                     modelSamples,
-                    "Multiple surface match model input");
+                    "Multiple surface match model input",
+                    cancellationToken);
                 SurfaceMatchingContractValidation.ValidateSamples(
                     sceneSamples,
-                    "Multiple surface match scene input");
+                    "Multiple surface match scene input",
+                    cancellationToken);
                 ValidateOptions(options, modelSamples.Count, sceneSamples.Count);
 
                 DeterministicRigidSurfacePoseSearchOptions poseOptions =
@@ -69,11 +69,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         + ".");
                 }
 
+                int modelAnchorLimit = poseOptions.ProposalOptions == null ? modelSamples.Count
+                    : Math.Min(modelSamples.Count, poseOptions.ProposalOptions.MaximumModelAnchorCount);
+                int sceneAnchorLimit = poseOptions.ProposalOptions == null ? sceneSamples.Count
+                    : Math.Min(sceneSamples.Count, poseOptions.ProposalOptions.MaximumSceneAnchorCount);
                 long expandedCandidateCount = checked(
-                    rotationCandidateCount
-                    * modelSamples.Count
-                    * sceneSamples.Count
-                    * options.MaximumMatchCount);
+                    rotationCandidateCount * modelAnchorLimit * sceneAnchorLimit * options.MaximumMatchCount);
                 if (expandedCandidateCount
                     > options.MaximumExpandedCandidateCount)
                 {
@@ -85,21 +86,27 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         + ".");
                 }
 
+                IReadOnlyList<SurfaceMatchSample> modelAnchors = poseOptions.ProposalOptions == null ? null
+                    : DeterministicRigidSurfacePoseSearchTool.SelectProposalSamples(
+                        modelSamples, poseOptions.ProposalOptions.MaximumModelAnchorCount, cancellationToken);
                 double[] rotationX =
                     DeterministicRigidSurfacePoseSearchTool.AxisCandidates(
                         poseOptions.MinimumRotationXDegrees,
                         poseOptions.RotationStepXDegrees,
-                        rotationXCount);
+                        rotationXCount,
+                        cancellationToken);
                 double[] rotationY =
                     DeterministicRigidSurfacePoseSearchTool.AxisCandidates(
                         poseOptions.MinimumRotationYDegrees,
                         poseOptions.RotationStepYDegrees,
-                        rotationYCount);
+                        rotationYCount,
+                        cancellationToken);
                 double[] rotationZ =
                     DeterministicRigidSurfacePoseSearchTool.AxisCandidates(
                         poseOptions.MinimumRotationZDegrees,
                         poseOptions.RotationStepZDegrees,
-                        rotationZCount);
+                        rotationZCount,
+                        cancellationToken);
                 bool[] claimedSceneSamples = new bool[sceneSamples.Count];
                 List<DeterministicSurfaceMatchInstance> matches =
                     new List<DeterministicSurfaceMatchInstance>();
@@ -108,6 +115,37 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 while (matches.Count < options.MaximumMatchCount)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    List<int> sourceOrders = new List<int>();
+                    List<SurfaceMatchSample> available =
+                        new List<SurfaceMatchSample>();
+                    for (int sceneIndex = 0;
+                         sceneIndex < sceneSamples.Count;
+                         sceneIndex++)
+                    {
+                        if ((sceneIndex & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                        if (claimedSceneSamples[sceneIndex])
+                        {
+                            continue;
+                        }
+
+                        sourceOrders.Add(sceneSamples[sceneIndex].Order);
+                        available.Add(new SurfaceMatchSample(
+                            available.Count,
+                            sceneSamples[sceneIndex].Position));
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    IReadOnlyList<SurfaceMatchSample> admissibleScene = poseOptions.ProposalOptions == null ? null
+                        : DeterministicRigidSurfacePoseSearchTool.SelectAdmissibleSceneSamples(modelSamples, available, poseOptions, cancellationToken);
+                    IReadOnlyList<SurfaceMatchSample> sceneAnchors = poseOptions.ProposalOptions == null ? null
+                        : DeterministicRigidSurfacePoseSearchTool.SelectProposalSamples(
+                            admissibleScene, poseOptions.ProposalOptions.MaximumSceneAnchorCount, cancellationToken);
+                    SurfacePoseProposalEvidence proposals = modelAnchors == null ? null
+                        : new SurfacePoseProposalEvidence(modelSamples.Count, sceneSamples.Count, available.Count, admissibleScene.Count,
+                            modelAnchors, sceneAnchors, sourceOrders);
+                    SurfaceSceneIndex indexedScene = new SurfaceSceneIndex(available,
+                        (long)modelSamples.Count * rotationCandidateCount * (modelAnchors?.Count ?? modelSamples.Count)
+                        * (sceneAnchors?.Count ?? available.Count), cancellationToken);
                     Candidate best = null;
                     int iterationEvaluatedCandidateCount = 0;
                     int enumerationOrder = 0;
@@ -122,24 +160,27 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                                         rotationX[xIndex],
                                         rotationY[yIndex],
                                         rotationZ[zIndex]);
-                                for (int modelIndex = 0;
-                                     modelIndex < modelSamples.Count;
-                                     modelIndex++)
+                                for (int modelOffset = 0;
+                                     modelOffset < (modelAnchors?.Count ?? modelSamples.Count);
+                                     modelOffset++)
                                 {
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    int modelIndex = modelAnchors == null ? modelOffset : modelAnchors[modelOffset].Order;
                                     ThreeDPoint rotatedModelAnchor =
                                         rotation.Transform(
                                             modelSamples[modelIndex].Position);
-                                    for (int sceneIndex = 0;
-                                         sceneIndex < sceneSamples.Count;
-                                         sceneIndex++)
+                                    for (int sceneOffset = 0;
+                                         sceneOffset < (sceneAnchors?.Count ?? sceneSamples.Count);
+                                         sceneOffset++)
                                     {
+                                        cancellationToken.ThrowIfCancellationRequested();
+                                        int sceneIndex = sceneAnchors == null ? sceneOffset : sourceOrders[sceneAnchors[sceneOffset].Order];
                                         if (claimedSceneSamples[sceneIndex])
                                         {
                                             enumerationOrder++;
                                             continue;
                                         }
 
-                                        cancellationToken.ThrowIfCancellationRequested();
                                         iterationEvaluatedCandidateCount++;
                                         ThreeDPoint sceneAnchor =
                                             sceneSamples[sceneIndex].Position;
@@ -173,7 +214,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                                             Coverage(
                                                 modelSamples,
                                                 sceneSamples,
-                                                claimedSceneSamples,
+                                                sourceOrders,
+                                                available,
+                                                indexedScene,
                                                 pose,
                                                 poseOptions.MaximumCorrespondenceDistance,
                                                 cancellationToken);
@@ -193,6 +236,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         }
                     }
 
+                    cancellationToken.ThrowIfCancellationRequested();
                     totalEvaluatedCandidateCount = checked(
                         totalEvaluatedCandidateCount
                         + iterationEvaluatedCandidateCount);
@@ -210,18 +254,48 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         break;
                     }
 
-                    foreach (SurfaceCoverageMatch match in best.Coverage.Matches)
+                    SurfacePoseAmbiguityEvidence ambiguity = poseOptions.AmbiguityOptions == null ? null
+                        : poseSearchTool.EvaluateAmbiguity(
+                            modelSamples, indexedScene, poseOptions, best.Pose,
+                            DeterministicSurfaceCoverageTool.ExecuteValidated(modelSamples, indexedScene, best.Pose, poseOptions.MaximumCorrespondenceDistance, cancellationToken),
+                            false, true, cancellationToken, modelAnchors, sceneAnchors).MapSceneOrders(sourceOrders, sceneSamples.Count, cancellationToken);
+
+                    SurfacePoseAmbiguityEvidence finalAmbiguity = null;
+                    SurfacePoseRefinementResult refinement = null;
+                    if (poseOptions.RefinementOptions != null)
                     {
-                        claimedSceneSamples[match.SceneSampleOrder] = true;
+                        refinement = new DeterministicSurfacePoseRefinementTool().Execute(
+                            modelSamples, available, best.Pose, poseOptions, cancellationToken);
+                        if (!refinement.Success) throw new InvalidOperationException(refinement.Message);
+                        if (poseOptions.AmbiguityOptions?.MaximumRefinedCandidateCount != null)
+                            finalAmbiguity = poseSearchTool.EvaluateRefinedAmbiguity(modelSamples, indexedScene, poseOptions,
+                                refinement.Pose, refinement.Coverage, false, true, cancellationToken, modelAnchors, sceneAnchors)
+                                .MapSceneOrders(sourceOrders, sceneSamples.Count, cancellationToken);
+                        refinement = refinement.MapSceneOrders(sourceOrders, sceneSamples.Count, cancellationToken);
                     }
+
+                    RigidSurfacePose matchedPose = refinement?.Pose ?? best.Pose;
+                    DeterministicSurfaceCoverageResult matchedCoverage = refinement?.Coverage ?? best.Coverage;
+                    for (int matchIndex = 0; matchIndex < matchedCoverage.Matches.Count; matchIndex++)
+                    {
+                        if ((matchIndex & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                        claimedSceneSamples[matchedCoverage.Matches[matchIndex].SceneSampleOrder] = true;
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     matches.Add(new DeterministicSurfaceMatchInstance(
                         matches.Count,
                         iterationEvaluatedCandidateCount,
-                        best.Pose,
-                        best.Coverage));
+                        matchedPose,
+                        matchedCoverage,
+                        refinement,
+                        ambiguity,
+                        proposals,
+                        finalAmbiguity));
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 return DeterministicMultipleSurfaceMatchResult.Completed(
                     totalEvaluatedCandidateCount,
                     matches,
@@ -239,32 +313,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
         }
 
-        private DeterministicSurfaceCoverageResult Coverage(
+        private static DeterministicSurfaceCoverageResult Coverage(
             IReadOnlyList<SurfaceMatchSample> modelSamples,
             IReadOnlyList<SurfaceMatchSample> sceneSamples,
-            bool[] claimedSceneSamples,
+            IReadOnlyList<int> sourceOrders,
+            IReadOnlyList<SurfaceMatchSample> available,
+            SurfaceSceneIndex sceneIndex,
             RigidSurfacePose pose,
             double maximumCorrespondenceDistance,
             CancellationToken cancellationToken)
         {
-            List<int> sourceOrders = new List<int>();
-            List<SurfaceMatchSample> available =
-                new List<SurfaceMatchSample>();
-            for (int sceneIndex = 0;
-                 sceneIndex < sceneSamples.Count;
-                 sceneIndex++)
-            {
-                if (claimedSceneSamples[sceneIndex])
-                {
-                    continue;
-                }
-
-                sourceOrders.Add(sceneSamples[sceneIndex].Order);
-                available.Add(new SurfaceMatchSample(
-                    available.Count,
-                    sceneSamples[sceneIndex].Position));
-            }
-
             if (available.Count == 0)
             {
                 return DeterministicSurfaceCoverageResult.Completed(
@@ -278,9 +336,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     Array.Empty<SurfaceCoverageMatch>());
             }
 
-            DeterministicSurfaceCoverageResult result = coverageTool.Execute(
+            DeterministicSurfaceCoverageResult result = DeterministicSurfaceCoverageTool.ExecuteValidated(
                 modelSamples,
-                available,
+                sceneIndex,
                 pose,
                 maximumCorrespondenceDistance,
                 cancellationToken);
@@ -289,12 +347,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 throw new InvalidOperationException(result.Message);
             }
 
-            SurfaceCoverageMatch[] mapped = result.Matches
-                .Select(match => new SurfaceCoverageMatch(
-                    match.ModelSampleOrder,
-                    sourceOrders[match.SceneSampleOrder],
-                    match.Distance))
-                .ToArray();
+            SurfaceCoverageMatch[] mapped = new SurfaceCoverageMatch[result.Matches.Count];
+            for (int index = 0; index < mapped.Length; index++)
+            {
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                SurfaceCoverageMatch match = result.Matches[index];
+                mapped[index] = new SurfaceCoverageMatch(
+                    match.ModelSampleOrder, sourceOrders[match.SceneSampleOrder], match.Distance);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             return DeterministicSurfaceCoverageResult.Completed(
                 modelSamples.Count,
                 sceneSamples.Count,

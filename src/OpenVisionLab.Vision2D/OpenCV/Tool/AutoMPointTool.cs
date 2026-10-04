@@ -22,6 +22,7 @@ namespace OpenVisionLab.Vision2D.Tool
         private int exactEvaluatedCount;
         private double analysisElapsedMilliseconds;
         private IReadOnlyList<Mat> representativeImages = Array.Empty<Mat>();
+        private IReadOnlyList<Mat> negativeRepresentativeImages = Array.Empty<Mat>();
         private readonly AutoMPointCandidateAnalyzer candidateAnalyzer;
         private CancellationToken CurrentCancellationToken => ExecutionCancellationToken;
 
@@ -66,11 +67,43 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
+        /// <summary>Evaluates one fixed candidate against target-present and target-absent images. Images are borrowed only until Execute returns.</summary>
+        public VisionToolResult Execute(Mat source, IReadOnlyList<Mat> samples, IReadOnlyList<Mat> negativeSamples,
+            CancellationToken cancellationToken)
+        {
+            representativeImages = samples ?? Array.Empty<Mat>();
+            negativeRepresentativeImages = negativeSamples ?? Array.Empty<Mat>();
+            try
+            {
+                return ExecuteWithCancellation(source, cancellationToken);
+            }
+            finally
+            {
+                representativeImages = Array.Empty<Mat>();
+                negativeRepresentativeImages = Array.Empty<Mat>();
+            }
+        }
+
         protected override bool TryValidateBeforeRun(out VisionToolErrorCode errorCode, out string message)
         {
             if (!base.TryValidateBeforeRun(out errorCode, out message))
             {
                 return false;
+            }
+
+            for (int index = 0; index < negativeRepresentativeImages.Count; index++)
+            {
+                CurrentCancellationToken.ThrowIfCancellationRequested();
+                Mat sample = negativeRepresentativeImages[index];
+                if (sample == null || sample.IsDisposed || sample.Empty()
+                    || sample.Type() != MatType.CV_8UC1 && sample.Type() != MatType.CV_8UC3 && sample.Type() != MatType.CV_8UC4)
+                {
+                    results.Clear();
+                    candidates.Clear();
+                    errorCode = VisionToolErrorCode.AutoMPointInvalidParameter;
+                    message = "Auto MPoint negative representatives require nonempty 8-bit gray, BGR, or BGRA images.";
+                    return false;
+                }
             }
 
             analysisRoi = property.UseAnalysisRoi
@@ -221,6 +254,7 @@ namespace OpenVisionLab.Vision2D.Tool
             metrics["AutoMPoint.AcceptedCandidateCount"] = results.Count;
             metrics["AutoMPoint.AnalysisElapsedMs"] = analysisElapsedMilliseconds;
             metrics["AutoMPoint.RepresentativeImageCount"] = representativeImages.Count;
+            if (negativeRepresentativeImages.Count > 0) metrics["AutoMPoint.NegativeRepresentativeImageCount"] = negativeRepresentativeImages.Count;
 
             AutoMPointCandidateResult best = results.FirstOrDefault();
             if (best != null)
@@ -288,6 +322,8 @@ namespace OpenVisionLab.Vision2D.Tool
         private double analysisElapsedMilliseconds { get => owner.analysisElapsedMilliseconds; set => owner.analysisElapsedMilliseconds = value; }
 
         private IReadOnlyList<Mat> representativeImages => owner.representativeImages;
+
+        private IReadOnlyList<Mat> negativeRepresentativeImages => owner.negativeRepresentativeImages;
 
         private Mat imageSource => owner.imageSource;
 
@@ -364,6 +400,14 @@ namespace OpenVisionLab.Vision2D.Tool
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             EvaluateRepresentativeImages(gray, candidate, matcher);
+                        }
+                    }
+                    if (negativeRepresentativeImages.Count > 0)
+                    {
+                        foreach (AutoMPointCandidateResult candidate in candidates.Where(item => item.Accepted))
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            EvaluateNegativeImages(gray, candidate, matcher);
                         }
                     }
                 }
@@ -563,6 +607,8 @@ namespace OpenVisionLab.Vision2D.Tool
                     }
 
                     candidate.NativeMatchCenter = self.Center;
+                    candidate.NativeMatchAngle = self.Angle;
+                    candidate.NativeMatchScale = self.Scale;
                     candidate.NativeToPatternOffsetX = candidate.PatternCenter.X - self.Center.X;
                     candidate.NativeToPatternOffsetY = candidate.PatternCenter.Y - self.Center.Y;
                     candidate.SelfMatchScore = self.Score;
@@ -800,6 +846,45 @@ namespace OpenVisionLab.Vision2D.Tool
                 candidate.RejectReason =
                     $"RepresentativeSuccessRate {candidate.RepresentativeSuccessRate:0.###} < {property.MinimumRepresentativeSuccessRate:0.###} "
                     + $"({candidate.RepresentativeSuccessCount}/{candidate.RepresentativeImageCount}).";
+            }
+        }
+
+        private void EvaluateNegativeImages(Mat referenceGray, AutoMPointCandidateResult candidate, EdgeBasedTemplateMatchingTool matcher)
+        {
+            using (Mat template = referenceGray.SubMat(candidate.PatternRoi).Clone())
+            {
+                matcher.SetProperty(CreateMatcherProperty());
+                matcher.SetTemplateImage(template);
+                for (int index = 0; index < negativeRepresentativeImages.Count; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using (Mat gray = CreateGrayImage(negativeRepresentativeImages[index]))
+                    using (VisionToolResult execution = matcher.Execute(gray, cancellationToken))
+                    {
+                        MatchingResult match = matcher.results.OrderByDescending(item => item.Score).FirstOrDefault();
+                        bool falsePositive = execution.Success && match != null;
+                        bool noMatch = !execution.Success && execution.ErrorCode == VisionToolErrorCode.MatchingNoResult;
+                        candidate.NegativeRepresentativeMatches.Add(new AutoMPointRepresentativeMatchResult
+                        {
+                            ImageIndex = index + 1,
+                            Success = noMatch,
+                            Outcome = falsePositive ? "FalsePositive" : noMatch ? "NoMatch" : "ExecutionError",
+                            Message = execution.Message,
+                            Center = match?.Center ?? new Point2f(),
+                            Score = match?.Score ?? 0d,
+                            Angle = match?.Angle ?? 0d,
+                            Scale = match?.Scale ?? 0d,
+                            RuntimeMilliseconds = execution.Elapsed.TotalMilliseconds
+                        });
+                        if (!noMatch)
+                        {
+                            candidate.Accepted = false;
+                            candidate.RejectReason = falsePositive
+                                ? $"Negative representative {index + 1} produced a false positive. Score={match.Score:0.###}."
+                                : $"Negative representative {index + 1} could not be evaluated. {execution.ErrorName}: {execution.Message}";
+                        }
+                    }
+                }
             }
         }
 

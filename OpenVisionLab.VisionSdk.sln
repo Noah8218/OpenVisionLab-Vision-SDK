@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.Inspection.Sm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.Vision3D.Benchmark", "tests\OpenVisionLab.Vision3D.Benchmark\OpenVisionLab.Vision3D.Benchmark.csproj", "{1ADAF331-49F2-4336-98AF-E062534E1718}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.Compute", "src\OpenVisionLab.Compute\OpenVisionLab.Compute.csproj", "{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,14 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Debug|x64.Build.0 = Debug|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Release|x64.ActiveCfg = Release|Any CPU
+		{C517C5A8-843B-4DF3-BBE3-0FC4052FC579}.Release|x64.Build.0 = Release|Any CPU
 		{44228878-CED8-42E0-8E1F-B73B2FC6DE67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{44228878-CED8-42E0-8E1F-B73B2FC6DE67}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{44228878-CED8-42E0-8E1F-B73B2FC6DE67}.Debug|x64.ActiveCfg = Debug|x64

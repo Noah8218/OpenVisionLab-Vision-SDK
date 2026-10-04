@@ -31,7 +31,7 @@ Exact OpenCV core commit `d40fe356e3ea77fd6b68c6e1ccac6d0a391775ba`
 pins OpenCV third-party commit `a56b6ac6f030c312b2dce17430eef13aed9af274`
 and MD5 `879741A7946B814455EEE6C6FFDE2984` for
 `ippicv_2020_win_intel64_20191018_general.zip`. A fresh download from that
-official URL is byte-identical to the PL-0004 archive and has SHA-256
+official URL has the reviewed archive SHA-256
 `E64E09F8A2E121D4FFF440FB12B1298BC0760F1391770AEFE5D1DEB6630352B7`.
 The archive contains the Intel Simplified Software License, version April 2018,
 which permits unmodified redistribution subject to its stated conditions. It also
@@ -62,7 +62,7 @@ Official containers:
   <https://api.nuget.org/v3-flatcontainer/opencvsharp4/4.4.0.20200915/opencvsharp4.4.4.0.20200915.nupkg>
   (2,682,577 bytes; observed SHA-256
   `D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1`;
-  NuGet.org repository signature verified during PL-0004 research).
+  NuGet.org repository signature verified for these exact bytes).
 - Native release ZIP:
   <https://github.com/shimat/opencvsharp/releases/download/4.3.0.20200708/OpenCvSharp-4.3.0-20200708.zip>
   (79,315,607 bytes; observed SHA-256
@@ -105,7 +105,7 @@ preserved document. Inclusion records provenance and terms; it is not a legal
 determination that the final commercial distribution method satisfies them.
 
 The removed `OpenCvSharp.Blob` binary and its LGPL evidence remain only in Git
-history and dated PL-0013 records as historical provenance. They are not current
+history as historical provenance. They are not current
 Core package files, manifest entries, or redistribution dependencies.
 
 ## Distribution-owner approval checklist

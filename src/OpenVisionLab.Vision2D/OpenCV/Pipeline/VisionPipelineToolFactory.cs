@@ -1,3 +1,4 @@
+using OpenVisionLab.Compute;
 using OpenVisionLab.Vision2D.Property;
 using OpenVisionLab.Vision2D.Tool;
 using OpenCvSharp;
@@ -61,6 +62,12 @@ namespace OpenVisionLab.Vision2D.Pipeline
             VisionPipelineStep step,
             Func<VisionPipelineArtifactReference, byte[]> artifactResolver)
         {
+            return Create(step, artifactResolver, null);
+        }
+
+        /// <summary>Creates a Tool with a borrowed, host-owned compute session. Construction does not probe or run an inspection.</summary>
+        public static IVisionTool Create(VisionPipelineStep step, Func<VisionPipelineArtifactReference, byte[]> artifactResolver, VisionComputeSession computeSession)
+        {
             if (step == null)
             {
                 throw new ArgumentNullException(nameof(step));
@@ -95,7 +102,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 case "matching":
                     return CreateMatchingTool(parameters, templateArtifact, artifactResolver);
                 case "edgebasedtemplatematching":
-                    return CreateEdgeBasedTemplateMatchingTool(parameters, templateArtifact, artifactResolver);
+                    return CreateEdgeBasedTemplateMatchingTool(parameters, templateArtifact, artifactResolver, computeSession);
                 case "autompoint":
                     return CreateAutoMPointTool(parameters);
                 case "sift":
@@ -319,7 +326,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
         private static EdgeBasedTemplateMatchingTool CreateEdgeBasedTemplateMatchingTool(
             VisionPipelineParameterReader parameters,
             VisionPipelineArtifactReference artifact,
-            Func<VisionPipelineArtifactReference, byte[]> artifactResolver)
+            Func<VisionPipelineArtifactReference, byte[]> artifactResolver,
+            VisionComputeSession computeSession)
         {
             EdgeBasedTemplateMatchingToolProperty property = new EdgeBasedTemplateMatchingToolProperty();
             PopulateCommonProperty(property, parameters);
@@ -359,20 +367,29 @@ namespace OpenVisionLab.Vision2D.Pipeline
             property.MIN_GRADIENT_MAGNITUDE = parameters.GetDouble(nameof(property.MIN_GRADIENT_MAGNITUDE), property.MIN_GRADIENT_MAGNITUDE);
             property.USE_DRAW_IMAGE = parameters.GetBool(nameof(property.USE_DRAW_IMAGE), property.USE_DRAW_IMAGE);
 
-            using (Mat template = ResolveTemplate(artifact, artifactResolver))
+            EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool(computeSession);
+            try
             {
-                EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool();
-                try
+                tool.UsePoseRefinement = parameters.GetBool(nameof(tool.UsePoseRefinement), tool.UsePoseRefinement);
+                tool.PoseRefinementMaximumIterations = parameters.GetInt(nameof(tool.PoseRefinementMaximumIterations), tool.PoseRefinementMaximumIterations);
+                tool.PoseRefinementEpsilon = parameters.GetDouble(nameof(tool.PoseRefinementEpsilon), tool.PoseRefinementEpsilon);
+                tool.UsePoseUniquenessValidation = parameters.GetBool(nameof(tool.UsePoseUniquenessValidation), tool.UsePoseUniquenessValidation);
+                tool.PoseMatchMinScoreMargin = parameters.GetDouble(nameof(tool.PoseMatchMinScoreMargin), tool.PoseMatchMinScoreMargin);
+                tool.PoseMatchMinAngleDifferenceDegrees = parameters.GetDouble(nameof(tool.PoseMatchMinAngleDifferenceDegrees), tool.PoseMatchMinAngleDifferenceDegrees);
+                tool.PoseMatchMinRelativeScaleDifference = parameters.GetDouble(nameof(tool.PoseMatchMinRelativeScaleDifference), tool.PoseMatchMinRelativeScaleDifference);
+                tool.SetProperty(property);
+                if (string.Equals(artifact.Format, EdgeTemplateModelArtifactCodec.ArtifactFormat, StringComparison.OrdinalIgnoreCase))
+                    tool.SetLearnedModel(EdgeTemplateModelArtifactCodec.Decode(ResolveArtifactBytes(artifact, artifactResolver)));
+                else
                 {
-                    tool.SetProperty(property);
-                    tool.SetTemplateImage(template);
-                    return tool;
+                    using (Mat template = ResolveTemplate(artifact, artifactResolver)) tool.SetTemplateImage(template);
                 }
-                catch
-                {
-                    tool.Dispose();
-                    throw;
-                }
+                return tool;
+            }
+            catch
+            {
+                tool.Dispose();
+                throw;
             }
         }
 
@@ -473,6 +490,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
             property.SHOW_EDGE = parameters.GetBool(nameof(property.SHOW_EDGE), property.SHOW_EDGE);
             property.SHOW_CONTOUR = parameters.GetBool(nameof(property.SHOW_CONTOUR), property.SHOW_CONTOUR);
             property.SHOW_FITLINE = parameters.GetBool(nameof(property.SHOW_FITLINE), property.SHOW_FITLINE);
+            property.UseSubpixelMeasurement = parameters.GetBool(nameof(property.UseSubpixelMeasurement), property.UseSubpixelMeasurement);
+            property.SubpixelProfileRadius = parameters.GetInt(nameof(property.SubpixelProfileRadius), property.SubpixelProfileRadius);
 
             LineGaugeTool tool = new LineGaugeTool();
             tool.SetProperty(property);
@@ -547,12 +566,12 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     nameof(step));
             }
 
-            if (!string.Equals(artifact.Format, requirement.Format, StringComparison.OrdinalIgnoreCase)
+            if (!System.Linq.Enumerable.Contains(requirement.AcceptedFormats, artifact.Format, StringComparer.OrdinalIgnoreCase)
                 || artifact.FormatVersion != requirement.FormatVersion)
             {
                 throw new NotSupportedException(
                     $"Vision pipeline artifact '{artifact.Id}' uses unsupported format '{artifact.Format}' version {artifact.FormatVersion}. "
-                    + $"Required: '{requirement.Format}' version {requirement.FormatVersion}.");
+                    + $"Accepted: '{string.Join(", ", requirement.AcceptedFormats)}' version {requirement.FormatVersion}.");
             }
 
             if (artifactResolver == null)
@@ -564,7 +583,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
             return artifact;
         }
 
-        private static Mat ResolveTemplate(
+        private static byte[] ResolveArtifactBytes(
             VisionPipelineArtifactReference artifact,
             Func<VisionPipelineArtifactReference, byte[]> artifactResolver)
         {
@@ -586,6 +605,14 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     $"Vision pipeline artifact SHA-256 mismatch for '{artifact.Id}'. Expected={artifact.Sha256}, Actual={actualHash}.");
             }
 
+            return encoded;
+        }
+
+        private static Mat ResolveTemplate(
+            VisionPipelineArtifactReference artifact,
+            Func<VisionPipelineArtifactReference, byte[]> artifactResolver)
+        {
+            byte[] encoded = ResolveArtifactBytes(artifact, artifactResolver);
             Mat template;
             try
             {

@@ -1,5 +1,7 @@
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace OpenVisionLab.Vision3D.FeatureExtraction
 {
@@ -239,6 +241,42 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     /// Explicit Euler rotation grid, translation bounds, correspondence
     /// limit, match requirement, and candidate budget for one pose search.
     /// </summary>
+    /// <summary>Opt-in farthest-position anchors. Selection only proposes poses; coverage always uses original samples.</summary>
+    public sealed class SurfacePoseProposalOptions
+    {
+        public const int AbsoluteMaximumAnchorCount = 1024;
+        public int MaximumModelAnchorCount { get; set; } = 32;
+        public int MaximumSceneAnchorCount { get; set; } = 64;
+    }
+
+    /// <summary>Immutable identity of the reduced coarse proposal domain, not evidence of global pose uniqueness.</summary>
+    public sealed class SurfacePoseProposalEvidence
+    {
+        internal SurfacePoseProposalEvidence(int modelSampleCount, int sceneSampleCount, int availableSceneSampleCount, int admissibleSceneSampleCount,
+            IReadOnlyList<SurfaceMatchSample> modelAnchors, IReadOnlyList<SurfaceMatchSample> sceneAnchors,
+            IReadOnlyList<int> sceneOrderMap = null)
+        {
+            ModelSampleCount = modelSampleCount;
+            SceneSampleCount = sceneSampleCount;
+            AvailableSceneSampleCount = availableSceneSampleCount;
+            AdmissibleSceneSampleCount = admissibleSceneSampleCount;
+            List<int> modelOrders = new List<int>(modelAnchors.Count);
+            List<int> sceneOrders = new List<int>(sceneAnchors.Count);
+            for (int index = 0; index < modelAnchors.Count; index++) modelOrders.Add(modelAnchors[index].Order);
+            for (int index = 0; index < sceneAnchors.Count; index++)
+                sceneOrders.Add(sceneOrderMap == null ? sceneAnchors[index].Order : sceneOrderMap[sceneAnchors[index].Order]);
+            ModelSampleOrders = modelOrders.AsReadOnly();
+            SceneSampleOrders = sceneOrders.AsReadOnly();
+        }
+
+        public int ModelSampleCount { get; }
+        public int SceneSampleCount { get; }
+        public int AvailableSceneSampleCount { get; }
+        public int AdmissibleSceneSampleCount { get; }
+        public IReadOnlyList<int> ModelSampleOrders { get; }
+        public IReadOnlyList<int> SceneSampleOrders { get; }
+    }
+
     public sealed class DeterministicRigidSurfacePoseSearchOptions
     {
         public double MinimumRotationXDegrees { get; set; }
@@ -259,6 +297,18 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public double MaximumCorrespondenceDistance { get; set; }
         public int MinimumMatchedSampleCount { get; set; }
         public int MaximumCandidateCount { get; set; }
+
+        /// <summary>Single search: false preserves centroid-only translation; true adds every sample-pair anchor within MaximumCandidateCount. Multiple search always uses sample-pair anchors.</summary>
+        public bool UseSamplePairTranslationCandidates { get; set; }
+
+        /// <summary>Null keeps the full anchor domain. Single search requires sample-pair candidates; multiple search always uses anchors.</summary>
+        public SurfacePoseProposalOptions ProposalOptions { get; set; }
+
+        /// <summary>Null skips competing-pose comparison. Evidence covers the declared coarse candidate domain, separately from local refinement.</summary>
+        public SurfacePoseAmbiguityOptions AmbiguityOptions { get; set; }
+
+        /// <summary>Null preserves the coarse Euler-grid path. Set explicitly to refine a matched pose locally.</summary>
+        public SurfacePoseRefinementOptions RefinementOptions { get; set; }
     }
 
     /// <summary>
@@ -274,8 +324,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             int evaluatedCandidateCount,
             RigidSurfacePose pose,
             DeterministicSurfaceCoverageResult coverage,
-            string rejectionReason)
+            string rejectionReason,
+            SurfacePoseRefinementResult refinementEvidence = null,
+            SurfacePoseAmbiguityEvidence ambiguityEvidence = null,
+            SurfacePoseProposalEvidence proposalEvidence = null,
+            SurfacePoseAmbiguityEvidence finalAmbiguityEvidence = null,
+            ComputeExecutionEvidence computeDiagnostics = null)
         {
+            ComputeDiagnostics = computeDiagnostics;
             Success = success;
             Message = message ?? string.Empty;
             Matched = matched;
@@ -283,6 +339,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             Pose = pose;
             Coverage = coverage;
             RejectionReason = rejectionReason ?? string.Empty;
+            RefinementEvidence = refinementEvidence;
+            AmbiguityEvidence = ambiguityEvidence;
+            ProposalEvidence = proposalEvidence;
+            FinalAmbiguityEvidence = finalAmbiguityEvidence;
         }
 
         public bool Success { get; }
@@ -292,13 +352,25 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public RigidSurfacePose Pose { get; }
         public DeterministicSurfaceCoverageResult Coverage { get; }
         public string RejectionReason { get; }
+        public SurfacePoseRefinementResult RefinementEvidence { get; }
+        public SurfacePoseAmbiguityEvidence AmbiguityEvidence { get; }
+        public SurfacePoseProposalEvidence ProposalEvidence { get; }
+        /// <summary>Opt-in refined-candidate comparison against Pose/Coverage. Require ComparisonComplete before interpreting a non-ambiguous result.</summary>
+        public SurfacePoseAmbiguityEvidence FinalAmbiguityEvidence { get; }
+        /// <summary>Immutable compute snapshot; null when validation failed before compute selection.</summary>
+        public ComputeExecutionEvidence ComputeDiagnostics { get; }
 
         internal static DeterministicRigidSurfacePoseSearchResult Completed(
             bool matched,
             int evaluatedCandidateCount,
             RigidSurfacePose pose,
             DeterministicSurfaceCoverageResult coverage,
-            string rejectionReason)
+            string rejectionReason,
+            SurfacePoseRefinementResult refinementEvidence = null,
+            SurfacePoseAmbiguityEvidence ambiguityEvidence = null,
+            SurfacePoseProposalEvidence proposalEvidence = null,
+            SurfacePoseAmbiguityEvidence finalAmbiguityEvidence = null,
+            ComputeExecutionEvidence computeDiagnostics = null)
         {
             return new DeterministicRigidSurfacePoseSearchResult(
                 true,
@@ -307,11 +379,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 evaluatedCandidateCount,
                 pose,
                 coverage,
-                rejectionReason);
+                rejectionReason,
+                refinementEvidence,
+                ambiguityEvidence,
+                proposalEvidence,
+                finalAmbiguityEvidence,
+                computeDiagnostics);
         }
 
         internal static DeterministicRigidSurfacePoseSearchResult Failed(
-            string message)
+            string message, ComputeExecutionEvidence computeDiagnostics = null)
         {
             return new DeterministicRigidSurfacePoseSearchResult(
                 false,
@@ -320,7 +397,103 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 0,
                 null,
                 null,
-                string.Empty);
+                string.Empty, computeDiagnostics: computeDiagnostics);
+        }
+    }
+
+    /// <summary>Explicit competing-pose policy; refinement comparison is opt-in. Distances and RMSE use the input XYZ unit.</summary>
+    public sealed class SurfacePoseAmbiguityOptions
+    {
+        public double MinimumRotationSeparationDegrees { get; set; }
+        /// <summary>Null preserves orientation-only comparison. A finite positive value also distinguishes model-origin translations at least this far apart, within MaximumTranslationSeparation.</summary>
+        public double? MinimumTranslationSeparation { get; set; }
+        /// <summary>Maximum separation of model origins in scene coordinates for alternatives belonging to this instance.</summary>
+        public double MaximumTranslationSeparation { get; set; }
+        public int MaximumMatchedSampleCountDifference { get; set; }
+        public double MaximumRmseDifference { get; set; }
+        /// <summary>Null preserves coarse-only evidence. A positive budget also compares refined seeds that meet MinimumMatchedSampleCount; requires RefinementOptions. Exhaustion is incomplete evidence, not uniqueness.</summary>
+        public int? MaximumRefinedCandidateCount { get; set; }
+    }
+
+    /// <summary>Competing-pose evidence within the authored coarse seed domain. Refined comparison admits only seeds meeting the coarse support minimum and compares their refined or retained poses against the returned pose. Translation mode selects the strongest qualifying alternative; null preserves the strongest rotated coarse diagnostic alternative. Absence of ambiguity does not prove global pose uniqueness.</summary>
+    public sealed class SurfacePoseAmbiguityEvidence
+    {
+        internal SurfacePoseAmbiguityEvidence(RigidSurfacePose referencePose, DeterministicSurfaceCoverageResult referenceCoverage,
+            RigidSurfacePose alternativePose, DeterministicSurfaceCoverageResult alternativeCoverage, int evaluatedCandidateCount,
+            double rotationSeparationDegrees, bool isAmbiguous, SurfacePoseAmbiguityOptions options, double translationSeparation = double.NaN,
+            bool isRefinedComparison = false, bool comparisonComplete = true, int refinedCandidateCount = 0)
+        {
+            ReferencePose = referencePose;
+            ReferenceCoverage = referenceCoverage;
+            AlternativePose = alternativePose;
+            AlternativeCoverage = alternativeCoverage;
+            EvaluatedCandidateCount = evaluatedCandidateCount;
+            RotationSeparationDegrees = rotationSeparationDegrees;
+            TranslationSeparation = translationSeparation;
+            IsAmbiguous = isAmbiguous;
+            IsRefinedComparison = isRefinedComparison;
+            ComparisonComplete = comparisonComplete;
+            RefinedCandidateCount = refinedCandidateCount;
+            MaximumRefinedCandidateCount = options.MaximumRefinedCandidateCount;
+            MinimumRotationSeparationDegrees = options.MinimumRotationSeparationDegrees;
+            MinimumTranslationSeparation = options.MinimumTranslationSeparation;
+            MaximumMatchedSampleCountDifference = options.MaximumMatchedSampleCountDifference;
+            MaximumRmseDifference = options.MaximumRmseDifference;
+            MaximumTranslationSeparation = options.MaximumTranslationSeparation;
+        }
+
+        public RigidSurfacePose ReferencePose { get; }
+        public DeterministicSurfaceCoverageResult ReferenceCoverage { get; }
+        public RigidSurfacePose AlternativePose { get; }
+        public DeterministicSurfaceCoverageResult AlternativeCoverage { get; }
+        public int EvaluatedCandidateCount { get; }
+        public double RotationSeparationDegrees { get; }
+        /// <summary>Separation of model origins in scene coordinates, in the input XYZ unit; NaN when no alternative exists.</summary>
+        public double TranslationSeparation { get; }
+        public bool IsAmbiguous { get; }
+        public bool IsRefinedComparison { get; }
+        /// <summary>Whether all coarse-support-admitted seeds were compared within the authored budget. This does not cover all possible final poses.</summary>
+        public bool ComparisonComplete { get; }
+        /// <summary>Number of seed refinement attempts, including valid seeds retained without an accepted update.</summary>
+        public int RefinedCandidateCount { get; }
+        public int? MaximumRefinedCandidateCount { get; }
+        public double MinimumRotationSeparationDegrees { get; }
+        public double? MinimumTranslationSeparation { get; }
+        public double MaximumTranslationSeparation { get; }
+        public int MaximumMatchedSampleCountDifference { get; }
+        public double MaximumRmseDifference { get; }
+
+        internal SurfacePoseAmbiguityEvidence MapSceneOrders(IReadOnlyList<int> sourceOrders, int sceneCount, CancellationToken cancellationToken)
+        {
+            return new SurfacePoseAmbiguityEvidence(ReferencePose, MapCoverage(ReferenceCoverage, sourceOrders, sceneCount, cancellationToken),
+                AlternativePose, MapCoverage(AlternativeCoverage, sourceOrders, sceneCount, cancellationToken), EvaluatedCandidateCount,
+                RotationSeparationDegrees, IsAmbiguous, new SurfacePoseAmbiguityOptions
+                {
+                    MinimumRotationSeparationDegrees = MinimumRotationSeparationDegrees,
+                    MinimumTranslationSeparation = MinimumTranslationSeparation,
+                    MaximumMatchedSampleCountDifference = MaximumMatchedSampleCountDifference,
+                    MaximumTranslationSeparation = MaximumTranslationSeparation,
+                    MaximumRmseDifference = MaximumRmseDifference,
+                    MaximumRefinedCandidateCount = MaximumRefinedCandidateCount
+                }, TranslationSeparation, IsRefinedComparison, ComparisonComplete, RefinedCandidateCount);
+        }
+
+        private static DeterministicSurfaceCoverageResult MapCoverage(DeterministicSurfaceCoverageResult coverage,
+            IReadOnlyList<int> sourceOrders, int sceneCount, CancellationToken cancellationToken)
+        {
+            if (coverage == null) return null;
+            SurfaceCoverageMatch[] mapped = new SurfaceCoverageMatch[coverage.Matches.Count];
+            for (int index = 0; index < mapped.Length; index++)
+            {
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                SurfaceCoverageMatch match = coverage.Matches[index];
+                mapped[index] = new SurfaceCoverageMatch(match.ModelSampleOrder, sourceOrders[match.SceneSampleOrder], match.Distance);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return DeterministicSurfaceCoverageResult.Completed(coverage.ModelSampleCount, sceneCount,
+                coverage.MatchedModelSampleCount, coverage.CoverageRatio, coverage.HasInlierRmse, coverage.InlierRmse,
+                coverage.MaximumCorrespondenceDistance, mapped);
         }
     }
 
@@ -328,8 +501,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     {
         public static void ValidateSamples(
             IReadOnlyList<SurfaceMatchSample> samples,
-            string label)
+            string label,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (samples == null || samples.Count == 0)
             {
                 throw new ArgumentException(
@@ -338,6 +513,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             for (int index = 0; index < samples.Count; index++)
             {
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
                 SurfaceMatchSample sample = samples[index];
                 if (sample == null
                     || sample.Order != index
@@ -348,6 +524,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         label + " requires contiguous zero-based orders and finite XYZ positions.");
                 }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         public static bool IsFinite(double value)

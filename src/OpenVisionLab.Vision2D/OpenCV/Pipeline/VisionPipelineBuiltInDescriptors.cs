@@ -275,6 +275,13 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Integer(nameof(value.NUM_MATCH), value.NUM_MATCH),
                     Boolean(nameof(value.USE_UNIQUE_MATCH_VALIDATION), value.USE_UNIQUE_MATCH_VALIDATION),
                     Number(nameof(value.UNIQUE_MATCH_MIN_SCORE_MARGIN), value.UNIQUE_MATCH_MIN_SCORE_MARGIN),
+                    Boolean(nameof(EdgeBasedTemplateMatchingTool.UsePoseRefinement), false),
+                    Integer(nameof(EdgeBasedTemplateMatchingTool.PoseRefinementMaximumIterations), EdgeBasedTemplateMatchingTool.DefaultPoseRefinementMaximumIterations),
+                    Number(nameof(EdgeBasedTemplateMatchingTool.PoseRefinementEpsilon), EdgeBasedTemplateMatchingTool.DefaultPoseRefinementEpsilon),
+                    Boolean(nameof(EdgeBasedTemplateMatchingTool.UsePoseUniquenessValidation), false),
+                    Number(nameof(EdgeBasedTemplateMatchingTool.PoseMatchMinScoreMargin), EdgeBasedTemplateMatchingTool.DefaultPoseMatchMinScoreMargin),
+                    Number(nameof(EdgeBasedTemplateMatchingTool.PoseMatchMinAngleDifferenceDegrees), EdgeBasedTemplateMatchingTool.DefaultPoseMatchMinAngleDifference),
+                    Number(nameof(EdgeBasedTemplateMatchingTool.PoseMatchMinRelativeScaleDifference), EdgeBasedTemplateMatchingTool.DefaultPoseMatchMinRelativeScaleDifference),
                     Boolean(nameof(value.ALLOW_GLOBAL_POLARITY_REVERSAL), value.ALLOW_GLOBAL_POLARITY_REVERSAL),
                     Integer(nameof(value.CANNY_LOW), value.CANNY_LOW),
                     Integer(nameof(value.CANNY_HIGH), value.CANNY_HIGH),
@@ -307,7 +314,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Number(nameof(value.MIN_GRADIENT_MAGNITUDE), value.MIN_GRADIENT_MAGNITUDE),
                     Boolean(nameof(value.USE_DRAW_IMAGE), value.USE_DRAW_IMAGE)
                 }),
-                TemplateArtifact());
+                TemplateArtifact(true));
         }
 
         private static VisionPipelineToolDescriptor CreateAutoMPointDescriptor()
@@ -409,7 +416,9 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Boolean(nameof(value.SHOW_VERTICAL_LINE), value.SHOW_VERTICAL_LINE),
                     Boolean(nameof(value.SHOW_EDGE), value.SHOW_EDGE),
                     Boolean(nameof(value.SHOW_CONTOUR), value.SHOW_CONTOUR),
-                    Boolean(nameof(value.SHOW_FITLINE), value.SHOW_FITLINE)
+                    Boolean(nameof(value.SHOW_FITLINE), value.SHOW_FITLINE),
+                    Boolean(nameof(value.UseSubpixelMeasurement), value.UseSubpixelMeasurement),
+                    Integer(nameof(value.SubpixelProfileRadius), value.SubpixelProfileRadius)
                 }));
         }
 
@@ -471,13 +480,14 @@ namespace OpenVisionLab.Vision2D.Pipeline
             };
         }
 
-        private static VisionPipelineArtifactDescriptor TemplateArtifact()
+        private static VisionPipelineArtifactDescriptor TemplateArtifact(bool acceptLearnedEdges = false)
         {
             return new VisionPipelineArtifactDescriptor(
                 VisionPipelineToolFactory.TemplateArtifactRole,
                 VisionPipelineToolFactory.EncodedImageArtifactFormat,
                 VisionPipelineToolFactory.EncodedImageArtifactFormatVersion,
-                true);
+                true,
+                acceptLearnedEdges ? new[] { VisionPipelineToolFactory.EncodedImageArtifactFormat, EdgeTemplateModelArtifactCodec.ArtifactFormat } : null);
         }
 
         private static string FormatRectangle(OpenCvSharp.Rect value)

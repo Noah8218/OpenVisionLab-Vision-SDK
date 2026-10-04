@@ -36,6 +36,7 @@ namespace OpenVisionLab.Vision2D.Result
         public List<PointF> ModelPoints { get; } = new List<PointF>();
         public EdgeBasedMatchingCandidateDiagnostic SelectedCandidate { get; set; }
         public EdgeBasedMatchingCandidateDiagnostic StrongestSpatialAlternative { get; set; }
+        public EdgeBasedMatchingCandidateDiagnostic StrongestPoseAlternative { get; set; }
 
         public EdgeBasedMatchingDiagnosticEvidence Clone()
         {
@@ -49,7 +50,8 @@ namespace OpenVisionLab.Vision2D.Result
                 TemplateHeight = TemplateHeight,
                 ModelCenter = ModelCenter,
                 SelectedCandidate = SelectedCandidate?.Clone(),
-                StrongestSpatialAlternative = StrongestSpatialAlternative?.Clone()
+                StrongestSpatialAlternative = StrongestSpatialAlternative?.Clone(),
+                StrongestPoseAlternative = StrongestPoseAlternative?.Clone()
             };
             clone.ModelPoints.AddRange(ModelPoints);
             return clone;

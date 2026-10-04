@@ -9,7 +9,7 @@
     "CA1822": 68,
     "CA1825": 0,
     "CA1843": 0,
-    "CA1859": 4,
+    "CA1859": 3,
     "CA1861": 82,
     "CA1869": 1
   },
@@ -747,11 +747,6 @@
       "identity": "CA1822|src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool|Execute|public PointPairDimensionsInspectionResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs"
-    },
-    {
-      "identity": "CA1859|src/OpenVisionLab.Vision3D/FeatureExtraction/SurfaceMatching/DeterministicModelKeyPointExtractionTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicModelKeyPointExtractionTool|Select|ICollection<ExtractedModelKeyPoint> keyPoints)|occurrence=1",
-      "decisionGroup": "concrete-type-coupling",
-      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/SurfaceMatching/DeterministicModelKeyPointExtractionTool.cs"
     },
     {
       "identity": "CA1859|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|CreateSurfaceMatchModel|private static IReadOnlyList<SurfaceMatchSample> CreateSurfaceMatchModel()|occurrence=1",

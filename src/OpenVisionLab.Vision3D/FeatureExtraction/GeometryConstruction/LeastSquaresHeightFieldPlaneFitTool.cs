@@ -22,6 +22,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
     public sealed class LeastSquaresHeightFieldPlaneFitResult
     {
+        private readonly ThreeDPoint referenceOrigin;
+        private readonly double localIntercept;
+
         public LeastSquaresHeightFieldPlaneFitResult(
             double slopeX,
             double slopeZ,
@@ -50,6 +53,28 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             TargetRawReferenceHeight = targetRawReferenceHeight;
         }
 
+        internal LeastSquaresHeightFieldPlaneFitResult(
+            double slopeX,
+            double slopeZ,
+            double intercept,
+            ThreeDPoint normal,
+            double offset,
+            int sampleCount,
+            double rootMeanSquareDistance,
+            ThreeDPoint target,
+            ThreeDPoint targetProjection,
+            double targetSignedDistance,
+            double targetRawHeight,
+            double targetRawReferenceHeight,
+            ThreeDPoint referenceOrigin,
+            double localIntercept)
+            : this(slopeX, slopeZ, intercept, normal, offset, sampleCount, rootMeanSquareDistance,
+                target, targetProjection, targetSignedDistance, targetRawHeight, targetRawReferenceHeight)
+        {
+            this.referenceOrigin = referenceOrigin;
+            this.localIntercept = localIntercept;
+        }
+
         public double SlopeX { get; }
         public double SlopeZ { get; }
         public double Intercept { get; }
@@ -67,7 +92,15 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         public double EvaluateY(double x, double z)
         {
-            return (SlopeX * x) + (SlopeZ * z) + Intercept;
+            return referenceOrigin == null
+                ? (SlopeX * x) + (SlopeZ * z) + Intercept
+                : referenceOrigin.Y + ((SlopeX * (x - referenceOrigin.X)) + (SlopeZ * (z - referenceOrigin.Z)) + localIntercept);
+        }
+        internal double SignedDistance(ThreeDPoint point)
+        {
+            return referenceOrigin == null
+                ? LeastSquaresHeightFieldPlaneFitTool.SignedDistance(point, Normal, Offset)
+                : LeastSquaresHeightFieldPlaneFitTool.SignedDistance(point, Normal, referenceOrigin, localIntercept);
         }
     }
 
@@ -90,6 +123,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 throw new ArgumentException("Plane fitting requires at least three samples.", nameof(samples));
             }
 
+            HeightFieldPlaneFitSample origin = samples[0];
+            if (!IsFinite(origin))
+            {
+                throw new ArgumentException("Plane fitting samples must contain finite coordinates and raw heights.", nameof(samples));
+            }
+
             double meanX = 0.0;
             double meanY = 0.0;
             double meanZ = 0.0;
@@ -101,10 +140,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     throw new ArgumentException("Plane fitting samples must contain finite coordinates and raw heights.", nameof(samples));
                 }
 
-                meanX += sample.Position.X;
-                meanY += sample.Position.Y;
-                meanZ += sample.Position.Z;
-                meanRaw += sample.RawHeight;
+                meanX += sample.Position.X - origin.Position.X;
+                meanY += sample.Position.Y - origin.Position.Y;
+                meanZ += sample.Position.Z - origin.Position.Z;
+                meanRaw += sample.RawHeight - origin.RawHeight;
             }
 
             meanX /= samples.Count;
@@ -125,10 +164,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double sumZRaw = 0.0;
             foreach (HeightFieldPlaneFitSample sample in samples)
             {
-                double x = sample.Position.X - meanX;
-                double y = sample.Position.Y - meanY;
-                double z = sample.Position.Z - meanZ;
-                double raw = sample.RawHeight - meanRaw;
+                double x = (sample.Position.X - origin.Position.X) - meanX;
+                double y = (sample.Position.Y - origin.Position.Y) - meanY;
+                double z = (sample.Position.Z - origin.Position.Z) - meanZ;
+                double raw = (sample.RawHeight - origin.RawHeight) - meanRaw;
                 sumXX += x * x;
                 sumXZ += x * z;
                 sumZZ += z * z;
@@ -146,24 +185,27 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
 
             double determinant = (sumXX * sumZZ) - (sumXZ * sumXZ);
-            double determinantScale = Math.Max(1.0, Math.Abs(sumXX * sumZZ));
+            // Both quantities scale with the fourth power of the coordinate unit.
+            double determinantScale = sumXX * sumZZ;
             if (!IsFinite(determinant) || !IsFinite(determinantScale))
             {
                 throw new InvalidOperationException("Plane fitting produced a non-finite determinant.");
             }
 
-            if (Math.Abs(determinant) <= determinantScale * 1e-12)
+            if (determinantScale <= 0.0 || Math.Abs(determinant) <= determinantScale * 1e-12)
             {
                 throw new ArgumentException("Plane fitting samples must span two horizontal axes.", nameof(samples));
             }
 
             double slopeX = ((sumXY * sumZZ) - (sumZY * sumXZ)) / determinant;
             double slopeZ = ((sumZY * sumXX) - (sumXY * sumXZ)) / determinant;
-            double intercept = meanY - (slopeX * meanX) - (slopeZ * meanZ);
+            double localIntercept = meanY - (slopeX * meanX) - (slopeZ * meanZ);
+            double intercept = origin.Position.Y - (slopeX * origin.Position.X) - (slopeZ * origin.Position.Z) + localIntercept;
             double rawSlopeX = ((sumXRaw * sumZZ) - (sumZRaw * sumXZ)) / determinant;
             double rawSlopeZ = ((sumZRaw * sumXX) - (sumXRaw * sumXZ)) / determinant;
             double rawIntercept = meanRaw - (rawSlopeX * meanX) - (rawSlopeZ * meanZ);
             if (!IsFinite(slopeX) || !IsFinite(slopeZ) || !IsFinite(intercept)
+                || !IsFinite(localIntercept)
                 || !IsFinite(rawSlopeX) || !IsFinite(rawSlopeZ) || !IsFinite(rawIntercept))
             {
                 throw new InvalidOperationException("Plane fitting produced a non-finite coefficient.");
@@ -182,7 +224,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double offset = -intercept / normalLength;
 
             HeightFieldPlaneFitSample target = samples[0];
-            double targetSignedDistance = SignedDistance(target.Position, normal, offset);
+            double targetSignedDistance = SignedDistance(target.Position, normal, origin.Position, localIntercept);
             double squaredDistanceSum = targetSignedDistance * targetSignedDistance;
             if (!IsFinite(targetSignedDistance) || !IsFinite(squaredDistanceSum))
             {
@@ -191,7 +233,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             for (int index = 1; index < samples.Count; index++)
             {
-                double signedDistance = SignedDistance(samples[index].Position, normal, offset);
+                double signedDistance = SignedDistance(samples[index].Position, normal, origin.Position, localIntercept);
                 double squaredDistance = signedDistance * signedDistance;
                 if (!IsFinite(signedDistance) || !IsFinite(squaredDistance))
                 {
@@ -212,7 +254,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
 
             ThreeDPoint projection = Project(target.Position, normal, targetSignedDistance);
-            double rawReference = (rawSlopeX * target.Position.X) + (rawSlopeZ * target.Position.Z) + rawIntercept;
+            double rawReference = origin.RawHeight + ((rawSlopeX * (target.Position.X - origin.Position.X))
+                + (rawSlopeZ * (target.Position.Z - origin.Position.Z)) + rawIntercept);
             return new LeastSquaresHeightFieldPlaneFitResult(
                 slopeX,
                 slopeZ,
@@ -225,7 +268,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 projection,
                 targetSignedDistance,
                 target.RawHeight,
-                rawReference);
+                rawReference,
+                origin.Position,
+                localIntercept);
         }
 
         internal static double SignedDistance(ThreeDPoint point, ThreeDPoint normal, double offset)
@@ -234,6 +279,13 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 + (normal.Y * point.Y)
                 + (normal.Z * point.Z);
             return dot + offset;
+        }
+
+        internal static double SignedDistance(ThreeDPoint point, ThreeDPoint normal, ThreeDPoint referenceOrigin, double localIntercept)
+        {
+            return (normal.X * (point.X - referenceOrigin.X))
+                + (normal.Y * ((point.Y - referenceOrigin.Y) - localIntercept))
+                + (normal.Z * (point.Z - referenceOrigin.Z));
         }
 
         internal static ThreeDPoint Project(ThreeDPoint point, ThreeDPoint normal, double signedDistance)

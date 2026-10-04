@@ -9,6 +9,7 @@ using OpenVisionLab.Vision3D.Inspection;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -23,6 +24,12 @@ namespace OpenVisionLab.Inspection.Smoke
         {
             yield return new SmokeCase("Height-difference edge retains strongest pair and exact-tie order", TestDeterministicHeightDifferenceEdge);
             yield return new SmokeCase("Height-difference edge skips missing pairs and requires support", TestDeterministicHeightDifferenceEdgeMissingAndSupport);
+            yield return new SmokeCase("Height-difference edge exposes bounded top-two candidates per scanline", TestDeterministicHeightDifferenceEdgeCandidateEvidence);
+            yield return new SmokeCase("Height-difference edge candidate evidence covers both axes and polarity modes", TestDeterministicHeightDifferenceEdgeCandidateEvidenceAxesAndPolarity);
+            yield return new SmokeCase("Height-difference edge cancellation and candidate contract guards fail closed", TestDeterministicHeightDifferenceEdgeCandidateEvidenceCancellationAndGuards);
+            yield return new SmokeCase("Height-difference edge keeps large finite magnitude means representable", TestHeightDifferenceEdgeLargeMagnitudeMean);
+            yield return new SmokeCase("Height-difference edge rejects inconsistent candidate and scanline evidence", TestHeightDifferenceEdgeEvidenceConsistency);
+            yield return new SmokeCase("Height-difference edge snapshots diagnostics and preserves legacy construction", TestHeightDifferenceEdgeDiagnosticSnapshot);
             yield return new SmokeCase("Deterministic line fit preserves full-XYZ inliers and direction", TestDeterministicLineFit);
             yield return new SmokeCase("Deterministic line fit rejects insufficient support", TestDeterministicLineFitSupportFailure);
             yield return new SmokeCase("Rigid surface pose search recovers known yaw and translation", TestDeterministicRigidSurfacePoseSearch);
@@ -30,6 +37,11 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Rigid surface pose search fails closed on bounded domains", TestDeterministicRigidSurfacePoseSearchBounds);
             yield return new SmokeCase("Multiple surface match returns stable disjoint two-object results", TestDeterministicMultipleSurfaceMatch);
             yield return new SmokeCase("Multiple surface match fails closed on invalid contracts and expanded candidate budget", TestDeterministicMultipleSurfaceMatchBudget);
+            yield return new SmokeCase("Surface matching challenge recovers one object among background points", TestSurfaceMatchingChallengeBackground);
+            yield return new SmokeCase("Surface matching challenge preserves partial noisy coverage and rejection", TestSurfaceMatchingChallengePartialNoise);
+            yield return new SmokeCase("Surface matching challenge preserves original disjoint evidence across instances", TestSurfaceMatchingChallengeDisjoint);
+            yield return new SmokeCase("Surface matching challenge keeps symmetric results deterministic", TestSurfaceMatchingChallengeSymmetry);
+            yield return new SmokeCase("Surface matching challenge recovers after failure budget rejection and cancellation", TestSurfaceMatchingChallengeRecovery);
             yield return new SmokeCase("Pose symmetry equivalence uses model-space post-multiplication", TestRigidPoseSymmetryEquivalencePostMultiply);
             yield return new SmokeCase("Pose symmetry equivalence preserves direct comparison for none", TestRigidPoseSymmetryEquivalenceNone);
             yield return new SmokeCase("Pose symmetry equivalence supports X and Y cyclic groups", TestRigidPoseSymmetryEquivalenceAxes);
@@ -60,13 +72,23 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Organized scene surface-edge extraction anchors height steps", TestDeterministicOrganizedSceneSurfaceEdgeExtraction);
             yield return new SmokeCase("Surface-edge coverage reuses unique nearest matching", TestDeterministicSurfaceEdgeCoverage);
             yield return new SmokeCase("Surface-edge coverage accepts an empty scene as zero coverage", TestDeterministicSurfaceEdgeCoverageEmptyScene);
+            yield return new SmokeCase("Numerical reliability preserves large-origin uneven planes and independent datum measurements", TestLargeOriginPlaneReliability);
+            yield return new SmokeCase("Numerical reliability preserves double leveling and missing samples", TestDoubleLevelSurfaceReliability);
+            yield return new SmokeCase("Numerical reliability preserves height coverage contract rejection and recovery", TestMissingHeightCoverageReliability);
             yield return new SmokeCase("Least-squares height-field plane fit preserves analytic coefficients", TestLeastSquaresHeightFieldPlaneFit);
             yield return new SmokeCase("Height-field plane fit preserves inclined translated distances and rejects overflow", TestPlaneFitNumericalBoundaries);
+            yield return new SmokeCase("3D analytic qualification preserves plane coefficients across coordinate scales", TestAnalyticPlaneScale);
+            yield return new SmokeCase("3D analytic qualification keeps geometric rejection scale independent", TestAnalyticPlaneRank);
+            yield return new SmokeCase("3D analytic qualification distinguishes tilted flatness vertical volume and thickness", TestAnalyticDatumMeasurements);
+            yield return new SmokeCase("3D analytic qualification recovers proper rigid poses across coordinate scales", TestAnalyticRigidScale);
+            yield return new SmokeCase("3D analytic qualification reports outlier residuals and recovers after failure and cancellation", TestAnalyticRigidNoiseAndRecovery);
+            yield return new SmokeCase("3D analytic qualification rejects gap flush arithmetic overflow and recovers", TestAnalyticGapOverflow);
             yield return new SmokeCase("Plane flatness measures independent reference and surface samples", TestPlaneFlatnessInspection);
             yield return new SmokeCase("Plane flatness rejects degenerate reference geometry", TestPlaneFlatnessDegenerateReference);
             yield return new SmokeCase("Point pair measures dimensions relative to the height axis", TestPointPairDimensions);
             yield return new SmokeCase("Point pair honors a rotated height axis", TestPointPairDimensionsRotatedAxis);
             yield return new SmokeCase("Point pair rejects coincident positions", TestPointPairDimensionsCoincident);
+            yield return new SmokeCase("Point pair preserves scale and rejects unrepresentable measurements", TestPointPairNumericBoundaries);
             yield return new SmokeCase("Gap/flush measures signed separation and height difference", TestGapFlush);
             yield return new SmokeCase("Gap/flush preserves signed overlap", TestGapFlushOverlap);
             yield return new SmokeCase("Gap/flush rejects an empty region", TestGapFlushEmptyRegion);
@@ -78,6 +100,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Cross-section measures axis width and scalar-height range", TestCrossSectionDimensions);
             yield return new SmokeCase("Cross-section reports independent width and height failures", TestCrossSectionDimensionsFailure);
             yield return new SmokeCase("Cross-section rejects non-finite samples", TestCrossSectionDimensionsInvalidSample);
+            yield return new SmokeCase("Cross-section rejects unrepresentable spans and recovers", TestCrossSectionUnrepresentableDimensions);
         }
 
         private static void TestDeterministicHeightDifferenceEdge()
@@ -138,8 +161,334 @@ namespace OpenVisionLab.Inspection.Smoke
 
             Require(missing.Success && missing.Points.Count == 2 && missing.Diagnostics.SkippedMissingPairCount == 2,
                 "Missing edge cells must skip only their adjacent pairs without filling or bridging.");
+            Require(missing.Diagnostics.Scanlines.Count == 3
+                && missing.Diagnostics.Scanlines[1].SearchComplete
+                && missing.Diagnostics.Scanlines[1].EligibleCandidateCount == 0
+                && missing.Diagnostics.Scanlines[1].TopCandidate == null
+                && missing.Diagnostics.Scanlines[1].SecondCandidate == null,
+                "A complete scanline with only missing pairs must remain explicit no-candidate evidence.");
             Require(!insufficient.Success && insufficient.Message.Contains("at least two accepted", StringComparison.OrdinalIgnoreCase),
                 "Height-difference edge must reject fewer than two accepted scanlines.");
+        }
+
+        private static void TestDeterministicHeightDifferenceEdgeCandidateEvidence()
+        {
+            double[] values =
+            {
+                0.0, 8.0, 0.0, 7.0, 0.0,
+                0.0, 6.0, 12.0, 0.0, 6.0,
+                0.0, 7.0, 0.0, 0.0, 8.0
+            };
+            HeightDifferenceEdgeResult result = new DeterministicHeightDifferenceEdgeTool().Execute(
+                3,
+                5,
+                values,
+                new HeightDifferenceEdgeOptions
+                {
+                    Selection = new HeightDifferenceEdgeSelection(0, 0, 3, 5),
+                    ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns,
+                    Polarity = HeightDifferenceEdgePolarity.Rising,
+                    MinimumDelta = 5.0
+                });
+
+            Require(result.Success && result.Points.Count == 3, "Top-two candidate extraction must preserve the accepted strongest points.");
+            Require(result.Diagnostics.Scanlines.Count == 3, "Candidate evidence must cover every selected scanline.");
+            HeightDifferenceEdgeResult repeat = new DeterministicHeightDifferenceEdgeTool().Execute(
+                3,
+                5,
+                values,
+                new HeightDifferenceEdgeOptions
+                {
+                    Selection = new HeightDifferenceEdgeSelection(0, 0, 3, 5),
+                    ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns,
+                    Polarity = HeightDifferenceEdgePolarity.Rising,
+                    MinimumDelta = 5.0
+                });
+            Require(repeat.Success && repeat.Diagnostics.Scanlines[1].TopCandidate.PairStartIndex == result.Diagnostics.Scanlines[1].TopCandidate.PairStartIndex
+                && repeat.Diagnostics.Scanlines[1].SecondCandidate.PairStartIndex == result.Diagnostics.Scanlines[1].SecondCandidate.PairStartIndex
+                && repeat.Diagnostics.Scanlines[1].ScoreDifference == result.Diagnostics.Scanlines[1].ScoreDifference,
+                "Repeated direct execution must preserve candidate identity and score evidence.");
+
+            HeightDifferenceEdgeScanlineDiagnostics first = result.Diagnostics.Scanlines[0];
+            Require(first.SearchComplete && first.EligibleCandidateCount == 2
+                && first.TopCandidate.PairStartIndex == 0
+                && first.SecondCandidate.PairStartIndex == 2,
+                "The first scanline must rank its two eligible pairs by magnitude and start index.");
+            RequireApproximately(first.ScoreDifference, 1.0, 0.0, "The first scanline score difference changed.");
+            Require(first.TopCandidate.FirstColumn == 0 && first.TopCandidate.SecondColumn == 1
+                && first.SecondCandidate.FirstColumn == 2 && first.SecondCandidate.SecondColumn == 3,
+                "Top-two candidates must retain both endpoint coordinates.");
+
+            HeightDifferenceEdgeScanlineDiagnostics shared = result.Diagnostics.Scanlines[1];
+            Require(shared.EligibleCandidateCount == 3
+                && shared.TopCandidate.PairStartIndex == 0
+                && shared.SecondCandidate.PairStartIndex == 1
+                && shared.TopCandidate.SecondColumn == shared.SecondCandidate.FirstColumn,
+                "Adjacent pairs sharing one sample must remain distinct candidates.");
+            RequireApproximately(shared.ScoreDifference, 0.0, 0.0, "Exact-tied candidates must retain a zero score difference.");
+            Require(result.Points[1].FirstColumn == 0 && result.Points[1].SecondColumn == 1,
+                "The existing strongest-per-scanline winner and output order must remain unchanged.");
+
+            HeightDifferenceEdgeScanlineDiagnostics last = result.Diagnostics.Scanlines[2];
+            Require(last.TopCandidate.PairStartIndex == 3 && last.SecondCandidate.PairStartIndex == 0,
+                "A later stronger pair must replace the winner while retaining the prior runner-up.");
+
+            double[] offsetValues =
+            {
+                99.0, 99.0, 99.0, 99.0, 99.0, 99.0,
+                99.0, 99.0, 0.0, 8.0, 0.0, 7.0,
+                99.0, 99.0, 0.0, 6.0, 12.0, 0.0,
+                99.0, 99.0, 99.0, 99.0, 99.0, 99.0
+            };
+            HeightDifferenceEdgeResult offset = new DeterministicHeightDifferenceEdgeTool().Execute(
+                4,
+                6,
+                offsetValues,
+                new HeightDifferenceEdgeOptions
+                {
+                    Selection = new HeightDifferenceEdgeSelection(1, 2, 2, 4),
+                    ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns,
+                    Polarity = HeightDifferenceEdgePolarity.Rising,
+                    MinimumDelta = 5.0
+                });
+            Require(offset.Success && offset.Diagnostics.Scanlines[0].ScanlineIndex == 1
+                && offset.Diagnostics.Scanlines[1].ScanlineIndex == 2
+                && offset.Diagnostics.Scanlines[0].TopCandidate.FirstColumn == 2
+                && offset.Diagnostics.Scanlines[0].TopCandidate.SecondColumn == 3,
+                "ROI-offset evidence must retain absolute scanline and endpoint identities inside the selected rectangle.");
+        }
+
+        private static void TestDeterministicHeightDifferenceEdgeCandidateEvidenceAxesAndPolarity()
+        {
+            double[] risingValues =
+            {
+                0.0, 10.0, 0.0, 0.0,
+                7.0, 15.0, 0.0, 7.0,
+                7.0, 20.0, 0.0, 7.0,
+                7.0, 20.0, 0.0, 7.0
+            };
+            double[] fallingValues =
+            {
+                7.0, 20.0, 0.0, 7.0,
+                0.0, 15.0, 0.0, 0.0,
+                0.0, 10.0, 0.0, 0.0,
+                0.0, 10.0, 0.0, 0.0
+            };
+
+            HeightDifferenceEdgeResult rising = ExecuteEdgeForPolarity(
+                4,
+                4,
+                risingValues,
+                HeightDifferenceEdgeComparisonAxis.AcrossRows,
+                HeightDifferenceEdgePolarity.Rising);
+            HeightDifferenceEdgeResult falling = ExecuteEdgeForPolarity(
+                4,
+                4,
+                fallingValues,
+                HeightDifferenceEdgeComparisonAxis.AcrossRows,
+                HeightDifferenceEdgePolarity.Falling);
+            HeightDifferenceEdgeResult absolute = ExecuteEdgeForPolarity(
+                4,
+                4,
+                fallingValues,
+                HeightDifferenceEdgeComparisonAxis.AcrossRows,
+                HeightDifferenceEdgePolarity.Absolute);
+
+            foreach (HeightDifferenceEdgeResult result in new[] { rising, falling, absolute })
+            {
+                Require(result.Success && result.Points.Count == 3 && result.Diagnostics.Scanlines.Count == 4,
+                    "Both-axis candidate evidence must preserve accepted support and one record per selected scanline.");
+                Require(result.Diagnostics.Scanlines[2].SearchComplete
+                    && result.Diagnostics.Scanlines[2].EligibleCandidateCount == 0
+                    && result.Diagnostics.Scanlines[2].TopCandidate == null,
+                    "A no-candidate column must not be represented as unavailable evidence.");
+            }
+
+            Require(rising.Diagnostics.Scanlines[1].TopCandidate.SignedDelta > 0.0
+                && rising.Diagnostics.Scanlines[1].SecondCandidate.SignedDelta > 0.0,
+                "Rising polarity must retain only positive candidate deltas.");
+            Require(rising.Diagnostics.Scanlines[0].SearchComplete
+                && rising.Diagnostics.Scanlines[0].EligibleCandidateCount == 1
+                && !rising.Diagnostics.Scanlines[0].HasNumericScoreDifference
+                && double.IsNaN(rising.Diagnostics.Scanlines[0].ScoreDifference),
+                "A complete single-candidate scanline must explicitly prove that no competitor was found without inventing a score difference.");
+            Require(falling.Diagnostics.Scanlines[1].TopCandidate.SignedDelta < 0.0
+                && falling.Diagnostics.Scanlines[1].SecondCandidate.SignedDelta < 0.0,
+                "Falling polarity must retain only negative candidate deltas.");
+            Require(absolute.Diagnostics.Scanlines[1].TopCandidate.SignedDelta < 0.0
+                && absolute.Diagnostics.Scanlines[1].TopCandidate.Magnitude >= 5.0,
+                "Absolute polarity must retain the signed candidate while ranking by magnitude.");
+        }
+
+        private static HeightDifferenceEdgeResult ExecuteEdgeForPolarity(
+            int rowCount,
+            int columnCount,
+            IReadOnlyList<double> values,
+            HeightDifferenceEdgeComparisonAxis axis,
+            HeightDifferenceEdgePolarity polarity)
+        {
+            return new DeterministicHeightDifferenceEdgeTool().Execute(
+                rowCount,
+                columnCount,
+                values,
+                new HeightDifferenceEdgeOptions
+                {
+                    Selection = new HeightDifferenceEdgeSelection(0, 0, rowCount, columnCount),
+                    ComparisonAxis = axis,
+                    Polarity = polarity,
+                    MinimumDelta = 5.0
+                });
+        }
+
+        private static void TestDeterministicHeightDifferenceEdgeCandidateEvidenceCancellationAndGuards()
+        {
+            using (CancellationTokenSource cancellation = new CancellationTokenSource())
+            {
+                cancellation.Cancel();
+                double[] values =
+                {
+                    0.0, 10.0, 0.0,
+                    0.0, 10.0, 0.0,
+                    0.0, 10.0, 0.0
+                };
+                RequireThrows<OperationCanceledException>(() => new DeterministicHeightDifferenceEdgeTool().Execute(
+                    3,
+                    3,
+                    values,
+                    new HeightDifferenceEdgeOptions
+                    {
+                        Selection = new HeightDifferenceEdgeSelection(0, 0, 3, 3),
+                        ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns,
+                        Polarity = HeightDifferenceEdgePolarity.Rising,
+                        MinimumDelta = 5.0
+                    },
+                    cancellation.Token));
+            }
+
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeCandidate(
+                0,
+                0,
+                0,
+                0,
+                double.NaN,
+                0,
+                1,
+                1.0,
+                1.0,
+                1.0));
+            RequireThrows<ArgumentOutOfRangeException>(() => _ = new HeightDifferenceEdgeCandidate(
+                0,
+                0,
+                -1,
+                0,
+                0.0,
+                0,
+                1,
+                1.0,
+                1.0,
+                1.0));
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeCandidate(
+                0,
+                0,
+                0,
+                0,
+                0.0,
+                0,
+                2,
+                2.0,
+                2.0,
+                2.0));
+            HeightDifferenceEdgeCandidate top = new HeightDifferenceEdgeCandidate(0, 0, 0, 0, 0.0, 0, 1, 5.0, 5.0, 5.0);
+            HeightDifferenceEdgeCandidate second = new HeightDifferenceEdgeCandidate(0, 1, 0, 1, 5.0, 0, 2, 10.0, 5.0, 5.0);
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 1, top, second));
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 2, null, second));
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeScanlineDiagnostics(1, true, 1, top, null));
+            HeightDifferenceEdgeScanlineDiagnostics duplicateScanline = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 1, top, null);
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeDiagnostics(
+                2,
+                2,
+                0,
+                2,
+                0,
+                5.0,
+                5.0,
+                5.0,
+                new[] { duplicateScanline, duplicateScanline }));
+
+            HeightDifferenceEdgeDiagnostics legacy = new HeightDifferenceEdgeDiagnostics(
+                2,
+                2,
+                0,
+                2,
+                0,
+                5.0,
+                5.0,
+                5.0);
+            Require(legacy.Scanlines.Count == 0,
+                "Legacy diagnostics construction must remain explicitly unavailable rather than fabricating per-scanline evidence.");
+
+            HeightDifferenceEdgeResult overflow = new DeterministicHeightDifferenceEdgeTool().Execute(
+                2,
+                2,
+                new[] { double.MaxValue, -double.MaxValue, double.MaxValue, -double.MaxValue },
+                new HeightDifferenceEdgeOptions
+                {
+                    Selection = new HeightDifferenceEdgeSelection(0, 0, 2, 2),
+                    ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns,
+                    Polarity = HeightDifferenceEdgePolarity.Absolute,
+                    MinimumDelta = 1.0
+                });
+            Require(!overflow.Success && overflow.Message.Contains("score must be finite", StringComparison.OrdinalIgnoreCase),
+                "Non-finite adjacent score overflow must fail closed without publishing candidate evidence.");
+        }
+
+        private static void TestHeightDifferenceEdgeLargeMagnitudeMean()
+        {
+            double[] values = { 0.0, double.MaxValue, 0.0, double.MaxValue };
+            HeightDifferenceEdgeResult result = ExecuteEdgeForPolarity(2, 2, values, HeightDifferenceEdgeComparisonAxis.AcrossColumns, HeightDifferenceEdgePolarity.Rising);
+            Require(result.Success && result.Points.Count == 2, "Representable adjacent differences must remain accepted.");
+            Require(result.Diagnostics.AcceptedMagnitudeMinimum == double.MaxValue
+                && result.Diagnostics.AcceptedMagnitudeMaximum == double.MaxValue
+                && result.Diagnostics.AcceptedMagnitudeMean == double.MaxValue,
+                "The mean of equal finite magnitudes must equal that magnitude even when their sum overflows.");
+        }
+
+        private static void TestHeightDifferenceEdgeEvidenceConsistency()
+        {
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeCandidate(0, 0, 0, 0, 1.0, 0, 1, 6.0, 4.0, 4.0));
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeCandidate(1, 0, 0, 0, 1.0, 0, 1, 6.0, 5.0, 5.0));
+            HeightDifferenceEdgeCandidate first = new HeightDifferenceEdgeCandidate(0, 0, 0, 0, 1.0, 0, 1, 6.0, 5.0, 5.0);
+            HeightDifferenceEdgeCandidate second = new HeightDifferenceEdgeCandidate(1, 0, 1, 0, 1.0, 1, 1, 6.0, 5.0, 5.0);
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 2, first, null));
+            HeightDifferenceEdgeScanlineDiagnostics[] scanlines =
+            {
+                new HeightDifferenceEdgeScanlineDiagnostics(0, true, 1, first, null),
+                new HeightDifferenceEdgeScanlineDiagnostics(1, true, 1, second, null)
+            };
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeDiagnostics(2, 2, 0, 1, 1, 5.0, 5.0, 5.0, scanlines));
+            RequireThrows<ArgumentException>(() => _ = new HeightDifferenceEdgeDiagnostics(2, 1, 0, 2, 0, 5.0, 5.0, 5.0, scanlines));
+        }
+
+        private static void TestHeightDifferenceEdgeDiagnosticSnapshot()
+        {
+            HeightDifferenceEdgeCandidate candidate = new HeightDifferenceEdgeCandidate(0, 0, 0, 0, 0.0, 0, 1, 5.0, 5.0, 5.0);
+            HeightDifferenceEdgeScanlineDiagnostics complete = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 1, candidate, null);
+            HeightDifferenceEdgeScanlineDiagnostics replacement = new HeightDifferenceEdgeScanlineDiagnostics(0, true, 0, null, null);
+            HeightDifferenceEdgeScanlineDiagnostics[] source = { complete };
+            HeightDifferenceEdgeDiagnostics diagnostics = new HeightDifferenceEdgeDiagnostics(1, 1, 0, 1, 0, 5.0, 5.0, 5.0, source);
+            source[0] = replacement;
+            Require(ReferenceEquals(diagnostics.Scanlines[0], complete), "Changing the caller's array must not rewrite the retained snapshot.");
+            IList<HeightDifferenceEdgeScanlineDiagnostics> list = diagnostics.Scanlines as IList<HeightDifferenceEdgeScanlineDiagnostics>;
+            Require(list == null || list.IsReadOnly, "Published scanline evidence must be read-only.");
+            if (list != null)
+            {
+                RequireThrows<NotSupportedException>(() => list[0] = replacement);
+            }
+            Require(ReferenceEquals(diagnostics.Scanlines[0], complete), "A consumer must not rewrite the published scanline evidence.");
+
+            HeightDifferenceEdgeDiagnostics legacy = new HeightDifferenceEdgeDiagnostics(-1, -1, -1, 0, 0, double.NaN, double.NaN, double.NaN);
+            Require(legacy.ScanlineCount == -1 && double.IsNaN(legacy.AcceptedMagnitudeMean) && legacy.Scanlines.Count == 0,
+                "The existing eight-argument constructor must keep its unvalidated data-carrier behavior and omit new evidence.");
         }
 
         private static void TestDeterministicLineFit()
@@ -450,6 +799,170 @@ namespace OpenVisionLab.Inspection.Smoke
                     "finite and ordered",
                     StringComparison.OrdinalIgnoreCase),
                 "Multiple-match search must fail closed on invalid nested pose bounds.");
+        }
+
+        private static void TestSurfaceMatchingChallengeBackground()
+        {
+            SurfaceMatchSample[] model = CreateSurfaceChallengeModel();
+            SurfaceMatchSample[] scene = CreateSurfaceChallengeScene(model, 6, 0.0, false);
+            DeterministicMultipleSurfaceMatchOptions options = CreateSurfaceChallengeOptions(6);
+            DeterministicRigidSurfacePoseSearchResult centroid = new DeterministicRigidSurfacePoseSearchTool().Execute(model, scene, options.PoseSearchOptions);
+            Require(centroid.Success && !centroid.Matched && centroid.Pose == null,
+                "The centroid-only path must retain its documented background limitation.");
+            DeterministicMultipleSurfaceMatchResult result = new DeterministicMultipleSurfaceMatchTool().Execute(model, scene, options);
+            Require(result.Success && result.Matches.Count == 1, "Anchor search must recover the authored object among background points.");
+            RequireSurfaceChallengePose(result.Matches[0].Pose, 10.0, -4.0, 2.0);
+            Require(result.EvaluatedCandidateCount == 3 * model.Length * scene.Length,
+                "Challenge search must enumerate the declared rotation/model/scene anchor domain.");
+            Require(result.Matches[0].Coverage.MatchedModelSampleCount == 6 && result.Matches[0].Coverage.InlierRmse < 1e-12,
+                "All six independently authored points must match with near-zero residual.");
+            Require(result.Matches[0].Coverage.Matches.All(match => match.SceneSampleOrder == 1 + 2 * match.ModelSampleOrder),
+                "Background points must not replace the authored scene evidence.");
+        }
+
+        private static void TestSurfaceMatchingChallengePartialNoise()
+        {
+            SurfaceMatchSample[] model = CreateSurfaceChallengeModel();
+            SurfaceMatchSample[] scene = CreateSurfaceChallengeScene(model, 4, 0.04, false);
+            DeterministicMultipleSurfaceMatchOptions options = CreateSurfaceChallengeOptions(4);
+            options.PoseSearchOptions.MaximumCorrespondenceDistance = 0.05;
+            DeterministicMultipleSurfaceMatchTool tool = new DeterministicMultipleSurfaceMatchTool();
+            DeterministicMultipleSurfaceMatchResult result = tool.Execute(model, scene, options);
+            Require(result.Success && result.Matches.Count == 1, "Partial noisy evidence must satisfy the declared four-point support.");
+            RequireSurfaceChallengePose(result.Matches[0].Pose, 10.0, -4.0, 2.0);
+            Require(result.Matches[0].Coverage.MatchedModelSampleCount == 4 && result.Matches[0].Coverage.UnmatchedModelSampleCount == 2,
+                "Two occluded model points must remain unmatched.");
+            RequireApproximately(result.Matches[0].Coverage.CoverageRatio, 4.0 / 6.0, 1e-15, "Unexpected partial coverage.");
+            RequireApproximately(result.Matches[0].Coverage.InlierRmse, 0.04 / Math.Sqrt(4.0), 1e-12,
+                "The single authored perturbation must produce its independent RMS residual.");
+            options.PoseSearchOptions.MaximumCorrespondenceDistance = 0.03;
+            DeterministicMultipleSurfaceMatchResult rejected = tool.Execute(model, scene, options);
+            Require(rejected.Success && rejected.Matches.Count == 0 && rejected.StopReason.Contains("below the required 4", StringComparison.Ordinal),
+                "A rejected noisy point must not produce a pose below the declared support.");
+            options.PoseSearchOptions.MaximumCorrespondenceDistance = 0.05;
+            Require(SurfaceChallengeFingerprint(tool.Execute(model, scene, options)) == SurfaceChallengeFingerprint(result),
+                "A support rejection must not leave stale claims on the next execution.");
+        }
+
+        private static void TestSurfaceMatchingChallengeDisjoint()
+        {
+            SurfaceMatchSample[] model = CreateSurfaceChallengeModel();
+            SurfaceMatchSample[] scene = CreateSurfaceChallengeScene(model, 6, 0.0, true);
+            DeterministicMultipleSurfaceMatchOptions options = CreateSurfaceChallengeOptions(6);
+            options.MaximumMatchCount = 3;
+            DeterministicMultipleSurfaceMatchTool tool = new DeterministicMultipleSurfaceMatchTool();
+            DeterministicMultipleSurfaceMatchResult result = tool.Execute(model, scene, options);
+            Require(result.Success && result.Matches.Count == 2 && result.StopReason.Length > 0,
+                "Exactly two objects must be returned before the remaining background fails support.");
+            int[] evidenceOrders = result.Matches.SelectMany(instance => instance.Coverage.Matches).Select(match => match.SceneSampleOrder).ToArray();
+            Require(evidenceOrders.Length == 12 && evidenceOrders.Distinct().Count() == 12,
+                "Different instances must never share a scene sample.");
+            foreach (DeterministicSurfaceMatchInstance instance in result.Matches)
+            {
+                bool firstObject = Math.Abs(instance.Pose.TranslationX - 10.0) < 1e-12;
+                RequireSurfaceChallengePose(instance.Pose, firstObject ? 10.0 : -12.0, firstObject ? -4.0 : 7.0, firstObject ? 2.0 : 1.0);
+                int offset = firstObject ? 1 : 13;
+                Require(instance.Coverage.SceneSampleCount == scene.Length && instance.Coverage.MatchedModelSampleCount == 6,
+                    "Coverage must preserve the full source scene count for every instance.");
+                Require(instance.Coverage.Matches.All(match => match.SceneSampleOrder == offset + 2 * match.ModelSampleOrder),
+                    "Compacted available samples must map back to original scene orders.");
+            }
+            Require(SurfaceChallengeFingerprint(result) == SurfaceChallengeFingerprint(tool.Execute(model, scene, options)),
+                "Repeated multi-instance execution must preserve all result fields.");
+        }
+
+        private static void TestSurfaceMatchingChallengeSymmetry()
+        {
+            SurfaceMatchSample[] model = new[] { new ThreeDPoint(-1, -1, 0), new ThreeDPoint(1, -1, 0), new ThreeDPoint(1, 1, 0), new ThreeDPoint(-1, 1, 0) }
+                .Select((point, order) => new SurfaceMatchSample(order, point)).ToArray();
+            SurfaceMatchSample[] scene = CreateSurfaceChallengeScene(model, 4, 0.0, false);
+            DeterministicMultipleSurfaceMatchOptions options = CreateSurfaceChallengeOptions(4);
+            DeterministicMultipleSurfaceMatchTool tool = new DeterministicMultipleSurfaceMatchTool();
+            DeterministicMultipleSurfaceMatchResult result = tool.Execute(model, scene, options);
+            Require(result.Success && result.Matches.Count == 1 && result.Matches[0].Coverage.MatchedModelSampleCount == 4,
+                "Symmetry-equivalent grid poses must retain full support.");
+            RequireApproximately(result.Matches[0].Pose.TranslationX, 10.0, 1e-12, "Unexpected symmetric-object X translation.");
+            RequireApproximately(result.Matches[0].Pose.TranslationY, -4.0, 1e-12, "Unexpected symmetric-object Y translation.");
+            RequireApproximately(result.Matches[0].Pose.TranslationZ, 2.0, 1e-12, "Unexpected symmetric-object Z translation.");
+            Require(result.Matches[0].Coverage.InlierRmse < 1e-12 && SurfaceChallengeFingerprint(result) == SurfaceChallengeFingerprint(tool.Execute(model, scene, options)),
+                "A symmetric shape must retain deterministic equivalent results without claiming a unique orientation.");
+        }
+
+        private static void TestSurfaceMatchingChallengeRecovery()
+        {
+            SurfaceMatchSample[] model = CreateSurfaceChallengeModel();
+            SurfaceMatchSample[] scene = CreateSurfaceChallengeScene(model, 6, 0.0, false);
+            DeterministicMultipleSurfaceMatchOptions options = CreateSurfaceChallengeOptions(6);
+            DeterministicMultipleSurfaceMatchTool tool = new DeterministicMultipleSurfaceMatchTool();
+            SurfaceMatchSample[] invalidOrder = (SurfaceMatchSample[])scene.Clone();
+            invalidOrder[0] = new SurfaceMatchSample(1, scene[0].Position);
+            SurfaceMatchSample[] invalidPosition = (SurfaceMatchSample[])scene.Clone();
+            invalidPosition[0] = new SurfaceMatchSample(0, new ThreeDPoint(double.NaN, 0, 0));
+            foreach (SurfaceMatchSample[] invalid in new[] { invalidOrder, invalidPosition })
+            {
+                DeterministicMultipleSurfaceMatchResult failed = tool.Execute(model, invalid, options);
+                Require(!failed.Success && failed.Matches.Count == 0 && failed.EvaluatedCandidateCount == 0,
+                    "Invalid scene contracts must fail before publishing candidate evidence.");
+            }
+            int exactBudget = 3 * model.Length * scene.Length;
+            options.MaximumExpandedCandidateCount = exactBudget - 1;
+            Require(!tool.Execute(model, scene, options).Success, "One candidate below the required budget must fail closed.");
+            options.MaximumExpandedCandidateCount = exactBudget;
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            OperationCanceledException exception = RequireThrows<OperationCanceledException>(() => tool.Execute(model, scene, options, cancellation.Token));
+            Require(exception.CancellationToken == cancellation.Token, "Cancellation must retain the original token.");
+            DeterministicMultipleSurfaceMatchResult recovered = tool.Execute(model, scene, options);
+            Require(recovered.Success && recovered.Matches.Count == 1 && recovered.EvaluatedCandidateCount == exactBudget,
+                "The same tool must recover with the exact inclusive budget after failure and cancellation.");
+            RequireSurfaceChallengePose(recovered.Matches[0].Pose, 10.0, -4.0, 2.0);
+        }
+
+        private static SurfaceMatchSample[] CreateSurfaceChallengeModel()
+        {
+            return new[] { new ThreeDPoint(0, 0, 0), new ThreeDPoint(2, 0, 0), new ThreeDPoint(0, 3, 0), new ThreeDPoint(0, 0, 5), new ThreeDPoint(2, 3, 5), new ThreeDPoint(7, 1, 2) }
+                .Select((point, order) => new SurfaceMatchSample(order, point)).ToArray();
+        }
+
+        private static SurfaceMatchSample[] CreateSurfaceChallengeScene(SurfaceMatchSample[] model, int visibleCount, double noise, bool twoObjects)
+        {
+            List<ThreeDPoint> points = new List<ThreeDPoint> { new ThreeDPoint(100, 100, 100) };
+            for (int instance = 0; instance < (twoObjects ? 2 : 1); instance++)
+            {
+                for (int index = 0; index < visibleCount; index++)
+                {
+                    ThreeDPoint point = model[index].Position;
+                    // The fixture's truth is authored directly, independently of RigidSurfacePose.Transform.
+                    points.Add(new ThreeDPoint(-point.Y + (instance == 0 ? 10.0 : -12.0) + (index == 3 ? noise : 0.0), point.X + (instance == 0 ? -4.0 : 7.0), point.Z + (instance == 0 ? 2.0 : 1.0)));
+                    points.Add(new ThreeDPoint(-100 - index, 70 + instance, 90 + index));
+                }
+            }
+            return points.Select((point, order) => new SurfaceMatchSample(order, point)).ToArray();
+        }
+
+        private static DeterministicMultipleSurfaceMatchOptions CreateSurfaceChallengeOptions(int minimumMatchedCount)
+        {
+            DeterministicMultipleSurfaceMatchOptions options = CreateMultipleSurfaceSearchOptions();
+            options.PoseSearchOptions.MinimumRotationZDegrees = -90.0;
+            options.PoseSearchOptions.MaximumRotationZDegrees = 90.0;
+            options.PoseSearchOptions.RotationStepZDegrees = 90.0;
+            options.PoseSearchOptions.MinimumMatchedSampleCount = minimumMatchedCount;
+            options.MaximumMatchCount = 1;
+            options.MaximumExpandedCandidateCount = 10000;
+            return options;
+        }
+
+        private static void RequireSurfaceChallengePose(RigidSurfacePose pose, double x, double y, double z)
+        {
+            double[] actual = { pose.M11, pose.M12, pose.M13, pose.M21, pose.M22, pose.M23, pose.M31, pose.M32, pose.M33, pose.TranslationX, pose.TranslationY, pose.TranslationZ };
+            double[] expected = { 0, -1, 0, 1, 0, 0, 0, 0, 1, x, y, z };
+            for (int index = 0; index < expected.Length; index++)
+                RequireApproximately(actual[index], expected[index], 1e-12, "Unexpected independent surface challenge pose component " + index + ".");
+        }
+
+        private static string SurfaceChallengeFingerprint(DeterministicMultipleSurfaceMatchResult result)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(result);
         }
 
         private static void TestRigidPoseSymmetryEquivalencePostMultiply()
@@ -1850,6 +2363,105 @@ namespace OpenVisionLab.Inspection.Smoke
             };
         }
 
+        private static void TestLargeOriginPlaneReliability()
+        {
+            LeastSquaresHeightFieldPlaneFitTool tool = new LeastSquaresHeightFieldPlaneFitTool();
+            foreach (double origin in new[] { 0.0, 1e9, 1e12 })
+            {
+                foreach (bool uneven in new[] { false, true })
+                {
+                    (int X, int Z)[] locators = uneven
+                        ? new[] { (-2, -2), (-1, 3), (0, 0), (0, 1), (2, 0), (9, -4) }
+                        : Enumerable.Range(-2, 5).SelectMany(x => Enumerable.Range(-2, 5).Select(z => (x, z))).ToArray();
+                    HeightFieldPlaneFitSample[] samples = locators.Select(point => new HeightFieldPlaneFitSample(
+                        new ThreeDPoint(origin + 0.25 * point.X, origin + 0.125 * point.X - 0.125 * point.Z, -origin + 0.5 * point.Z),
+                        origin + 0.5 * point.X - 0.25 * point.Z)).ToArray();
+                    foreach (HeightFieldPlaneFitSample[] ordered in new[] { samples, samples.Reverse().ToArray() })
+                    {
+                        LeastSquaresHeightFieldPlaneFitResult fit = tool.Execute(ordered);
+                        RequireApproximately(fit.SlopeX, 0.5, 1e-12, "Large-origin plane X slope changed.");
+                        RequireApproximately(fit.SlopeZ, -0.25, 1e-12, "Large-origin plane Z slope changed.");
+                        RequireApproximately(fit.RootMeanSquareDistance, 0.0, 1e-12, "An exactly represented plane must not acquire an origin-dependent residual.");
+                        double coordinateTolerance = Math.Max(1e-12, Math.BitIncrement(origin) - origin);
+                        foreach (HeightFieldPlaneFitSample sample in samples)
+                            RequireApproximately(fit.EvaluateY(sample.Position.X, sample.Position.Z), sample.Position.Y, coordinateTolerance, "Centered evaluation exceeded the input coordinate resolution.");
+                        RequireApproximately(fit.TargetRawHeightDelta, 0.0, coordinateTolerance, "Independent raw plane lost its large-origin fit.");
+                        HeightFieldPlaneFitSample[] measured = new[] { -0.25, 0.0, 0.5, 1.0 }.Select((height, index) => new HeightFieldPlaneFitSample(
+                            new ThreeDPoint(origin + 3 + index * 0.25, origin + 0.5 * (3 + index * 0.25) - 1.0 + height, -origin + 4),
+                            origin + 0.5 * (3 + index * 0.25) - 1.0 + height)).ToArray();
+                        PlaneFlatnessInspectionResult flatness = new PlaneFlatnessInspectionTool().Execute(ordered, measured, 2.0);
+                        RequireApproximately(flatness.Flatness, 1.25 / Math.Sqrt(1.3125), 1e-12, "Large-origin orthogonal flatness changed.");
+                        RequireApproximately(flatness.RootMeanSquareDistance, 0.5, 1e-12, "Independent large-origin datum RMS changed.");
+                        VolumeInspectionResult volume = new VolumeInspectionTool().Execute(ordered, measured,
+                            new VolumeInspectionOptions { SampleArea = 0.25, ExpectedNetVolume = 0.3125, Tolerance = 1e-12 });
+                        Require(volume.Passed, "Centered plane evaluation must preserve signed vertical volume.");
+                        RequireApproximately(volume.AboveVolume, 0.375, 1e-12, "Unexpected large-origin above volume.");
+                        RequireApproximately(volume.BelowVolume, 0.0625, 1e-12, "Unexpected large-origin below volume.");
+                    }
+                }
+            }
+            LeastSquaresHeightFieldPlaneFitResult legacy = new LeastSquaresHeightFieldPlaneFitResult(0.5, -0.25, 3.0,
+                new ThreeDPoint(0, 1, 0), 0, 3, 0, null, new ThreeDPoint(100, 200, 300), 0, 0, 0);
+            RequireApproximately(legacy.EvaluateY(2, 4), 3.0, 0.0, "Public result construction must retain coefficient-based legacy evaluation.");
+            RequireThrows<ArgumentException>(() => tool.Execute(new HeightFieldPlaneFitSample[] { null, null, null }));
+            RequireThrows<ArgumentException>(() => tool.Execute(Enumerable.Range(0, 3).Select(x => new HeightFieldPlaneFitSample(new ThreeDPoint(x, 0, x), 0)).ToArray()));
+            RequireApproximately(tool.Execute(CreateAnalyticPlaneSamples(0.5, -0.25, 2.0, new double[9])).SlopeX, 0.5, 1e-12,
+                "Plane fitting must recover after rejected null or degenerate input.");
+        }
+
+        private static void TestDoubleLevelSurfaceReliability()
+        {
+            double[] values = Enumerable.Range(0, 25).Select(index => 1e9 + 0.5 * (index % 5) - 0.25 * (index / 5)).ToArray();
+            values[12] = double.NaN;
+            LevelSurfaceTool tool = new LevelSurfaceTool();
+            LevelSurfaceOptions options = new LevelSurfaceOptions { MinimumValidSampleCount = 24 };
+            LevelSurfaceRegion[] regions = { new LevelSurfaceRegion(0, 0, 5, 5) };
+            LevelSurfaceResult result = tool.Execute(5, 5, values, regions, options);
+            Require(result.Success && result.ReferenceSampleCount == 24 && result.RegionEvidence[0].ValidSampleCount == 24,
+                "Leveling must retain exactly the finite reference samples.");
+            RequireApproximately(result.FittedSlopeX, 0.5, 1e-12, "Double height slope X was narrowed.");
+            RequireApproximately(result.FittedSlopeZ, -0.25, 1e-12, "Double height slope Z was narrowed.");
+            Require(double.IsNaN(result.Values[12]) && result.Values.Where(double.IsFinite).All(value => Math.Abs(value - (1e9 + 0.5)) <= 1e-7),
+                "The known plane must level to its reference mean while preserving the missing cell.");
+            RequireApproximately(result.OutputReferenceSlopeX, 0.0, 1e-12, "Leveled reference still has X slope.");
+            RequireApproximately(result.OutputReferenceSlopeZ, 0.0, 1e-12, "Leveled reference still has Z slope.");
+            options.MinimumValidSampleCount = 25;
+            Require(!tool.Execute(5, 5, values, regions, options).Success, "Missing reference support must fail closed.");
+            options.MinimumValidSampleCount = 24;
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            RequireThrows<OperationCanceledException>(() => tool.Execute(5, 5, values, regions, options, cancellation.Token));
+            Require(tool.Execute(5, 5, values, regions, options).Success, "Leveling must recover after support rejection and cancellation.");
+        }
+
+        private static void TestMissingHeightCoverageReliability()
+        {
+            double[] heights = { 1.0, 1.0, double.NaN, 1.0, 1.0, 1.0, double.NaN, 1.0, 1.0 };
+            HeightMap3D map = new HeightMap3D(3, 3, 1e9, -1e9, 0.25, 0.5, heights, "mm", "mm", "datum", "missing-fixture");
+            ThicknessInspectionOptions options = new ThicknessInspectionOptions
+            {
+                MinimumThickness = 0.9, MaximumThickness = 1.1, MinimumValidSamples = 3,
+                MinimumValidCoverageRatio = 7.0 / 9.0, InputRequirements = new HeightMapInputRequirements("mm", "mm", "datum")
+            };
+            ThicknessInspectionTool tool = new ThicknessInspectionTool(options);
+            ThreeDInspectionResult accepted = tool.Execute(map);
+            Require(accepted.Success && accepted.HasMeasurement && accepted.ValidSampleCount == 7 && accepted.MissingSampleCount == 2,
+                "Exact coverage boundary must accept finite heights and preserve missing counts.");
+            options.MinimumValidCoverageRatio = 7.0 / 9.0 + 1e-8;
+            ThreeDInspectionResult insufficient = tool.Execute(map);
+            Require(!insufficient.Success && !insufficient.HasMeasurement && insufficient.ErrorCode == ThreeDInspectionErrorCode.InsufficientValidCoverage,
+                "Insufficient coverage must not publish a measurement.");
+            Require(insufficient.ValidSampleCount == 7 && insufficient.MissingSampleCount == 2,
+                "Coverage failure must retain its actual sample evidence.");
+            options.MinimumValidCoverageRatio = 7.0 / 9.0;
+            HeightMap3D wrongUnits = new HeightMap3D(3, 3, 0, 0, 1, 1, heights, "mm", "raw", "datum", "wrong-unit");
+            Require(tool.Execute(wrongUnits).ErrorCode == ThreeDInspectionErrorCode.InputContractMismatch,
+                "Declared unit mismatch must fail before physical measurement.");
+            Require(!tool.Execute(new HeightMap3D(3, 3, 0, 0, 1, 1, Enumerable.Repeat(double.NaN, 9).ToArray(), "mm", "mm", "datum", "empty")).HasMeasurement,
+                "All-missing input must retain NotMeasured.");
+            Require(tool.Execute(map).Success, "The same tool must recover after unit and missing-data failures.");
+        }
+
         private static void TestLeastSquaresHeightFieldPlaneFit()
         {
             HeightFieldPlaneFitSample[] samples = CreateAnalyticPlaneSamples(0.5, -0.25, 2.0, new double[9]);
@@ -1901,9 +2513,19 @@ namespace OpenVisionLab.Inspection.Smoke
                     new HeightFieldPlaneFitSample(new ThreeDPoint(0, 0, magnitude), 0)
                 }));
             }
-            RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+            LeastSquaresHeightFieldPlaneFitResult largeConstant = tool.Execute(new[]
             {
                 new HeightFieldPlaneFitSample(new ThreeDPoint(0, 1e308, 0), 0),
+                new HeightFieldPlaneFitSample(new ThreeDPoint(1, 1e308, 0), 0),
+                new HeightFieldPlaneFitSample(new ThreeDPoint(0, 1e308, 1), 0)
+            });
+            RequireApproximately(largeConstant.EvaluateY(0.5, 0.5), 1e308, 0.0,
+                "A representable constant plane must not overflow a global mean.");
+            RequireApproximately(largeConstant.RootMeanSquareDistance, 0.0, 0.0,
+                "A constant plane must retain zero residual.");
+            RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+            {
+                new HeightFieldPlaneFitSample(new ThreeDPoint(0, -1e308, 0), 0),
                 new HeightFieldPlaneFitSample(new ThreeDPoint(1, 1e308, 0), 0),
                 new HeightFieldPlaneFitSample(new ThreeDPoint(0, 1e308, 1), 0)
             }));
@@ -2228,6 +2850,59 @@ namespace OpenVisionLab.Inspection.Smoke
             }
         }
 
+
+        private static void TestPointPairNumericBoundaries()
+        {
+            PointPairDimensionsInspectionTool tool = new PointPairDimensionsInspectionTool();
+            ThreeDPoint first = new ThreeDPoint(0, 0, 0);
+            ThreeDPoint second = new ThreeDPoint(0, 0, 5);
+            foreach (double axisMagnitude in new[] { 1e-8, 1.0, 2.0, 1e200, double.MaxValue })
+            {
+                PointPairDimensionsInspectionResult result = tool.Execute(
+                    first, second, new ThreeDPoint(0, 0, axisMagnitude), 0, 5, PointPairOptions(5, 0, 90));
+                Require(result.Passed && result.NormalizedHeightAxis.Z == 1 && result.PlanarWidth == 0
+                    && result.AxialHeightDelta == 5, "Axis magnitude must not change the analytic measurement.");
+                Require(!tool.Execute(first, second, new ThreeDPoint(0, 0, axisMagnitude),
+                    0, 5, PointPairOptions(5, 5, 0)).Passed, "The orthogonal-plane false-accept reproducer must fail.");
+            }
+            double unitComponent = 1 / Math.Sqrt(3);
+            PointPairDimensionsInspectionResult wideAxis = tool.Execute(first, second,
+                new ThreeDPoint(double.MaxValue, double.MaxValue, double.MaxValue), 0, 5,
+                PointPairOptions(5, 5 * Math.Sqrt(2.0 / 3), Math.Asin(unitComponent) * 180 / Math.PI));
+            Require(wideAxis.Passed, "A finite axis direction is valid even when its unnormalized norm is unrepresentable.");
+            PointPairDimensionsInspectionResult large = tool.Execute(first, new ThreeDPoint(0, 0, 1e200),
+                new ThreeDPoint(0, 0, 1), 0, 0, PointPairOptions(1e200, 0, 90));
+            Require(large.Passed && large.Distance == 1e200, "A representable distance must survive intermediate square overflow.");
+            RequireThrows<InvalidOperationException>(() => tool.Execute(first, new ThreeDPoint(3, 4, 0),
+                new ThreeDPoint(0, 0, 1), -double.MaxValue, double.MaxValue, PointPairOptions(5, 5, 0)));
+            RequireThrows<InvalidOperationException>(() => tool.Execute(new ThreeDPoint(-double.MaxValue, 0, 0),
+                new ThreeDPoint(double.MaxValue, 0, 0), new ThreeDPoint(0, 0, 1), 0, 0, PointPairOptions(5, 5, 0)));
+            Require(tool.Execute(first, second, new ThreeDPoint(0, 0, 2), 0, 5, PointPairOptions(5, 0, 90)).Passed,
+                "Arithmetic failure must permit the next valid measurement.");
+        }
+
+        private static void TestCrossSectionUnrepresentableDimensions()
+        {
+            CrossSectionDimensionsInspectionTool tool = new CrossSectionDimensionsInspectionTool();
+            RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+            {
+                new CrossSectionDimensionsSample(0, -double.MaxValue, 0),
+                new CrossSectionDimensionsSample(1, double.MaxValue, 1)
+            }, CrossSectionOptions(1, 1)));
+            RequireThrows<InvalidOperationException>(() => tool.Execute(new[]
+            {
+                new CrossSectionDimensionsSample(0, 0, -double.MaxValue),
+                new CrossSectionDimensionsSample(1, 1, double.MaxValue)
+            }, CrossSectionOptions(1, 1)));
+            CrossSectionDimensionsInspectionResult recovered = tool.Execute(new[]
+            {
+                new CrossSectionDimensionsSample(0, 0, 2),
+                new CrossSectionDimensionsSample(1, 4, 8)
+            }, CrossSectionOptions(4, 6));
+            Require(recovered.Passed && recovered.Width == 4 && recovered.HeightRange == 6,
+                "Section overflow rejection must preserve ordinary width/height results and valid recovery.");
+        }
+
         private static CrossSectionDimensionsInspectionOptions CrossSectionOptions(double expectedWidth, double expectedHeightRange) =>
             new CrossSectionDimensionsInspectionOptions
             {
@@ -2250,6 +2925,234 @@ namespace OpenVisionLab.Inspection.Smoke
                 ExpectedElevationAngleDegrees = elevationAngleDegrees,
                 ElevationAngleToleranceDegrees = 1e-10
             };
+
+        private static void TestAnalyticPlaneScale()
+        {
+            double[] scales = { 1e-9, 1e-6, 1e-3, 1.0, 1e3, 1e6 };
+            LeastSquaresHeightFieldPlaneFitTool tool = new LeastSquaresHeightFieldPlaneFitTool();
+            double maximumError = 0.0;
+            foreach (double scale in scales)
+            {
+                HeightFieldPlaneFitSample[] samples = CreateScaledQualificationPlane(scale);
+                LeastSquaresHeightFieldPlaneFitResult result = tool.Execute(samples);
+                LeastSquaresHeightFieldPlaneFitResult reversed = tool.Execute(samples.Reverse().ToArray());
+                RequireApproximately(result.SlopeX, 0.5, 2e-12, "Unit conversion changed the plane X slope.");
+                RequireApproximately(result.SlopeZ, -0.25, 2e-12, "Unit conversion changed the plane Z slope.");
+                RequireApproximately(result.Intercept / scale, 2.0, 2e-12, "Plane intercept did not scale with coordinates.");
+                RequireApproximately(result.EvaluateY(4.0 * scale, -2.0 * scale) / scale, 4.5, 2e-12,
+                    "Plane evaluation must agree with the independently authored equation outside the reference grid.");
+                RequireApproximately(result.RootMeanSquareDistance / scale, 0.0, 2e-12, "Exact-plane residual changed with units.");
+                RequireApproximately(result.TargetRawHeightDelta / scale, 0.0, 2e-12, "Independent raw-height plane lost its exact fit.");
+                RequireApproximately(reversed.SlopeX, 0.5, 2e-12, "Reordering samples changed the analytic X slope.");
+                RequireApproximately(reversed.SlopeZ, -0.25, 2e-12, "Reordering samples changed the analytic Z slope.");
+                maximumError = Math.Max(maximumError, Math.Max(Math.Abs(result.SlopeX - 0.5), Math.Abs(result.SlopeZ + 0.25)));
+                maximumError = Math.Max(maximumError, Math.Abs(result.Intercept / scale - 2.0));
+            }
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                "EVIDENCE | plane-scale | scales={0} | max-normalized-coefficient-error={1:R}", scales.Length, maximumError));
+        }
+
+        private static void TestAnalyticPlaneRank()
+        {
+            double[] scales = { 1e-9, 1e-6, 1e-3, 1.0, 1e3, 1e6 };
+            double[] perturbations = { 0.0, 1e-7 };
+            LeastSquaresHeightFieldPlaneFitTool tool = new LeastSquaresHeightFieldPlaneFitTool();
+            foreach (double scale in scales)
+            {
+                foreach (double perturbation in perturbations)
+                {
+                    HeightFieldPlaneFitSample[] samples = new HeightFieldPlaneFitSample[4];
+                    for (int index = 0; index < samples.Length; index++)
+                    {
+                        double x = index < 2 ? -scale : scale;
+                        double z = x + ((index % 2 == 0 ? -1.0 : 1.0) * perturbation * scale);
+                        double y = (0.5 * x) - (0.25 * z) + (2.0 * scale);
+                        samples[index] = new HeightFieldPlaneFitSample(new ThreeDPoint(x, y, z), y);
+                    }
+                    ArgumentException failure = RequireThrows<ArgumentException>(() => tool.Execute(samples));
+                    Require(failure.ParamName == "samples" && failure.Message.Contains("span two horizontal axes", StringComparison.Ordinal),
+                        "Rank rejection must retain the existing geometric input contract at every scale.");
+                }
+                RequireApproximately(tool.Execute(CreateScaledQualificationPlane(scale)).SlopeX, 0.5, 2e-12,
+                    "A valid plane must recover after a degenerate input at the same coordinate scale.");
+            }
+        }
+
+        private static void TestAnalyticDatumMeasurements()
+        {
+            double[] scales = { 1e-9, 1e-6, 1e-3, 1.0, 1e3, 1e6 };
+            double[] verticalOffsets = { -0.25, 0.0, 0.5, 1.0, -0.5, 0.25 };
+            double normalLength = Math.Sqrt(1.3125);
+            double maximumFlatnessError = 0.0, maximumVolumeError = 0.0, maximumThicknessError = 0.0;
+            PlaneFlatnessInspectionTool flatnessTool = new PlaneFlatnessInspectionTool();
+            VolumeInspectionTool volumeTool = new VolumeInspectionTool();
+            DualSurfaceThicknessInspectionTool thicknessTool = new DualSurfaceThicknessInspectionTool();
+            foreach (double scale in scales)
+            {
+                HeightFieldPlaneFitSample[] reference = CreateScaledQualificationPlane(scale);
+                HeightFieldPlaneFitSample[] measurement = new HeightFieldPlaneFitSample[verticalOffsets.Length];
+                for (int index = 0; index < measurement.Length; index++)
+                {
+                    double x = (3.0 + (0.5 * index)) * scale, z = (-2.0 + (0.5 * index)) * scale;
+                    double y = (0.5 * x) - (0.25 * z) + ((2.0 + verticalOffsets[index]) * scale);
+                    measurement[index] = new HeightFieldPlaneFitSample(new ThreeDPoint(x, y, z), y);
+                }
+                PlaneFlatnessInspectionResult flatness = flatnessTool.Execute(reference, measurement, 1.51 * scale / normalLength);
+                PlaneFlatnessInspectionResult outside = flatnessTool.Execute(reference, measurement, 1.49 * scale / normalLength);
+                Require(flatness.Passed && !outside.Passed, "Tilted flatness must preserve valid measurements on both sides of the authored tolerance.");
+                RequireApproximately(flatness.Flatness / scale, 1.5 / normalLength, 2e-12, "Flatness must use orthogonal distances.");
+                RequireApproximately(flatness.MinimumSignedDistance / scale, -0.5 / normalLength, 2e-12, "Minimum signed plane distance changed.");
+                RequireApproximately(flatness.MaximumSignedDistance / scale, 1.0 / normalLength, 2e-12, "Maximum signed plane distance changed.");
+                RequireApproximately(flatness.RootMeanSquareDistance / scale, Math.Sqrt(1.625 / 6.0) / normalLength, 2e-12,
+                    "Flatness RMS must agree with the closed-form signed residuals.");
+                RequireApproximately(flatness.MinimumProjection.Y / scale,
+                    ((0.5 * flatness.MinimumProjection.X) - (0.25 * flatness.MinimumProjection.Z)) / scale + 2.0, 2e-12,
+                    "The extremum projection must lie on the independent datum equation.");
+                double sampleArea = 0.125 * scale * scale, expectedVolume = sampleArea * scale;
+                VolumeInspectionResult volume = volumeTool.Execute(reference, measurement, VolumeOptions(sampleArea, expectedVolume, 2e-12 * expectedVolume));
+                Require(volume.Passed, "Analytic vertical volume must pass its numerical fixture tolerance.");
+                RequireApproximately(volume.AboveVolume / expectedVolume, 1.75, 2e-12, "Above volume must integrate vertical residuals.");
+                RequireApproximately(volume.BelowVolume / expectedVolume, 0.75, 2e-12, "Below volume must retain negative-side magnitude.");
+                RequireApproximately(volume.NetVolume / expectedVolume, 1.0, 2e-12, "Volume must scale cubically with coordinates.");
+                DualSurfaceThicknessInspectionResult thickness = thicknessTool.Execute(reference, measurement, -0.51 * scale, 1.01 * scale, 6);
+                Require(thickness.Decision == DualSurfaceThicknessDecision.Pass && thickness.MeasurementSampleCount == 6,
+                    "Independent thickness samples must all participate in the measurement.");
+                RequireApproximately(thickness.Mean / scale, 1.0 / 6.0, 2e-12, "Thickness must use signed height-axis separation.");
+                RequireApproximately(thickness.Range / scale, 1.5, 2e-12, "Thickness range must use vertical separation.");
+                maximumFlatnessError = Math.Max(maximumFlatnessError, Math.Abs(flatness.Flatness / scale - (1.5 / normalLength)));
+                maximumVolumeError = Math.Max(maximumVolumeError, Math.Abs(volume.NetVolume / expectedVolume - 1.0));
+                maximumThicknessError = Math.Max(maximumThicknessError, Math.Abs(thickness.Mean / scale - (1.0 / 6.0)));
+            }
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                "EVIDENCE | tilted-datum | max-normalized-flatness-error={0:R} | max-relative-volume-error={1:R} | max-normalized-thickness-error={2:R}",
+                maximumFlatnessError, maximumVolumeError, maximumThicknessError));
+        }
+
+        private static void TestAnalyticRigidScale()
+        {
+            double[] scales = { 1e-9, 1e-6, 1e-3, 1.0, 1e3, 1e6 };
+            double[][] rotations =
+            {
+                new double[] { 1, 0, 0, 0, 0, -1, 0, 1, 0 },
+                new double[] { 0, 0, 1, 0, 1, 0, -1, 0, 0 },
+                new double[] { 0, -1, 0, 1, 0, 0, 0, 0, 1 },
+                new double[] { 0, 0, 1, 1, 0, 0, 0, 1, 0 },
+                new double[] { -7.0 / 9, 4.0 / 9, 4.0 / 9, 4.0 / 9, -1.0 / 9, 8.0 / 9, 4.0 / 9, 8.0 / 9, -1.0 / 9 }
+            };
+            ConstrainedBestFitRigidAlignmentTool tool = new ConstrainedBestFitRigidAlignmentTool();
+            double maximumRotationError = 0.0, maximumTranslationError = 0.0, maximumNormalizedResidual = 0.0;
+            foreach (double scale in scales)
+            {
+                ConstrainedBestFitRigidAlignmentOptions options = new ConstrainedBestFitRigidAlignmentOptions { ArithmeticResidualWarning = 2e-12 * scale };
+                foreach (double[] rotation in rotations)
+                {
+                    ConstrainedBestFitRigidCorrespondence[] pairs = CreateRigidQualificationPairs(scale, rotation);
+                    ConstrainedBestFitRigidAlignmentResult result = tool.Execute(pairs, options);
+                    ConstrainedBestFitRigidAlignmentResult reversed = tool.Execute(pairs.Reverse().ToArray(), options);
+                    Require(result.Success && result.Pose != null && result.UsedAllCorrespondences && reversed.Success,
+                        "The analytic full-XYZ rigid fixture must produce an all-pair proper pose at every scale.");
+                    IReadOnlyList<double> matrix = result.Pose.ToRowMajor4X4();
+                    IReadOnlyList<double> reversedMatrix = reversed.Pose.ToRowMajor4X4();
+                    for (int row = 0; row < 3; row++)
+                    {
+                        for (int column = 0; column < 3; column++)
+                        {
+                            double expected = rotation[(row * 3) + column], actual = matrix[(row * 4) + column];
+                            RequireApproximately(actual, expected, 2e-12, "Recovered rotation disagrees with the independent known rigid matrix.");
+                            RequireApproximately(reversedMatrix[(row * 4) + column], expected, 2e-12, "Reversed pairs changed the known rigid rotation.");
+                            maximumRotationError = Math.Max(maximumRotationError, Math.Abs(actual - expected));
+                        }
+                    }
+                    RequireApproximately(result.Pose.TranslationX / scale, 10.0, 2e-12, "Translation X did not scale with units.");
+                    RequireApproximately(result.Pose.TranslationY / scale, -4.0, 2e-12, "Translation Y did not scale with units.");
+                    RequireApproximately(result.Pose.TranslationZ / scale, 2.0, 2e-12, "Translation Z did not scale with units.");
+                    Require(!result.ArithmeticResidualWarningExceeded, "Exact correspondences must not produce an arithmetic residual warning.");
+                    RequireApproximately(result.MaximumResidual / scale, 0.0, 2e-12, "Exact rigid residuals did not remain zero after unit conversion.");
+                    maximumTranslationError = Math.Max(maximumTranslationError, Math.Max(Math.Abs(result.Pose.TranslationX / scale - 10.0),
+                        Math.Max(Math.Abs(result.Pose.TranslationY / scale + 4.0), Math.Abs(result.Pose.TranslationZ / scale - 2.0))));
+                    maximumNormalizedResidual = Math.Max(maximumNormalizedResidual, result.MaximumResidual / scale);
+                }
+            }
+            Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                "EVIDENCE | rigid-scale | poses={0} | max-rotation-entry-error={1:R} | max-normalized-translation-error={2:R} | max-normalized-residual={3:R}",
+                scales.Length * rotations.Length, maximumRotationError, maximumTranslationError, maximumNormalizedResidual));
+        }
+
+        private static void TestAnalyticRigidNoiseAndRecovery()
+        {
+            double[] rotation = { 0, -1, 0, 1, 0, 0, 0, 0, 1 };
+            ConstrainedBestFitRigidCorrespondence[] clean = CreateRigidQualificationPairs(1.0, rotation);
+            ConstrainedBestFitRigidCorrespondence[] noisy = (ConstrainedBestFitRigidCorrespondence[])clean.Clone();
+            ThreeDPoint reference = clean[0].Reference;
+            noisy[0] = new ConstrainedBestFitRigidCorrespondence(clean[0].Source, new ThreeDPoint(reference.X, reference.Y + 0.25, reference.Z));
+            ConstrainedBestFitRigidAlignmentOptions options = new ConstrainedBestFitRigidAlignmentOptions { ArithmeticResidualWarning = 0.01 };
+            ConstrainedBestFitRigidAlignmentTool tool = new ConstrainedBestFitRigidAlignmentTool();
+            ConstrainedBestFitRigidAlignmentResult noisyResult = tool.Execute(noisy, options);
+            Require(noisyResult.Success && noisyResult.UsedAllCorrespondences && noisyResult.ArithmeticResidualWarningExceeded,
+                "All-pair alignment must report the authored outlier rather than silently excluding it.");
+            RequireApproximately(noisyResult.Pose.M12, -1.0, 2e-12, "The symmetric radial outlier must preserve the known rotation.");
+            RequireApproximately(noisyResult.Pose.TranslationY, -4.0 + (1.0 / 24.0), 2e-12, "All-pair translation must include the outlier centroid shift.");
+            RequireApproximately(noisyResult.RmsResidual, Math.Sqrt(5.0) / 24.0, 2e-12, "Outlier RMS disagrees with independent centered residuals.");
+            RequireApproximately(noisyResult.MaximumResidual, 5.0 / 24.0, 2e-12, "Outlier maximum residual disagrees with the closed form.");
+            ConstrainedBestFitRigidAlignmentResult failure = tool.Execute(Array.Empty<ConstrainedBestFitRigidCorrespondence>(), options);
+            Require(!failure.Success && failure.Pose == null && failure.Residuals.Count == 0, "A rejected call must not retain a prior pose or residuals.");
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            OperationCanceledException canceled = RequireThrows<OperationCanceledException>(() => tool.Execute(clean, options, cancellation.Token));
+            Require(canceled.CancellationToken == cancellation.Token, "Cancellation must retain the caller's token.");
+            ConstrainedBestFitRigidAlignmentResult recovered = tool.Execute(clean, options);
+            Require(recovered.Success && !recovered.ArithmeticResidualWarningExceeded && recovered.UsedAllCorrespondences,
+                "Clean alignment must recover after an outlier, rejection and cancellation on the same tool.");
+            RequireApproximately(recovered.Pose.TranslationY, -4.0, 2e-12, "Recovery must not retain the outlier centroid shift.");
+            RequireApproximately(recovered.RmsResidual, 0.0, 2e-12, "Recovery must clear earlier residuals.");
+            Require(clean[0].Reference.Y == reference.Y, "Alignment must preserve caller-owned correspondences.");
+        }
+
+        private static void TestAnalyticGapOverflow()
+        {
+            GapFlushInspectionTool tool = new GapFlushInspectionTool();
+            GapFlushInspectionOptions options = GapFlushOptions(0.5, -0.25);
+            double maximum = double.MaxValue;
+            for (int metric = 0; metric < 3; metric++)
+            {
+                GapFlushRegionStatistics first = new GapFlushRegionStatistics(2, metric == 1 ? -maximum : 1.0, metric == 2 ? -maximum : 1.0);
+                GapFlushRegionStatistics second = new GapFlushRegionStatistics(2, metric == 1 ? maximum : 0.75, metric == 2 ? maximum : 0.75);
+                InvalidOperationException failure = RequireThrows<InvalidOperationException>(() => tool.Execute(
+                    metric == 0 ? -maximum : 0.0, metric == 0 ? -0.75 * maximum : 1.0,
+                    metric == 0 ? 0.75 * maximum : 1.5, metric == 0 ? maximum : 2.5, first, second, options));
+                Require(failure.Message.Contains("non-finite", StringComparison.Ordinal), "Gap/flush overflow must identify a calculation failure.");
+                GapFlushInspectionResult recovered = tool.Execute(0.0, 1.0, 1.5, 2.5,
+                    new GapFlushRegionStatistics(2, 1.0, 1.0), new GapFlushRegionStatistics(2, 0.75, 0.75), options);
+                Require(recovered.Passed && recovered.FirstSampleCount == 2 && recovered.SecondSampleCount == 2,
+                    "A valid gap/flush must recover after each overflowing metric.");
+                RequireApproximately(recovered.SignedGap, 0.5, 0.0, "Recovered gap changed.");
+                RequireApproximately(recovered.SignedFlush, -0.25, 0.0, "Recovered flush changed.");
+                RequireApproximately(recovered.SignedReferenceFlush, -0.25, 0.0, "Recovered reference flush changed.");
+            }
+        }
+
+        private static HeightFieldPlaneFitSample[] CreateScaledQualificationPlane(double scale)
+        {
+            double[] offsets = new double[9];
+            HeightFieldPlaneFitSample[] samples = CreateAnalyticPlaneSamples(0.5, -0.25, 2.0, offsets);
+            return samples.Select(sample => new HeightFieldPlaneFitSample(
+                new ThreeDPoint(sample.Position.X * scale, sample.Position.Y * scale, sample.Position.Z * scale),
+                ((-3.0 * sample.Position.X) + (2.0 * sample.Position.Z) + 5.0) * scale)).ToArray();
+        }
+
+        private static ConstrainedBestFitRigidCorrespondence[] CreateRigidQualificationPairs(double scale, IReadOnlyList<double> rotation)
+        {
+            ThreeDPoint[] source =
+            {
+                new ThreeDPoint(scale, 0, 0), new ThreeDPoint(-scale, 0, 0),
+                new ThreeDPoint(0, 2.0 * scale, 0), new ThreeDPoint(0, -2.0 * scale, 0),
+                new ThreeDPoint(0, 0, 3.0 * scale), new ThreeDPoint(0, 0, -3.0 * scale)
+            };
+            return source.Select(point => new ConstrainedBestFitRigidCorrespondence(point, new ThreeDPoint(
+                (rotation[0] * point.X) + (rotation[1] * point.Y) + (rotation[2] * point.Z) + (10.0 * scale),
+                (rotation[3] * point.X) + (rotation[4] * point.Y) + (rotation[5] * point.Z) - (4.0 * scale),
+                (rotation[6] * point.X) + (rotation[7] * point.Y) + (rotation[8] * point.Z) + (2.0 * scale)))).ToArray();
+        }
 
         private static HeightFieldPlaneFitSample[] CreateAnalyticPlaneSamples(
             double slopeX,

@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenVisionLab.Core\OpenVisionLab.Core.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Compute\OpenVisionLab.Compute.csproj" />
   </ItemGroup>
 
 </Project>

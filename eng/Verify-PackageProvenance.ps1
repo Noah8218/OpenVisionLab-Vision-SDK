@@ -149,6 +149,7 @@ if ([string]::IsNullOrWhiteSpace($ExpectedRepositoryUrl)) {
 }
 
 $expectedPackageIds = @(
+    'OpenVisionLab.Compute',
     'OpenVisionLab.Core',
     'OpenVisionLab.Inspection',
     'OpenVisionLab.Vision2D',
@@ -156,11 +157,12 @@ $expectedPackageIds = @(
     'OpenVisionLab.Vision3D'
 )
 $expectedDependencies = @{
+    'OpenVisionLab.Compute' = @()
     'OpenVisionLab.Core' = @()
     'OpenVisionLab.Inspection' = @('OpenVisionLab.Vision2D', 'OpenVisionLab.Vision3D')
-    'OpenVisionLab.Vision2D' = @('OpenVisionLab.Core')
+    'OpenVisionLab.Vision2D' = @('OpenVisionLab.Compute', 'OpenVisionLab.Core')
     'OpenVisionLab.Vision2D.Blob' = @('OpenVisionLab.Core', 'OpenVisionLab.Vision2D')
-    'OpenVisionLab.Vision3D' = @()
+    'OpenVisionLab.Vision3D' = @('OpenVisionLab.Compute')
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem

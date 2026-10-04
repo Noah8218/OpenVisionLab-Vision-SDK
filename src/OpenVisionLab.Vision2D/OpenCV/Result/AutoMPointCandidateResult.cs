@@ -14,6 +14,8 @@ namespace OpenVisionLab.Vision2D.Result
         public Rect PatternRoi { get; set; }
         public Point2f PatternCenter { get; set; }
         public Point2f NativeMatchCenter { get; set; }
+        public double NativeMatchAngle { get; set; }
+        public double NativeMatchScale { get; set; } = 1d;
         public double NativeToPatternOffsetX { get; set; }
         public double NativeToPatternOffsetY { get; set; }
 
@@ -40,6 +42,10 @@ namespace OpenVisionLab.Vision2D.Result
         public double ScaleErrorMaxRatio { get; set; }
         public double RuntimeMedianMilliseconds { get; set; }
         public double RuntimeP95Milliseconds { get; set; }
+
+        /// <summary>Success means correctly rejected target-absent input; a failure is a false positive or an execution error.</summary>
+        public List<AutoMPointRepresentativeMatchResult> NegativeRepresentativeMatches { get; }
+            = new List<AutoMPointRepresentativeMatchResult>();
 
         public int RepresentativeImageCount { get; set; }
         public int RepresentativeSuccessCount { get; set; }

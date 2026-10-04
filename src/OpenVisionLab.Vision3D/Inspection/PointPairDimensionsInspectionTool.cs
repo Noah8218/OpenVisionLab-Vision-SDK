@@ -92,15 +92,21 @@ namespace OpenVisionLab.Vision3D.Inspection
                 throw new ArgumentException("Height axis must have non-zero length.", nameof(heightAxis));
             }
 
-            ThreeDPoint normalizedAxis = new ThreeDPoint(
-                heightAxis.X / axisLength,
-                heightAxis.Y / axisLength,
-                heightAxis.Z / axisLength);
+            double axisScale = Math.Max(Math.Abs(heightAxis.X), Math.Max(Math.Abs(heightAxis.Y), Math.Abs(heightAxis.Z)));
+            double scaledAxisLength = Length(heightAxis.X / axisScale, heightAxis.Y / axisScale, heightAxis.Z / axisScale);
+            ThreeDPoint normalizedAxis = IsFinite(axisLength)
+                ? new ThreeDPoint(heightAxis.X / axisLength, heightAxis.Y / axisLength, heightAxis.Z / axisLength)
+                : new ThreeDPoint((heightAxis.X / axisScale) / scaledAxisLength,
+                    (heightAxis.Y / axisScale) / scaledAxisLength, (heightAxis.Z / axisScale) / scaledAxisLength);
             ThreeDPoint delta = new ThreeDPoint(
                 second.X - first.X,
                 second.Y - first.Y,
                 second.Z - first.Z);
             double distance = Length(delta.X, delta.Y, delta.Z);
+            if (!IsFinite(delta) || !IsFinite(distance))
+            {
+                throw new InvalidOperationException("Point-pair distance cannot be represented as a finite value.");
+            }
             if (distance <= MinimumLength)
             {
                 throw new ArgumentException("Point-pair positions must be distinct.");
@@ -113,6 +119,11 @@ namespace OpenVisionLab.Vision3D.Inspection
             double planarWidth = Length(planarX, planarY, planarZ);
             double elevationAngle = Math.Atan2(axialHeightDelta, planarWidth) * 180.0 / Math.PI;
             double scalarHeightDelta = secondScalarHeight - firstScalarHeight;
+            if (!IsFinite(normalizedAxis) || !IsFinite(axialHeightDelta) || !IsFinite(planarWidth)
+                || !IsFinite(elevationAngle) || !IsFinite(scalarHeightDelta))
+            {
+                throw new InvalidOperationException("Point-pair measurements cannot be represented as finite values.");
+            }
 
             return new PointPairDimensionsInspectionResult(
                 first,
@@ -151,8 +162,17 @@ namespace OpenVisionLab.Vision3D.Inspection
         private static double Dot(ThreeDPoint first, ThreeDPoint second) =>
             (first.X * second.X) + (first.Y * second.Y) + (first.Z * second.Z);
 
-        private static double Length(double x, double y, double z) =>
-            Math.Sqrt((x * x) + (y * y) + (z * z));
+        private static double Length(double x, double y, double z)
+        {
+            double squared = (x * x) + (y * y) + (z * z);
+            if (IsFinite(squared) && squared > 0.0) return Math.Sqrt(squared);
+            double scale = Math.Max(Math.Abs(x), Math.Max(Math.Abs(y), Math.Abs(z)));
+            if (scale == 0.0 || !IsFinite(scale)) return scale;
+            x /= scale;
+            y /= scale;
+            z /= scale;
+            return scale * Math.Sqrt(x * x + y * y + z * z);
+        }
 
         private static bool NonNegative(double value) => IsFinite(value) && value >= 0.0;
 

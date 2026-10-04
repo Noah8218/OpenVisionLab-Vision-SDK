@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using OpenVisionLab.Core;
 using OpenVisionLab.Core.Geometry2D;
@@ -12,13 +13,31 @@ using OpenCvSharp;
 using static OpenVisionLab.Core.FormulaUtil;
 namespace OpenVisionLab.Vision2D.Tool
 {  
-    public partial class LineGaugeTool : OpenCvAlgorithmBase
+    public partial class LineGaugeTool : OpenCvAlgorithmBase, ICancellableVisionTool
     {
         public IOpenCvPropertyLineGauge property { get; set; }
         public List<LineGaugeResult> resultList { get; set; } = new List<LineGaugeResult>();
         public LineGaugeTool() { }
 
         public void SetProperty(IOpenCvPropertyLineGauge property) => this.property = property;
+
+        public override VisionToolResult Execute(Mat source)
+        {
+            if (property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement) resultList?.Clear();
+            return base.Execute(source);
+        }
+
+        public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
+        {
+            bool subpixel = property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement;
+            if (subpixel) resultList?.Clear();
+            try { return ExecuteWithCancellation(source, cancellationToken); }
+            catch
+            {
+                if (subpixel) resultList?.Clear();
+                throw;
+            }
+        }
 
         protected override bool TryValidateBeforeRun(out VisionToolErrorCode errorCode, out string message)
         {
@@ -27,6 +46,16 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
+            if (property is LineGaugeToolProperty subpixel && subpixel.UseSubpixelMeasurement
+                && (subpixel.SubpixelProfileRadius < 2 || subpixel.SubpixelProfileRadius > 32
+                    || double.IsNaN(property.CONTRAST) || double.IsInfinity(property.CONTRAST) || property.CONTRAST < 0 || property.CONTRAST >= 255
+                    || double.IsNaN(property.SAMPLING_STEP) || double.IsInfinity(property.SAMPLING_STEP) || property.SAMPLING_STEP > int.MaxValue
+                    || double.IsNaN(property.THICKNESS) || double.IsInfinity(property.THICKNESS) || property.THICKNESS > int.MaxValue))
+            {
+                errorCode = VisionToolErrorCode.LineGaugeInvalidSampling;
+                message = "Subpixel measurement requires a radius from 2 through 32, finite contrast in [0,255), and finite representable sampling parameters.";
+                return false;
+            }
             if (imageSource.Depth() != MatType.CV_8U)
             {
                 errorCode = VisionToolErrorCode.InputImageInvalid;
@@ -85,6 +114,13 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
+            if (property is LineGaugeToolProperty subpixel && subpixel.UseSubpixelMeasurement
+                && resultList.Any(result => result.SubpixelEvidence == null || !result.SubpixelEvidence.HasFit))
+            {
+                errorCode = VisionToolErrorCode.LineGaugeFitFailed;
+                message = "Subpixel measurement requires at least three admitted profile samples on a non-degenerate scan axis.";
+                return false;
+            }
             int invalidFitIndex = resultList.FindIndex(result => !IsValidFitLine(result?.FitLine));
             if (invalidFitIndex >= 0)
             {
@@ -186,13 +222,98 @@ namespace OpenVisionLab.Vision2D.Tool
                 ? LineFitting.GetFitLineExtend(edgePoints, property.EXTEND_FIT_LINE_VALUE, property.PRJ_DIR)
                 : LineFitting.GetFitLine(edgePoints, property.PRJ_DIR);
 
-            return new LineGaugeResult(edgeList, fitLine, index);
+            LineGaugeSubpixelEvidence subpixel = property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement
+                ? MeasureSubpixel(edgeList, roi, applyRoiOffset, settings.SubpixelProfileRadius) : null;
+            return new LineGaugeResult(edgeList, fitLine, index, subpixel);
+        }
+
+        private LineGaugeSubpixelEvidence MeasureSubpixel(List<LineGaugeEdge> edges, Rect roi, bool applyRoiOffset, int radius)
+        {
+            Mat gray;
+            if (applyRoiOffset)
+            {
+                using (Mat region = imageSource.SubMat(roi)) gray = region.Clone();
+            }
+            else gray = imageSource.Clone();
+            using (gray)
+            {
+                OpenCvHelper.SetImageChannel1(gray);
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
+                byte[,] values = ReadGrayBytes(gray);
+                ExecutionCancellationToken.ThrowIfCancellationRequested();
+                bool projectsX = property.PRJ_DIR == PROJECTION_DIR.X_LTOR || property.PRJ_DIR == PROJECTION_DIR.X_RTOL;
+                int scanSign = property.PRJ_DIR == PROJECTION_DIR.X_LTOR || property.PRJ_DIR == PROJECTION_DIR.Y_TTOB ? 1 : -1;
+                if (property.USE_BITWISENOT) scanSign = -scanSign;
+                int length = projectsX ? gray.Cols : gray.Rows;
+                int offsetX = applyRoiOffset ? roi.X : 0, offsetY = applyRoiOffset ? roi.Y : 0;
+                List<Point2d> points = new List<Point2d>(edges.Count);
+                foreach (LineGaugeEdge edge in edges)
+                {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
+                    int x = edge.MeasPos.X - offsetX, y = edge.MeasPos.Y - offsetY;
+                    int seed = projectsX ? x : y;
+                    int peak = -1;
+                    double strongest = 0;
+                    for (int position = Math.Max(0, seed - radius); position <= Math.Min(length - 2, seed + radius); position++)
+                    {
+                        double gradient = ProfileGradient(values, projectsX, x, y, position, scanSign);
+                        if (gradient > strongest) { strongest = gradient; peak = position; }
+                    }
+                    if (peak < radius || peak + radius >= length - 1) continue;
+                    double sum = 0, weighted = 0;
+                    for (int position = peak - radius; position <= peak + radius; position++)
+                    {
+                        double gradient = ProfileGradient(values, projectsX, x, y, position, scanSign);
+                        sum += gradient;
+                        weighted += (position + 0.5) * gradient;
+                    }
+                    if (!(sum > 0)) continue;
+                    double measured = weighted / sum;
+                    points.Add(projectsX ? new Point2d(measured + offsetX, y + offsetY) : new Point2d(x + offsetX, measured + offsetY));
+                }
+                int rejected = edges.Count - points.Count;
+                if (points.Count < 3) return new LineGaugeSubpixelEvidence(points, rejected, projectsX, false, double.NaN, double.NaN, double.NaN);
+                List<Point2d> fit = projectsX ? points.Select(point => new Point2d(point.Y, point.X)).ToList() : points;
+                try
+                {
+                    ExecutionCancellationToken.ThrowIfCancellationRequested();
+                    double residualNorm = LineFittingCalculator.FindDoublePrecisionLinearLeastSquaresFit(fit, out double slope, out double intercept);
+                    double rmse = residualNorm / Math.Sqrt(points.Count) / Math.Sqrt(1 + slope * slope);
+                    return new LineGaugeSubpixelEvidence(points, rejected, projectsX, true, slope, intercept, rmse);
+                }
+                catch (Exception exception) when (exception is ArgumentException || exception is InvalidOperationException)
+                {
+                    return new LineGaugeSubpixelEvidence(points, rejected, projectsX, false, double.NaN, double.NaN, double.NaN);
+                }
+            }
+        }
+
+        private double ProfileGradient(byte[,] values, bool projectsX, int x, int y, int position, int scanSign)
+        {
+            double gradient = (projectsX ? values[y, position + 1] - values[y, position] : values[position + 1, x] - values[position, x]) * scanSign;
+            if (property.PRJ_PORALITY == PROJECTION_POLARITY.ALL) return Math.Abs(gradient);
+            return Math.Max(0, property.PRJ_PORALITY == PROJECTION_POLARITY.BTOW ? gradient : -gradient);
+        }
+
+        protected override IDictionary<string, double> CollectMetrics()
+        {
+            IDictionary<string, double> metrics = base.CollectMetrics();
+            if (property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement)
+            {
+                metrics["LineGauge.SubpixelSampleCount"] = resultList.Sum(result => result.SubpixelEvidence?.SampleCount ?? 0);
+                metrics["LineGauge.SubpixelRejectedSampleCount"] = resultList.Sum(result => result.SubpixelEvidence?.RejectedPointCount ?? 0);
+                List<LineGaugeSubpixelEvidence> fits = resultList.Select(result => result.SubpixelEvidence).Where(result => result?.HasFit == true).ToList();
+                if (fits.Count > 0) metrics["LineGauge.SubpixelMaximumOrthogonalRmse"] = fits.Max(result => result.OrthogonalRmse);
+            }
+            return metrics;
         }
 
         private List<LineGaugeEdge> FindEdges(Mat imageSrc, Rect roi, bool applyRoiOffset)
         {
             ConcurrentBag<LineGaugeEdge> edges = new ConcurrentBag<LineGaugeEdge>();
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             byte[,] bytes = ReadGrayBytes(imageSrc);
+            ExecutionCancellationToken.ThrowIfCancellationRequested();
             int step = (int)property.SAMPLING_STEP;
             int thickness = (int)property.THICKNESS;
 
@@ -228,7 +349,7 @@ namespace OpenVisionLab.Vision2D.Tool
             int thickness,
             TryFindEdgeOnScanLine tryFindEdge)
         {
-            Parallel.For(0, scanCount, scanIndex =>
+            Parallel.For(0, scanCount, new ParallelOptions { CancellationToken = ExecutionCancellationToken }, scanIndex =>
             {
                 if (scanIndex % step != 0) { return; }
 
@@ -251,6 +372,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             for (int x = 2; x < cols - thickness - 1; x++)
             {
+                if ((x & 1023) == 0) ExecutionCancellationToken.ThrowIfCancellationRequested();
                 int current = bytes[y, x];
                 int previous = bytes[y, x - 1];
                 if (!JudgeEdge(previous, current)) { continue; }
@@ -276,6 +398,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             for (int x = cols - 2; x > thickness; x--)
             {
+                if ((x & 1023) == 0) ExecutionCancellationToken.ThrowIfCancellationRequested();
                 int current = bytes[y, x];
                 int previous = bytes[y, x + 1];
                 if (!JudgeEdge(previous, current)) { continue; }
@@ -301,6 +424,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             for (int y = 2; y < rows - thickness; y++)
             {
+                if ((y & 1023) == 0) ExecutionCancellationToken.ThrowIfCancellationRequested();
                 int current = bytes[y, x];
                 int previous = bytes[y - 1, x];
                 if (!JudgeEdge(previous, current)) { continue; }
@@ -326,6 +450,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
             for (int y = rows - 2; y > thickness; y--)
             {
+                if ((y & 1023) == 0) ExecutionCancellationToken.ThrowIfCancellationRequested();
                 int current = bytes[y, x];
                 int previous = bytes[y + 1, x];
                 if (!JudgeEdge(previous, current)) { continue; }

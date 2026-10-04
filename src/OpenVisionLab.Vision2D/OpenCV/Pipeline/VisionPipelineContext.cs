@@ -15,12 +15,13 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 throw new ArgumentException("Layer name is required.", nameof(name));
             }
 
+            Mat snapshot = image?.Clone();
             if (layers.TryGetValue(name, out Mat existing))
             {
                 existing?.Dispose();
             }
 
-            layers[name] = image?.Clone();
+            layers[name] = snapshot;
         }
 
         public Mat GetLayer(string name)

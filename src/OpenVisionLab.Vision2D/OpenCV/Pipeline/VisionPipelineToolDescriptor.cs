@@ -45,16 +45,18 @@ namespace OpenVisionLab.Vision2D.Pipeline
     /// <summary>Describes an external artifact that must be supplied to reconstruct a Tool.</summary>
     public sealed class VisionPipelineArtifactDescriptor
     {
-        internal VisionPipelineArtifactDescriptor(string role, string format, int formatVersion, bool required)
+        internal VisionPipelineArtifactDescriptor(string role, string format, int formatVersion, bool required, IEnumerable<string> acceptedFormats = null)
         {
             Role = role;
             Format = format;
             FormatVersion = formatVersion;
             Required = required;
+            AcceptedFormats = Array.AsReadOnly((acceptedFormats ?? new[] { format }).ToArray());
         }
 
         public string Role { get; }
         public string Format { get; }
+        public IReadOnlyList<string> AcceptedFormats { get; }
         public int FormatVersion { get; }
         public bool Required { get; }
     }

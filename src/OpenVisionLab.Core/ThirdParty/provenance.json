@@ -140,8 +140,8 @@
       "role": "current-notice-and-clearance-boundary",
       "sourcePath": "src/OpenVisionLab.Core/ThirdParty/NOTICE.md",
       "packagePath": "third-party/NOTICE.md",
-      "size": 6236,
-      "sha256": "57D74489DBB9232871BD73447EA23DDCBB5E5843A0F335CE71CC54BD325CB7AA"
+      "size": 6184,
+      "sha256": "F86E91AF2A7C38C0D24FE8B68329982E55AC4283A89B877EC7CF82E5E7AB50C1"
     },
     {
       "role": "official-license-evidence",

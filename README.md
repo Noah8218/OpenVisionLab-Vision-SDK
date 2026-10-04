@@ -1,30 +1,44 @@
 # OpenVisionLab Vision SDK
 
-> **Current project authority:** read the
-> [current status and work contract](docs/OPENVISIONLAB_CURRENT_STATUS.md) before
-> continuing project work. Use the [documentation index](docs/README.md) to
-> distinguish current contracts from dated historical records.
-
-Developers opening the source can follow [Start Here](docs/README.md#start-here)
+Developers opening the source can follow [Start Here](./docs/README.md#start-here)
 for the solution, executable checks and code-reading order. Consumers can use the
-[2D input/error/lifetime contracts](src/OpenVisionLab.Vision2D/README.md#input-and-option-contracts)
-and [3D execution/outcome contracts](docs/three-d-inspection.md#execution-failure-and-lifetime-boundaries).
-The [SDK direction and capability matrix](docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md)
-records the current rule-based product boundary, Tool composition coverage, artifact
-contract, and ordered engineering priorities.
+[2D input/error/lifetime contracts](./src/OpenVisionLab.Vision2D/README.md#input-and-option-contracts)
+and [3D execution/outcome contracts](./docs/three-d-inspection.md#execution-failure-and-lifetime-boundaries).
 
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
 > `OpenVisionLab.* 3.0` packages, DLLs, and namespaces. Before migrating an
 > existing project, read the
-> [2.9.1 to 3.0.0 migration guide](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md).
+> [2.9.1 to 3.0.0 migration guide](./docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md).
 
 OpenVisionLab Vision SDK is a C# vision inspection library for OpenCvSharp-based 2D inspection and UI-independent height-map/full-XYZ 3D computation.
 
 It provides application-ready 2D image-processing tools, 3D feature extraction and measurement algorithms, and shared result states and metrics.
 
+## Version
+
+Current source version: `v3.1.0`.
+
+This project is maintained using explicit version numbers. The source version is
+defined in [`Directory.Build.props`](./Directory.Build.props). CLR assembly identity
+remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a NuGet
+package or binary release has been published.
+
+### Recent version history
+
+#### `v3.1.0` (2026-10-04)
+
+- Add optional CUDA scoring for edge-based template matching, tiled large-image processing and automatic CPU fallback.
+- Reduce gradient and transfer temporary memory, reuse GPU workspace within each search and release it on completion, cancellation or failure.
+- Improve 2D subpixel/model-artifact workflows and 3D surface matching, datum fitting and numerical validation.
+
+#### `v3.0.0` (2026-08-05)
+
+- Introduce the `OpenVisionLab.*` package, DLL and namespace names, with a migration contract for `Lib.* 2.9.1` consumers.
+
 ## 1-Minute Overview
 
+- `OpenVisionLab.Compute` provides optional CUDA discovery, host-owned sessions and per-execution fallback evidence.
 - `OpenVisionLab.Core` provides UI-independent coordinate and line calculations and packages the native OpenCV DLL.
 - `OpenVisionLab.Vision2D` provides primary inspection tools including Threshold, Filter, Edge, Contour, Matching, and LineGauge.
 - `OpenVisionLab.Vision2D.Blob` provides Blob labeling and area filtering.
@@ -36,13 +50,13 @@ It provides application-ready 2D image-processing tools, 3D feature extraction a
 ## Clone and Develop on Another PC
 
 Use a short checkout path on a Windows x64 machine. Install Git, the .NET SDK
-selected by [`global.json`](global.json), and PowerShell 7. The first restore needs
+selected by [`global.json`](./global.json), and PowerShell 7. The first restore needs
 access to NuGet.org. Windows Server also needs the Media Foundation feature used by
 the bundled OpenCV runtime.
 
 ```powershell
-git clone https://github.com/Noah8218/OpenVisionLab-Vision-SDK.git C:\Git\OpenVisionLab-Vision-SDK
-Set-Location C:\Git\OpenVisionLab-Vision-SDK
+git clone https://github.com/Noah8218/OpenVisionLab-Vision-SDK.git OpenVisionLab-Vision-SDK
+Set-Location .\OpenVisionLab-Vision-SDK
 dotnet --version
 pwsh --version
 dotnet tool restore
@@ -97,16 +111,9 @@ The example assumes the consumer project is next to the SDK checkout; adjust
 only and is intended for local development. Use the package route for a clean
 consumer-output contract.
 
-To use local NuGet packages, assign a unique prerelease version, build the packages, and then add `artifacts/packages` as a package source. `3.0.0` is the API/assembly baseline, not the current install version. `3.0.1-dev.1` is only the repository-local package default. Never reuse a package version after changing package content. The short command below is suitable for local iteration; use the commit-fixed procedure in [Packaging Notes](#packaging-notes) before treating packages as reusable evidence or candidates.
-
-```powershell
-$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release "-p:PackageVersion=$packageVersion"
-dotnet add package OpenVisionLab.Vision2D --version $packageVersion --source .\artifacts\packages
-dotnet add package OpenVisionLab.Vision2D.Blob --version $packageVersion --source .\artifacts\packages
-dotnet add package OpenVisionLab.Vision3D --version $packageVersion --source .\artifacts\packages
-dotnet add package OpenVisionLab.Inspection --version $packageVersion --source .\artifacts\packages
-```
+Package roles and runtime requirements are listed in [Packaging Notes](#packaging-notes).
+Use the source build below for this checkout and keep the managed and native OpenCV
+assets together. Do not infer an available NuGet release from the source version.
 
 ## 2D Quick Start
 
@@ -191,7 +198,80 @@ if (!result.TryGetMetric(ThreeDInspectionMetricNames.Thickness.Mean, out double 
 Console.WriteLine($"{result.MeasurementOutcome}, Mean={mean} {meanUnit}");
 ```
 
-`MeasurementOutcome` distinguishes `Passed`, `OutOfTolerance`, and `NotMeasured` directly. The former combination of `Success=false` and `HasMeasurement=true` maps to `OutOfTolerance`. Unit or frame mismatches, invalid ROIs, insufficient samples, and insufficient coverage map to `NotMeasured`. See [3D inspection](docs/three-d-inspection.md) for the complete contract.
+`MeasurementOutcome` distinguishes `Passed`, `OutOfTolerance`, and `NotMeasured` directly. The former combination of `Success=false` and `HasMeasurement=true` maps to `OutOfTolerance`. Unit or frame mismatches, invalid ROIs, insufficient samples, and insufficient coverage map to `NotMeasured`. See [3D inspection](./docs/three-d-inspection.md) for the complete contract.
+
+## Optional CUDA Acceleration
+
+CPU execution is the default. The current CUDA path accelerates edge-based template
+matching scores; it does not move every 2D or 3D algorithm onto the GPU. Public 3D
+surface-pose search currently uses CPU execution.
+
+Create one host-owned session and pass it to the tool. `UseCuda` is the single
+enable option; changing a settings object after session construction does not
+change that session. The host owns settings persistence and session disposal.
+Tools borrow the session and retain ownership of their images and models.
+
+With caller-owned `source` and `template` Mats:
+
+```csharp
+using System;
+using OpenVisionLab.Compute;
+using OpenVisionLab.Vision2D.Property;
+using OpenVisionLab.Vision2D.Tool;
+
+using var session = new VisionComputeSession(new VisionComputeOptions { UseCuda = true });
+using var tool = new EdgeBasedTemplateMatchingTool(session);
+tool.SetProperty(new EdgeBasedTemplateMatchingToolProperty());
+tool.SetTemplateImage(template);
+using VisionToolResult result = tool.Execute(source);
+
+if (result.ComputeDiagnostics != null)
+{
+    Console.WriteLine($"CUDA applied: {result.ComputeDiagnostics.AccelerationApplied}");
+    Console.WriteLine($"Fallback: {result.ComputeDiagnostics.FallbackReason}");
+}
+```
+
+Windows x64 CUDA execution needs a compatible NVIDIA GPU/driver and
+`OpenVisionLab.Cuda.Native.dll` beside `OpenVisionLab.Compute.dll`, or under its
+`runtimes/win-x64/native` directory. The CUDA module is optional: an absent driver
+or module, an incompatible module, insufficient GPU memory or failed GPU execution
+uses the CPU path. Small or unqualified workloads can also select CPU execution.
+Disabling CUDA avoids loading the optional module.
+
+Consumers do not need the CUDA Toolkit, NVRTC or `cudart` DLLs to run the built
+module. Building that module from source requires MSVC x64, the Windows SDK and
+NVRTC for offline kernel compilation; see [`eng/Build-CudaProbe.ps1`](./eng/Build-CudaProbe.ps1).
+The SDK reports installation actions through `CudaSupportReport.InstallationAction`;
+it does not install or update drivers automatically.
+
+Large score grids use bounded GPU tiles and release their workspace after each
+search. This bounds temporary GPU storage, not the host application's total RAM.
+Preprocessing, full-image CPU gradients and output images still use host memory.
+The [Compute guide](./src/OpenVisionLab.Compute/README.md) describes discovery,
+execution evidence and session lifetime.
+
+### Measured large-image example
+
+The following measurements are a 2026-10-04 source snapshot using a Ryzen 5 2600,
+GTX 1060 3GB and NVIDIA driver 582.28. The input is a full synthetic image with one
+192 × 192 template, search step 2 and a 500-point model. Images are not resized or
+cropped. Values are the median of three warm calls after a first call, with the
+session retained. Timed work includes preprocessing, gradients, search, transfers,
+refinement, drawing and result-image copying; input setup and forced GC are outside
+the timer.
+
+| Full image | CPU | CUDA |
+| --- | ---: | ---: |
+| 5,000 × 5,000 | 1.027 s | 0.697 s |
+| 10,000 × 10,000 | 4.517 s | 3.025 s |
+| 15,000 × 15,000 | 10.879 s | 7.214 s |
+
+CPU and CUDA returned the same matching results and output pixels in these cases.
+First-call initialization costs are excluded from the table. These observations
+do not establish performance on other GPUs, textured/dense-edge scenes, multiple
+models, real sensors or production takt time. The reproducible entry point is
+[`CudaKernelSmokeSuite.LargeImageBenchmark`](./tests/OpenVisionLab.Inspection.Smoke/Suites/CudaKernelSmokeSuite.cs).
 
 ## Companion Verification Applications
 
@@ -241,15 +321,13 @@ the sample path relative to the executable.
 
 ## Matching Contract References
 
-- [Auto MPoint teaching core](docs/AUTO_MPOINT_V1.md)
-- [Edge-based fail-closed unique result](docs/EDGE_BASED_UNIQUE_MATCH_V1.md)
-- [Matching responsibility boundaries and production-baseline plan](docs/MATCHING_RESPONSIBILITY_AND_PRODUCTION_BASELINE_PLAN_20260821.md)
-- [Historical synthetic accuracy/performance attempts](docs/OPENVISIONLAB_VISION_SDK_IDENTITY_AND_V3_MIGRATION_PLAN_20260805.md) — sections 27–29 are recorded evidence, not current status
+- [Auto MPoint teaching core](./docs/AUTO_MPOINT_V1.md)
+- [Edge-based fail-closed unique result](./docs/EDGE_BASED_UNIQUE_MATCH_V1.md)
 
 ## 2D object candidate evidence
 
 Blob and Contour expose the additive, single-pass candidate contract described
-in [`docs/OBJECT_CANDIDATE_CONTRACT.md`](docs/OBJECT_CANDIDATE_CONTRACT.md).
+in [`docs/OBJECT_CANDIDATE_CONTRACT.md`](./docs/OBJECT_CANDIDATE_CONTRACT.md).
 
 ## Build / Smoke Check
 
@@ -267,7 +345,7 @@ Smoke check including packaging:
 dotnet restore OpenVisionLab.VisionSdk.sln
 dotnet build OpenVisionLab.VisionSdk.sln -c Debug
 dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build
-$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+$packageVersion = "3.1.0-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$packageVersion"
 ```
 
@@ -275,16 +353,11 @@ dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$
 
 ## CI
 
-The GitHub Actions workflow is defined in `.github/workflows/build.yml`. It performs the following steps for pushes to `main` and for pull requests.
-
-1. Install .NET SDK `8.0.423` and restore the repository-pinned quality tool.
-2. Restore and Release-build `OpenVisionLab.VisionSdk.sln`.
-3. Execute all 2D/3D smoke cases while enforcing the five-assembly line-coverage baseline.
-4. Compare all five assemblies to the exact reviewed public-API baseline.
-5. Run the `latest-recommended`/`All` analyzer no-regression baseline.
-6. Pack all five packages with one unique `3.0.1-ci.<run>.<attempt>` version, then run `eng/Verify-PackageProvenance.ps1` against `$GITHUB_SHA` and a clean worktree to bind their IDs, repository metadata, assembly product versions, required files, internal dependency declarations, vendored binary hashes, and reviewed third-party evidence to that checkout. Exercise the duplicate-path, unsafe-path, third-party license-drift, and renamed non-Core binary guards with `eng/Test-PackageProvenanceNegative.ps1`.
-7. Restore and run the `net8.0`/`win-x64` package-only consumer from the packed output and an isolated NuGet cache.
-8. Require exactly one `OpenCvSharpExtern.dll` directly at the package consumer output root.
+The [GitHub Actions workflow](./.github/workflows/build.yml) defines the checks for
+`main` pushes and pull requests: Release build, synthetic smoke/coverage checks,
+public-API and analyzer baselines, package provenance and an isolated package-only
+consumer. Its exact commands and package version are owned by the workflow and
+[`eng`](./eng). The workflow does not publish packages or create releases.
 
 ## License
 
@@ -295,23 +368,24 @@ third-party software.
 
 Copyright (c) 2026 Noah Choi (최노아)
 
-- Full license: [LICENSE](LICENSE)
-- Attribution notices: [NOTICE](NOTICE)
+- Full license: [LICENSE](./LICENSE)
+- Attribution notices: [NOTICE](./NOTICE)
 - Core third-party provenance, notices, and approval boundary:
-  [src/OpenVisionLab.Core/ThirdParty/NOTICE.md](src/OpenVisionLab.Core/ThirdParty/NOTICE.md)
+  [src/OpenVisionLab.Core/ThirdParty/NOTICE.md](./src/OpenVisionLab.Core/ThirdParty/NOTICE.md)
 - Machine-readable binary lock:
-  [src/OpenVisionLab.Core/ThirdParty/provenance.json](src/OpenVisionLab.Core/ThirdParty/provenance.json)
+  [src/OpenVisionLab.Core/ThirdParty/provenance.json](./src/OpenVisionLab.Core/ThirdParty/provenance.json)
 
 `OpenVisionLab.Core` currently mixes official OpenCvSharp managed binaries from
 `4.4.0.20200915` with an official native binary from `4.3.0.20200708`. Their exact
-bytes are proven. Exact official sources now establish `LGPL-3.0-or-later` for
-seven cvBlob-derived source files, the Intel IPPICV 2020 redistribution terms, and
-the ittnotify BSD/GPLv2 choice; the Core package preserves those texts and the
-other identified OpenCV third-party notices. Redistribution clearance remains
-blocked until the OpenCvSharp/cvBlob rights holder clarifies the Blob license scope
-and the project's distribution/legal owner approves the final notice and LGPL
-fulfillment plan. Do not treat the repository's MIT license or this evidence bundle
-as approval to publish or commercially redistribute those binaries.
+bytes are proven. The current binary inventory, preserved terms, and remaining
+distribution-owner approval are authoritative in
+[Core's notice record](./src/OpenVisionLab.Core/ThirdParty/NOTICE.md) and the
+[redistribution checklist](./docs/THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
+`OpenCvSharp.Blob` and its Blob-only LGPL evidence were removed from the current
+bundle; their historical provenance remains in Git. Redistribution clearance for
+the two remaining binaries still requires approval of the final notices and
+distribution workflow. The repository's MIT license and technical provenance
+checks do not grant that approval.
 
 Run `pwsh -File ./eng/Verify-ThirdPartyBinaries.ps1` to check the reviewed source bytes,
 managed/native identities, exact official-artifact lock, and reviewed evidence.
@@ -339,6 +413,8 @@ dotnet build OpenVisionLab.VisionSdk.sln -c Release
 ```text
 OpenVisionLab-Vision-SDK
 |- src
+|  |- OpenVisionLab.Compute
+|  |  `- Infrastructure
 |  |- OpenVisionLab.Core
 |  |  |- Converter
 |  |  |- Line
@@ -363,6 +439,8 @@ OpenVisionLab-Vision-SDK
 |  |  |  `- SurfaceMatching
 |  |  `- Inspection
 |  `- OpenVisionLab.Inspection
+|- native
+|  `- OpenVisionLab.Cuda
 `- tests
    |- OpenVisionLab.Inspection.Smoke
    |  |- Suites
@@ -373,6 +451,7 @@ OpenVisionLab-Vision-SDK
 
 | Project | Role |
 | --- | --- |
+| `OpenVisionLab.Compute` | Optional acceleration discovery, session lifetime and execution/fallback evidence |
 | `OpenVisionLab.Core` | UI-independent coordinate/ROI conversion, numerical and geometric calculations, line calculations, and OpenCV runtime assets |
 | `OpenVisionLab.Vision2D` | Primary OpenCV inspection tools, property interfaces, result models, and pipeline execution |
 | `OpenVisionLab.Vision2D.Blob` | Blob labeling and area-filtering tools |
@@ -382,16 +461,16 @@ OpenVisionLab-Vision-SDK
 | `OpenVisionLab.Vision3D.Benchmark` | Isolated deterministic benchmark harness; it is not production-performance evidence |
 | `OpenVisionLab.PackageConsumer.Smoke` | Package-only consumer restored from a freshly packed isolated source/cache; intentionally outside the solution |
 
-Reference relationships:
+Reference relationships (arrow means depends on):
 
 ```text
-OpenVisionLab.Core
-|- OpenVisionLab.Vision2D
-|  `- OpenVisionLab.Vision2D.Blob
-|- OpenVisionLab.Vision3D
-`- OpenVisionLab.Inspection
-   |- OpenVisionLab.Vision2D
-   `- OpenVisionLab.Vision3D
+Vision2D -> Core + Compute
+Vision2D.Blob -> Vision2D + Core
+Vision3D -> Compute
+Inspection -> Vision2D + Vision3D
+Inspection.Smoke -> Inspection + Vision2D.Blob
+Vision3D.Benchmark -> Vision3D
+Core / Compute -> no project references
 ```
 
 ## Code Organization
@@ -512,7 +591,7 @@ The 3D API is used through three layers based on input shape. `IThreeDInspection
 | Source-neutral tool | Tool-specific typed input/options/result | Full-XYZ geometry, regrid, filtering, matching, and mesh comparison | Not supported; execute the tool directly |
 | Multi-input dimensional inspection | Caller-prepared points, regions, or statistics → typed result | Flatness, point pair, gap/flush, volume, and cross-section measurements | Not supported; execute the tool directly |
 
-Height-map inspections return input, ROI, and coverage errors as controlled `NotMeasured` results. Source-neutral and multi-input tools use the `Success` or `Passed` contract of their typed results and may reject an invalid call configuration with `ArgumentException`. See the [3D inspection documentation](docs/three-d-inspection.md#public-tool-catalog) for the complete public tool catalog and input-selection guidance.
+Height-map inspections return input, ROI, and coverage errors as controlled `NotMeasured` results. Source-neutral and multi-input tools use the `Success` or `Passed` contract of their typed results and may reject an invalid call configuration with `ArgumentException`. See the [3D inspection documentation](./docs/three-d-inspection.md#public-tool-catalog) for the complete public tool catalog and input-selection guidance.
 
 | Area | Primary Types | Role |
 | --- | --- | --- |
@@ -745,8 +824,8 @@ using (VisionPipelineContext context = new VisionPipelineContext())
 additive host boundary: a missing layer, factory exception/null return, or throwing/
 null custom Tool result becomes a typed failed step. Invalid Pipeline definitions
 still throw before execution. See the
-[capability and error producer matrix](docs/SDK_DIRECTION_AND_CAPABILITY_MATRIX.md#pipeline-execution-choices).
-The [Vision2D package guide](src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction)
+[Vision2D execution contract](./src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction).
+The [Vision2D package guide](./src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction)
 contains the resolver, parameter-format, integrity, and ownership example.
 
 Both methods also have `CancellationToken` overloads. Cancellable `Run` propagates
@@ -1100,8 +1179,7 @@ Examples:
 
 New code should use APIs based on `BlobTool`, `MatchingTool`, `LineGaugeTool`, `OpenCvAlgorithmBase`, and `VisionToolResult` whenever possible. Legacy APIs remain available for existing application compatibility.
 
-The actual local consumers, replacement types, API differences, and required pre-removal gates for 24 public legacy types are recorded in the
-[legacy C/CV/LineGuage usage and 4.0 removal design](docs/LEGACY_C_CV_LINEGUAGE_V4_REMOVAL_PLAN_20260805.md). These APIs remain available throughout 3.x.
+These APIs remain available throughout 3.x.
 
 ## Known Limitations
 
@@ -1114,90 +1192,27 @@ The actual local consumers, replacement types, API differences, and required pre
 
 ## Packaging Notes
 
-Shared package metadata is defined in `Directory.Build.props`.
+[`Directory.Build.props`](./Directory.Build.props) owns the source, package and
+assembly version settings. CI uses a unique prerelease package version for each
+run. Keep all six packages on one compatible version and do not replace shared or
+published bytes under an existing package ID/version.
 
-- `Version`: `3.0.0` API and assembly baseline
-- `PackageVersion`: `3.0.1-dev.1` local-development default; CI overrides it with a unique prerelease version
-- `PackageOutputPath`: `artifacts/packages`
-- `GeneratePackageOnBuild`: `false`
-
-Ordinary development commits, benchmark-protocol changes, and branch pushes do not change `Version` or the default `PackageVersion`, and do not authorize package publication. Reproducible benchmark runs pin the complete Git commit SHA; package versions change only for a separately approved immutable package candidate or release.
-
-### Immutable package versions
-
-A package ID and version identify exactly one package content. After a package has been shared, consumed, or published, do not rebuild different content under that version. Use one new version for every changed development or CI package, keep all five OpenVisionLab packages on that version, and remove the prerelease suffix only for an approved release.
-
-```text
-Development: 3.0.1-dev.<unique-run-id>; use another ID after any content change
-CI:          3.0.1-ci.<run>.<attempt>
-Release:     3.0.1
-Next fix:    3.0.2; never replace the existing 3.0.1 package
-```
-
-`3.0.1-dev.1` is only a safe repository default after the former mutable `3.0.0` local packages. Pass a unique `PackageVersion` whenever package content can leave the current build directory. Build metadata such as `+commit` is not used as the uniqueness boundary; use a prerelease suffix.
-
-### Commit-fixed package and isolated consumer verification
-
-Create a reusable package candidate only from a committed, clean worktree. Use a new D-drive run directory so build output, package output, the consumer cache, and the provenance manifest cannot reuse earlier bytes. NuGet's global package cache is keyed by package ID and version, so an older package with the same version can otherwise hide newly packed content.
-
-```powershell
-$packageVersion = "3.0.1-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
-$commit = (git rev-parse HEAD).Trim()
-$runRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\packages\$packageVersion"
-if (Test-Path -LiteralPath $runRoot) {
-  throw "Use a fresh verification root: $runRoot"
-}
-$artifactRoot = Join-Path $runRoot "artifacts"
-$packageRoot = Join-Path $runRoot "packages"
-$consumerCache = Join-Path $runRoot "consumer-cache"
-$manifest = Join-Path $runRoot "package-provenance.json"
-
-if (git status --porcelain=v1 --untracked-files=all) {
-  throw "Commit package sources before creating a provenance candidate."
-}
-
-dotnet pack OpenVisionLab.VisionSdk.sln -c Release `
-  --artifacts-path $artifactRoot `
-  "-p:PackageVersion=$packageVersion" `
-  -o $packageRoot
-pwsh -File ./eng/Verify-PackageProvenance.ps1 `
-  -PackageDirectory $packageRoot `
-  -ExpectedVersion $packageVersion `
-  -ExpectedCommit $commit `
-  -RequireCleanWorktree `
-  -ManifestPath $manifest
-dotnet restore tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.PackageConsumer.Smoke.csproj `
-  "-p:PackageVersion=$packageVersion" `
-  "-p:RestorePackagesPath=$consumerCache" `
-  "-p:RestoreSources=$packageRoot"
-dotnet run --project tests\OpenVisionLab.PackageConsumer.Smoke\OpenVisionLab.PackageConsumer.Smoke.csproj `
-  -c Release --no-restore `
-  "-p:PackageVersion=$packageVersion" `
-  "-p:RestorePackagesPath=$consumerCache"
-```
-
-The provenance verifier requires exactly the five expected packages, their immutable package version, Git repository URL and full commit, the same commit in each package's assembly product version, required documentation/runtime entries, and the reviewed internal dependency graph. NuGet writes a bare dependency version as a minimum range (`[version,)`), so this check proves a consistent declared lower bound; it does not claim an exact dependency-resolution pin.
-
-Use another physical test-data root on a machine without `D:`. Do not clear the machine-wide NuGet cache as the normal verification path. A successful provenance and consumer check does not publish a package or authorize a tag, release, deployment, or consumer-repository update.
-
-For a controlled release, record this minimal evidence:
-
-```text
-Package version: <immutable version>
-Source commit: <full Git commit>
-Package SHA-256: <one hash for each of the five nupkg files>
-Verification: Release build, Smoke result, isolated package-only consumer result
-```
+The package contents, required files, internal dependencies and source commit are
+checked by [`Verify-PackageProvenance.ps1`](./eng/Verify-PackageProvenance.ps1).
+[`OpenVisionLab.PackageConsumer.Smoke`](./tests/OpenVisionLab.PackageConsumer.Smoke)
+checks the package-only consumer path. A source build or CI package check does not
+establish that a package has been published.
 
 Each NuGet package includes a dedicated README for its specific role and first-use workflow.
 
 | Package | Package README |
 | --- | --- |
-| `OpenVisionLab.Core` | [Native runtime and shared support](src/OpenVisionLab.Core/README.md) |
-| `OpenVisionLab.Vision2D` | [2D Tool Quick Start](src/OpenVisionLab.Vision2D/README.md) |
-| `OpenVisionLab.Vision2D.Blob` | [Blob Tool contract](src/OpenVisionLab.Vision2D.Blob/README.md) |
-| `OpenVisionLab.Vision3D` | [Surface Match and Mesh Quick Start](src/OpenVisionLab.Vision3D/README.md) |
-| `OpenVisionLab.Inspection` | [Combined 2D/3D execution Quick Start](src/OpenVisionLab.Inspection/README.md) |
+| `OpenVisionLab.Compute` | [Optional CUDA sessions and CPU fallback](./src/OpenVisionLab.Compute/README.md) |
+| `OpenVisionLab.Core` | [Native runtime and shared support](./src/OpenVisionLab.Core/README.md) |
+| `OpenVisionLab.Vision2D` | [2D Tool Quick Start](./src/OpenVisionLab.Vision2D/README.md) |
+| `OpenVisionLab.Vision2D.Blob` | [Blob Tool contract](./src/OpenVisionLab.Vision2D.Blob/README.md) |
+| `OpenVisionLab.Vision3D` | [Surface Match and Mesh Quick Start](./src/OpenVisionLab.Vision3D/README.md) |
+| `OpenVisionLab.Inspection` | [Combined 2D/3D execution Quick Start](./src/OpenVisionLab.Inspection/README.md) |
 
 `OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under
 `runtimes/win-x64/native`. Modern SDK-style `win-x64` consumers resolve that runtime
@@ -1209,7 +1224,7 @@ The Core package also carries `third-party/provenance.json`, the current
 `third-party/NOTICE.md`, and the exact upstream license/scope evidence named by
 that manifest. The package provenance verifier requires those files and both
 vendored DLLs to be byte-identical to the reviewed repository sources; the other
-four packages must not contain Core's vendored DLL or `third-party/` entries. This
+five packages must not contain Core's vendored DLL or `third-party/` entries. This
 technical gate does not change the blocked redistribution-clearance status.
 
 GitHub Actions separately restores and runs

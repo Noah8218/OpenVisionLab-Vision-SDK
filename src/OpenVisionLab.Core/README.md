@@ -1,15 +1,15 @@
 # OpenVisionLab.Core
 
-Shared runtime and geometry support for OpenVisionLab Vision SDK 3.0.
+Shared runtime and geometry support for OpenVisionLab Vision SDK 3.x.
 
 Most applications should install `OpenVisionLab.Vision2D`, `OpenVisionLab.Vision2D.Blob`, or `OpenVisionLab.Inspection` and receive this package transitively.
 
 `3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.0.1-dev.1` is only the current
+immutable version from your package source; `3.1.0-dev.1` is only the current
 repository-local default.
 
 ```powershell
-$packageVersion = "3.0.1-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
 dotnet add package OpenVisionLab.Core --version $packageVersion
 ```
 
@@ -28,15 +28,15 @@ Modern SDK-style `win-x64` consumers resolve the runtime asset directly; the
 `.NET Framework` fallback has been reviewed from source but has not been executed in
 a runtime consumer. Keep all OpenVisionLab packages on the same version.
 
-The managed DLLs match official `OpenCvSharp4 4.4.0.20200915`; the native DLL
+The managed DLL matches official `OpenCvSharp4 4.4.0.20200915`; the native DLL
 matches the official OpenCvSharp `4.3.0.20200708` release ZIP. Do not collapse this
-mixed provenance into one upstream version. Exact source evidence identifies
-`LGPL-3.0-or-later` for seven cvBlob-derived files, the Intel IPPICV 2020 terms,
-and ittnotify's selectable BSD terms. Redistribution clearance remains blocked
-until the OpenCvSharp/cvBlob rights holder clarifies the Blob license scope and the
-project's distribution/legal owner approves the final notice and LGPL fulfillment
-plan. Read `third-party/NOTICE.md` in this package before any redistribution
-decision; it is technical evidence, not legal advice or publication approval.
+mixed provenance into one upstream version. The current two-binary inventory,
+preserved terms and remaining distribution-owner approval are authoritative in
+`third-party/NOTICE.md` and `third-party/provenance.json`. The former
+`OpenCvSharp.Blob.dll` is not included. Redistribution clearance remains blocked
+pending the distribution/legal owner's approval of the final notices and
+distribution workflow. The notice is technical evidence, not legal advice or
+publication approval.
 
 This package deliberately does not provide WinForms/WPF image conversion, serial-port,
 system-time, drive-management, or other application-platform helpers. Consumers that

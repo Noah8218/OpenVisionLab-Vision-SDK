@@ -1,5 +1,6 @@
 using OpenCvSharp;
 using OpenVisionLab.Vision2D.Result;
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -119,6 +120,8 @@ namespace OpenVisionLab.Vision2D.Tool
         public Dictionary<string, double> Metrics { get; } = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         public List<VisionToolOverlay> Overlays { get; } = new List<VisionToolOverlay>();
         public EdgeBasedMatchingDiagnosticEvidence EdgeBasedMatchingDiagnostics { get; set; }
+        /// <summary>Immutable compute snapshot for a participating Tool; null when execution did not reach compute selection.</summary>
+        public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
 
         public static VisionToolResult Passed(
             Mat resultImage,

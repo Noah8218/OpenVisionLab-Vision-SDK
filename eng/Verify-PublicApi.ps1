@@ -208,6 +208,7 @@ foreach ($dependency in @('OpenCvSharp.dll')) {
 }
 
 $assemblyNames = @(
+    'OpenVisionLab.Compute',
     'OpenVisionLab.Core',
     'OpenVisionLab.Inspection',
     'OpenVisionLab.Vision2D',

@@ -108,6 +108,21 @@ namespace OpenVisionLab.Core.Geometry2D
             return Math.Sqrt(ErrorSquared(pointList, m, b));
         }
 
+        /// <summary>Fits finite double-precision points as y=f(x) and returns the vertical residual norm (not RMSE). Requires a non-degenerate X axis.</summary>
+        public static double FindDoublePrecisionLinearLeastSquaresFit(IEnumerable<OpenCvSharp.Point2d> points, out double slope, out double intercept)
+        {
+            List<OpenCvSharp.Point2d> values = points.ToList();
+            CalculateFit(values, point => point.X, point => point.Y, out slope, out intercept);
+            double sum = 0;
+            foreach (OpenCvSharp.Point2d point in values)
+            {
+                double residual = point.Y - (slope * point.X + intercept);
+                sum += residual * residual;
+            }
+            if (!IsFinite(sum)) throw new InvalidOperationException("Double-precision line fitting produced a non-finite residual norm.");
+            return Math.Sqrt(sum);
+        }
+
         // Return the error squared.
         public static double ErrorSquared(IEnumerable<System.Drawing.PointF> points, double m, double b)
         {

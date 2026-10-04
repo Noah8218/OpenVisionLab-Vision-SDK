@@ -101,7 +101,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             try
             {
-                Validate(points, triangles, declaredNormals, options);
+                cancellationToken.ThrowIfCancellationRequested();
+                Validate(points, triangles, declaredNormals, options, cancellationToken);
                 int sampleCount = Math.Min(
                     options.MaximumSampleCount,
                     triangles.Count);
@@ -121,9 +122,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     ThreeDPoint second = points[triangle.SecondPointIndex];
                     ThreeDPoint third = points[triangle.ThirdPointIndex];
                     ThreeDPoint centroid = new ThreeDPoint(
-                        (first.X + second.X + third.X) / 3.0,
-                        (first.Y + second.Y + third.Y) / 3.0,
-                        (first.Z + second.Z + third.Z) / 3.0);
+                        AverageCoordinate(first.X, second.X, third.X),
+                        AverageCoordinate(first.Y, second.Y, third.Y),
+                        AverageCoordinate(first.Z, second.Z, third.Z));
                     ThreeDPoint normal = AverageDeclaredNormal(
                         declaredNormals[triangle.FirstPointIndex],
                         declaredNormals[triangle.SecondPointIndex],
@@ -135,6 +136,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         normal);
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 return DeterministicSurfaceModelPreparationResult.Completed(
                     samples);
             }
@@ -144,6 +146,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
             catch (Exception exception)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return DeterministicSurfaceModelPreparationResult.Failed(
                     "Deterministic surface-model preparation failed: "
                     + exception.Message);
@@ -154,8 +157,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             IReadOnlyList<ThreeDPoint> points,
             IReadOnlyList<SurfaceModelTriangleInput> triangles,
             IReadOnlyList<ThreeDPoint> declaredNormals,
-            DeterministicSurfaceModelPreparationOptions options)
+            DeterministicSurfaceModelPreparationOptions options,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (points == null || points.Count == 0)
             {
                 throw new ArgumentException(
@@ -183,6 +188,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             for (int pointIndex = 0; pointIndex < points.Count; pointIndex++)
             {
+                if ((pointIndex & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
                 if (points[pointIndex] == null
                     || !points[pointIndex].IsFinite
                     || declaredNormals[pointIndex] == null
@@ -197,6 +203,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                  triangleIndex < triangles.Count;
                  triangleIndex++)
             {
+                if ((triangleIndex & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
                 SurfaceModelTriangleInput triangle = triangles[triangleIndex];
                 if (triangle == null
                     || triangle.FirstPointIndex < 0
@@ -210,6 +217,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         "Surface-model triangles must reference existing zero-based points.");
                 }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        private static double AverageCoordinate(double first, double second, double third)
+        {
+            double mean = (first + second + third) / 3.0;
+            if (SurfaceMatchingContractValidation.IsFinite(mean)) return mean;
+
+            double scale = Math.Max(Math.Abs(first), Math.Max(Math.Abs(second), Math.Abs(third)));
+            mean = ((first / scale + second / scale + third / scale) / 3.0) * scale;
+            if (!SurfaceMatchingContractValidation.IsFinite(mean))
+                throw new ArgumentException("Selected triangle centroid must be finite.");
+            return mean;
         }
 
         private static int EvenIndex(

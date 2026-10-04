@@ -89,6 +89,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
             double width = maximumPosition - minimumPosition;
             double heightRange = maximumHeight - minimumHeight;
+            if (!IsFinite(width) || !IsFinite(heightRange))
+            {
+                throw new InvalidOperationException("Cross-section dimensions cannot be represented as finite values.");
+            }
             return new CrossSectionDimensionsInspectionResult(
                 width,
                 heightRange,

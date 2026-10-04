@@ -34,7 +34,19 @@ namespace OpenVisionLab.Vision3D.Inspection
             Tolerance = tolerance;
         }
 
+        internal PlaneFlatnessInspectionResult(
+            LeastSquaresHeightFieldPlaneFitResult referencePlane, int referenceSampleCount, int measurementSampleCount,
+            double minimumSignedDistance, double maximumSignedDistance, double flatness, double rootMeanSquareDistance,
+            ThreeDPoint minimumPoint, ThreeDPoint maximumPoint, ThreeDPoint minimumProjection, ThreeDPoint maximumProjection,
+            double tolerance, DatumPlaneFitResult datumPlaneFitEvidence)
+            : this(referencePlane, referenceSampleCount, measurementSampleCount, minimumSignedDistance, maximumSignedDistance,
+                flatness, rootMeanSquareDistance, minimumPoint, maximumPoint, minimumProjection, maximumProjection, tolerance)
+        {
+            DatumPlaneFitEvidence = datumPlaneFitEvidence;
+        }
+
         public LeastSquaresHeightFieldPlaneFitResult ReferencePlane { get; }
+        public DatumPlaneFitResult DatumPlaneFitEvidence { get; }
         public int ReferenceSampleCount { get; }
         public int MeasurementSampleCount { get; }
         public double MinimumSignedDistance { get; }
@@ -47,6 +59,7 @@ namespace OpenVisionLab.Vision3D.Inspection
         public ThreeDPoint MaximumProjection { get; }
         public double Tolerance { get; }
         public bool Passed => Flatness <= Tolerance;
+
     }
 
     /// <summary>
@@ -68,6 +81,22 @@ namespace OpenVisionLab.Vision3D.Inspection
                 throw new ArgumentException("Reference ROI must contain at least three finite samples.", nameof(referenceSamples));
             }
 
+            ValidateMeasurement(measurementSamples, tolerance);
+            LeastSquaresHeightFieldPlaneFitResult referencePlane = planeFitTool.Execute(referenceSamples);
+            return Measure(referencePlane, referenceSamples.Count, measurementSamples, tolerance, null);
+        }
+
+        public static PlaneFlatnessInspectionResult ExecuteWithDatum(
+            DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, double tolerance)
+        {
+            if (referenceDatum == null) throw new ArgumentNullException(nameof(referenceDatum));
+            if (!referenceDatum.Success) throw new InvalidOperationException("Reference datum was rejected: " + referenceDatum.FailureReason + ". " + referenceDatum.Message);
+            ValidateMeasurement(measurementSamples, tolerance);
+            return Measure(referenceDatum.Plane, referenceDatum.InlierSampleCount, measurementSamples, tolerance, referenceDatum);
+        }
+
+        private static void ValidateMeasurement(IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, double tolerance)
+        {
             if (measurementSamples == null || measurementSamples.Count < 3)
             {
                 throw new ArgumentException("Measurement surface must contain at least three finite samples.", nameof(measurementSamples));
@@ -78,7 +107,12 @@ namespace OpenVisionLab.Vision3D.Inspection
                 throw new ArgumentException("Flatness tolerance must be a positive finite value.", nameof(tolerance));
             }
 
-            LeastSquaresHeightFieldPlaneFitResult referencePlane = planeFitTool.Execute(referenceSamples);
+        }
+
+        private static PlaneFlatnessInspectionResult Measure(
+            LeastSquaresHeightFieldPlaneFitResult referencePlane, int referenceSampleCount,
+            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, double tolerance, DatumPlaneFitResult datumEvidence)
+        {
             double minimumDistance = double.PositiveInfinity;
             double maximumDistance = double.NegativeInfinity;
             double squaredDistanceSum = 0.0;
@@ -92,10 +126,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     throw new ArgumentException("Measurement surface contains a non-finite sample.", nameof(measurementSamples));
                 }
 
-                double distance = LeastSquaresHeightFieldPlaneFitTool.SignedDistance(
-                    sample.Position,
-                    referencePlane.Normal,
-                    referencePlane.Offset);
+                double distance = referencePlane.SignedDistance(sample.Position);
                 if (!IsFinite(distance))
                 {
                     throw new InvalidOperationException("Plane flatness calculation produced a non-finite distance.");
@@ -129,7 +160,7 @@ namespace OpenVisionLab.Vision3D.Inspection
             double rms = Math.Sqrt(squaredDistanceSum / measurementSamples.Count);
             return new PlaneFlatnessInspectionResult(
                 referencePlane,
-                referenceSamples.Count,
+                referenceSampleCount,
                 measurementSamples.Count,
                 minimumDistance,
                 maximumDistance,
@@ -139,7 +170,8 @@ namespace OpenVisionLab.Vision3D.Inspection
                 maximumPoint,
                 LeastSquaresHeightFieldPlaneFitTool.Project(minimumPoint, referencePlane.Normal, minimumDistance),
                 LeastSquaresHeightFieldPlaneFitTool.Project(maximumPoint, referencePlane.Normal, maximumDistance),
-                tolerance);
+                tolerance,
+                datumEvidence);
         }
 
         private static bool IsFinite(HeightFieldPlaneFitSample sample)

@@ -21,8 +21,8 @@ if (Test-Path -LiteralPath $outputRoot) {
 [System.IO.Directory]::CreateDirectory($outputRoot) | Out-Null
 
 $packageFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.nupkg' -File)
-if ($packageFiles.Count -ne 5) {
-    throw "Expected five source packages, found $($packageFiles.Count)."
+if ($packageFiles.Count -ne 6) {
+    throw "Expected six source packages, found $($packageFiles.Count)."
 }
 $verifier = Join-Path $PSScriptRoot 'Verify-PackageProvenance.ps1'
 $provenance = Get-Content -LiteralPath (

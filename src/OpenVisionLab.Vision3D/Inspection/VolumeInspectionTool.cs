@@ -35,7 +35,17 @@ namespace OpenVisionLab.Vision3D.Inspection
             Passed = passed;
         }
 
+        internal VolumeInspectionResult(
+            LeastSquaresHeightFieldPlaneFitResult referencePlane, int referenceSampleCount, int measurementSampleCount,
+            double aboveVolume, double belowVolume, double netVolume, double expectedNetVolume, double tolerance,
+            bool passed, DatumPlaneFitResult datumPlaneFitEvidence)
+            : this(referencePlane, referenceSampleCount, measurementSampleCount, aboveVolume, belowVolume, netVolume, expectedNetVolume, tolerance, passed)
+        {
+            DatumPlaneFitEvidence = datumPlaneFitEvidence;
+        }
+
         public LeastSquaresHeightFieldPlaneFitResult ReferencePlane { get; }
+        public DatumPlaneFitResult DatumPlaneFitEvidence { get; }
         public int ReferenceSampleCount { get; }
         public int MeasurementSampleCount { get; }
         public double AboveVolume { get; }
@@ -44,6 +54,7 @@ namespace OpenVisionLab.Vision3D.Inspection
         public double ExpectedNetVolume { get; }
         public double Tolerance { get; }
         public bool Passed { get; }
+
     }
 
     /// <summary>
@@ -71,6 +82,24 @@ namespace OpenVisionLab.Vision3D.Inspection
             Validate(options);
 
             LeastSquaresHeightFieldPlaneFitResult referencePlane = planeFit.Execute(referenceSamples);
+            return Measure(referencePlane, referenceSamples.Count, measurementSamples, options, null);
+        }
+
+        public static VolumeInspectionResult ExecuteWithDatum(
+            DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options)
+        {
+            if (referenceDatum == null) throw new ArgumentNullException(nameof(referenceDatum));
+            if (!referenceDatum.Success) throw new InvalidOperationException("Reference datum was rejected: " + referenceDatum.FailureReason + ". " + referenceDatum.Message);
+            if (measurementSamples == null || measurementSamples.Count < 1)
+                throw new ArgumentException("Measurement ROI requires at least one sample.", nameof(measurementSamples));
+            Validate(options);
+            return Measure(referenceDatum.Plane, referenceDatum.InlierSampleCount, measurementSamples, options, referenceDatum);
+        }
+
+        private static VolumeInspectionResult Measure(
+            LeastSquaresHeightFieldPlaneFitResult referencePlane, int referenceSampleCount,
+            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options, DatumPlaneFitResult datumEvidence)
+        {
             double aboveVolume = 0.0;
             double belowVolume = 0.0;
             foreach (HeightFieldPlaneFitSample sample in measurementSamples)
@@ -116,14 +145,15 @@ namespace OpenVisionLab.Vision3D.Inspection
 
             return new VolumeInspectionResult(
                 referencePlane,
-                referenceSamples.Count,
+                referenceSampleCount,
                 measurementSamples.Count,
                 aboveVolume,
                 belowVolume,
                 netVolume,
                 options.ExpectedNetVolume,
                 options.Tolerance,
-                Math.Abs(acceptanceDifference) <= options.Tolerance);
+                Math.Abs(acceptanceDifference) <= options.Tolerance,
+                datumEvidence);
         }
 
         private static void Validate(VolumeInspectionOptions options)

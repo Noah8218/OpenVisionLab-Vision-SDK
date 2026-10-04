@@ -103,72 +103,44 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             try
             {
-                Validate(samples, options);
-                List<ModelKeyPointInput> candidates =
-                    new List<ModelKeyPointInput>(samples);
-                candidates.Sort((first, second) =>
-                    first.SourceSampleOrder.CompareTo(
-                        second.SourceSampleOrder));
-
-                int targetCount = Math.Min(
-                    options.MaximumKeyPointCount,
-                    candidates.Count);
-                bool[] selected = new bool[candidates.Count];
-                double[] nearestDistances = new double[candidates.Count];
-                for (int index = 0; index < nearestDistances.Length; index++)
+                cancellationToken.ThrowIfCancellationRequested();
+                Validate(samples, options, cancellationToken);
+                List<ModelKeyPointInput> candidates = new List<ModelKeyPointInput>(samples.Count);
+                for (int index = 0; index < samples.Count; index++)
                 {
-                    nearestDistances[index] = double.PositiveInfinity;
+                    if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                    candidates.Add(samples[index]);
                 }
 
-                List<ExtractedModelKeyPoint> keyPoints =
-                    new List<ExtractedModelKeyPoint>(targetCount);
-                Select(
-                    candidates,
-                    selected,
-                    nearestDistances,
-                    0,
-                    0.0,
-                    keyPoints);
+                cancellationToken.ThrowIfCancellationRequested();
+                int comparisons = 0;
+                candidates.Sort((first, second) =>
+                {
+                    if ((comparisons++ & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                    return first.SourceSampleOrder.CompareTo(second.SourceSampleOrder);
+                });
+                cancellationToken.ThrowIfCancellationRequested();
 
-                while (keyPoints.Count < targetCount)
+                List<ThreeDPoint> positions = new List<ThreeDPoint>(candidates.Count);
+                for (int index = 0; index < candidates.Count; index++)
+                {
+                    if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                    positions.Add(candidates[index].Position);
+                }
+
+                List<KeyValuePair<int, double>> selected = SelectPositionIndices(
+                    positions, options.MaximumKeyPointCount, options.MinimumSeparation, cancellationToken);
+                List<ExtractedModelKeyPoint> keyPoints = new List<ExtractedModelKeyPoint>(selected.Count);
+                foreach (KeyValuePair<int, double> selection in selected)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    int bestIndex = -1;
-                    double bestDistance = -1.0;
-                    for (int index = 0;
-                         index < candidates.Count;
-                         index++)
-                    {
-                        if (selected[index])
-                        {
-                            continue;
-                        }
-
-                        double distance = nearestDistances[index];
-                        if (distance > bestDistance)
-                        {
-                            bestIndex = index;
-                            bestDistance = distance;
-                        }
-                    }
-
-                    if (bestIndex < 0
-                        || bestDistance <= options.MinimumSeparation)
-                    {
-                        break;
-                    }
-
-                    Select(
-                        candidates,
-                        selected,
-                        nearestDistances,
-                        bestIndex,
-                        bestDistance,
-                        keyPoints);
+                    ModelKeyPointInput sample = candidates[selection.Key];
+                    keyPoints.Add(new ExtractedModelKeyPoint(keyPoints.Count, sample.SourceSampleOrder,
+                        sample.Position, sample.Normal, selection.Value));
                 }
 
-                return DeterministicModelKeyPointExtractionResult.Completed(
-                    keyPoints);
+                cancellationToken.ThrowIfCancellationRequested();
+                return DeterministicModelKeyPointExtractionResult.Completed(keyPoints);
             }
             catch (OperationCanceledException)
             {
@@ -176,57 +148,69 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
             catch (Exception exception)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return DeterministicModelKeyPointExtractionResult.Failed(
                     "Deterministic model key-point extraction failed: "
                     + exception.Message);
             }
         }
 
-        private static void Select(
-            IReadOnlyList<ModelKeyPointInput> candidates,
-            bool[] selected,
-            double[] nearestDistances,
-            int selectedIndex,
-            double nearestSelectedDistance,
-            ICollection<ExtractedModelKeyPoint> keyPoints)
+        // Shared geometry selection: the caller validates positions and supplies a stable order.
+        internal static List<KeyValuePair<int, double>> SelectPositionIndices(
+            IReadOnlyList<ThreeDPoint> positions, int maximumCount, double minimumSeparation,
+            CancellationToken cancellationToken)
         {
-            ModelKeyPointInput selectedCandidate =
-                candidates[selectedIndex];
-            selected[selectedIndex] = true;
-            keyPoints.Add(new ExtractedModelKeyPoint(
-                keyPoints.Count,
-                selectedCandidate.SourceSampleOrder,
-                selectedCandidate.Position,
-                selectedCandidate.Normal,
-                nearestSelectedDistance));
-
-            for (int index = 0; index < candidates.Count; index++)
+            cancellationToken.ThrowIfCancellationRequested();
+            int targetCount = Math.Min(maximumCount, positions.Count);
+            List<KeyValuePair<int, double>> result = new List<KeyValuePair<int, double>>(targetCount);
+            if (targetCount == 0) return result;
+            bool[] selected = new bool[positions.Count];
+            double[] nearest = new double[positions.Count];
+            for (int index = 0; index < nearest.Length; index++)
             {
-                if (selected[index])
-                {
-                    continue;
-                }
-
-                double distance = Distance(
-                    selectedCandidate.Position,
-                    candidates[index].Position);
-                if (!SurfaceMatchingContractValidation.IsFinite(distance))
-                {
-                    throw new ArgumentException(
-                        "Model key-point distance must be finite.");
-                }
-
-                if (distance < nearestDistances[index])
-                {
-                    nearestDistances[index] = distance;
-                }
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                nearest[index] = double.PositiveInfinity;
             }
+
+            int nextIndex = 0;
+            double nextDistance = 0;
+            while (result.Count < targetCount)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                selected[nextIndex] = true;
+                result.Add(new KeyValuePair<int, double>(nextIndex, nextDistance));
+                int bestIndex = -1;
+                double bestDistance = -1;
+                for (int index = 0; index < positions.Count; index++)
+                {
+                    if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                    if (selected[index]) continue;
+                    double distance = Distance(positions[nextIndex], positions[index]);
+                    if (!SurfaceMatchingContractValidation.IsFinite(distance))
+                        throw new ArgumentException("Model key-point distance must be finite.");
+                    if (distance < nearest[index]) nearest[index] = distance;
+                    if (nearest[index] > bestDistance)
+                    {
+                        bestIndex = index;
+                        bestDistance = nearest[index];
+                    }
+                }
+
+                if (bestIndex < 0 || bestDistance <= minimumSeparation) break;
+                nextIndex = bestIndex;
+                nextDistance = bestDistance;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         private static void Validate(
             IReadOnlyList<ModelKeyPointInput> samples,
-            DeterministicModelKeyPointExtractionOptions options)
+            DeterministicModelKeyPointExtractionOptions options,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (samples == null || samples.Count == 0)
             {
                 throw new ArgumentException(
@@ -246,6 +230,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             HashSet<int> sourceOrders = new HashSet<int>();
             for (int index = 0; index < samples.Count; index++)
             {
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
                 ModelKeyPointInput sample = samples[index];
                 if (sample == null
                     || sample.SourceSampleOrder < 0
@@ -260,6 +245,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         "Model key-point samples require unique non-negative orders, finite positions, and unit normals.");
                 }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         private static bool IsUnit(ThreeDPoint value)

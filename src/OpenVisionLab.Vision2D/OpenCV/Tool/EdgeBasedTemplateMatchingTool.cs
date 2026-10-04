@@ -1,9 +1,11 @@
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenVisionLab.Vision2D.Property;
@@ -20,6 +22,7 @@ namespace OpenVisionLab.Vision2D.Tool
         private const int PositionRefineSeedCount = 3;
         private const int ParallelModelThreshold = 2;
         private const int ParallelPositionThreshold = 4096;
+        private const int MinimumCudaGridPositions = 32768;
         private const int HybridCandidateGridColumns = 4;
         private const int HybridCandidateGridRows = 4;
         private const int HybridCandidateGridTopK = 2;
@@ -46,6 +49,8 @@ namespace OpenVisionLab.Vision2D.Tool
         private const double ModelScaleSearchCoverageWarningThreshold = 0.35D;
         private const int ModelPyramidMaxDiagnosticLevels = 6;
         private const int ModelPyramidMinUsableDimension = 16;
+        private readonly VisionComputeSession computeSession;
+        private ComputeExecutionEvidence computeEvidence;
         private readonly EdgeTemplateModelStore modelStore;
         private readonly EdgeCandidateSearch candidateSearch;
         private readonly EdgeHybridCandidateSearch hybridSearch;
@@ -57,11 +62,28 @@ namespace OpenVisionLab.Vision2D.Tool
         private string lastMatchingMessage = "Edge based template matching found no result.";
         private CancellationToken CurrentCancellationToken => ExecutionCancellationToken;
 
+        internal const double DefaultPoseMatchMinScoreMargin = 0.03D;
+        internal const double DefaultPoseMatchMinAngleDifference = 5D;
+        internal const double DefaultPoseMatchMinRelativeScaleDifference = 0.05D;
+
+        public bool UsePoseUniquenessValidation { get; set; }
+        public double PoseMatchMinScoreMargin { get; set; } = DefaultPoseMatchMinScoreMargin;
+        public double PoseMatchMinAngleDifferenceDegrees { get; set; } = DefaultPoseMatchMinAngleDifference;
+        public double PoseMatchMinRelativeScaleDifference { get; set; } = DefaultPoseMatchMinRelativeScaleDifference;
+        internal const int DefaultPoseRefinementMaximumIterations = 40;
+        internal const double DefaultPoseRefinementEpsilon = 0.000001D;
+        public bool UsePoseRefinement { get; set; }
+        public int PoseRefinementMaximumIterations { get; set; } = DefaultPoseRefinementMaximumIterations;
+        public double PoseRefinementEpsilon { get; set; } = DefaultPoseRefinementEpsilon;
         public bool CollectPhaseTimings { get; set; }
         public IReadOnlyDictionary<string, double> LastPhaseElapsedMs => phaseElapsedMs;
 
-        public EdgeBasedTemplateMatchingTool()
+        public EdgeBasedTemplateMatchingTool() : this(null) { }
+
+        /// <summary>Borrows a host-owned session. Disposing the Tool does not dispose the session.</summary>
+        public EdgeBasedTemplateMatchingTool(VisionComputeSession computeSession)
         {
+            this.computeSession = computeSession;
             modelStore = new EdgeTemplateModelStore(this);
             candidateSearch = new EdgeCandidateSearch(this);
             hybridSearch = new EdgeHybridCandidateSearch(this);
@@ -81,6 +103,81 @@ namespace OpenVisionLab.Vision2D.Tool
             imageTemplate = modelStore.GetTemplateForRun().Clone();
         }
 
+        /// <summary>Explicitly prepares an immutable base-scale model without executing an inspection. Calls on one Tool must be serialized.</summary>
+        public EdgeTemplateModelArtifact PrepareLearnedModel(string sourceId, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            EdgeTemplateModelArtifactCodec.ValidateText(sourceId, nameof(sourceId));
+            ValidateLearningConfiguration();
+            Mat template = GetTemplateForRun();
+            if (OpenCvHelper.IsImageEmpty(template) || template.Depth() != MatType.CV_8U
+                || (template.Channels() != 1 && template.Channels() != 3 && template.Channels() != 4)
+                || (long)template.Width * template.Height > EdgeTemplateModelArtifactCodec.MaximumPixelCount)
+                throw new InvalidOperationException("Model preparation requires a bounded nonempty 8-bit gray, BGR or BGRA template.");
+            TemplateModelCache cache = modelStore.GetTemplateModelCache(cancellationToken);
+            EdgeTemplateModel model = cache.Model;
+            EdgeTemplateModelPoint[] points = new EdgeTemplateModelPoint[model.Points.Count];
+            for (int i = 0; i < points.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                TemplateEdgePoint point = model.Points[i];
+                points[i] = new EdgeTemplateModelPoint(point.X, point.Y, point.UnitDx, point.UnitDy, point.InvMagnitude);
+            }
+            return new EdgeTemplateModelArtifact(sourceId, modelStore.CreateLearningParameters(), model.Width, model.Height,
+                template.Channels(), model.Center.X, model.Center.Y, model.RawPointCount, points,
+                CopyRaster(template, cancellationToken), CopyRaster(cache.PreparedTemplate, cancellationToken), cancellationToken);
+        }
+
+        /// <summary>Atomically restores learned base edges into owned native images without running matching. Non-base scale variants remain lazy.</summary>
+        public void SetLearnedModel(EdgeTemplateModelArtifact artifact, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (artifact == null) throw new ArgumentNullException(nameof(artifact));
+            ValidateLearningConfiguration();
+            if (!string.Equals(artifact.LearningParameters, modelStore.CreateLearningParameters(), StringComparison.Ordinal))
+                throw new ArgumentException("Learned edge model parameters differ from the Tool learning configuration.", nameof(artifact));
+            modelStore.Restore(artifact, cancellationToken);
+        }
+
+        private void ValidateLearningConfiguration()
+        {
+            if (property == null) throw new InvalidOperationException("Set the learning configuration before preparing or restoring a model.");
+            if (!IsFinite(property.MIN_GRADIENT_MAGNITUDE) || property.MIN_GRADIENT_MAGNITUDE < 0D
+                || !IsFinite(property.THRESHOLD) || !IsFinite(property.ADAPTIVE_THRESHOLD)
+                || property.MAX_TEMPLATE_POINTS < 1 || property.MAX_TEMPLATE_POINTS > EdgeTemplateModelArtifactCodec.MaximumPointCount
+                || !TryValidateAdaptiveThreshold(property, VisionToolErrorCode.MatchingInvalidAdaptiveBlockSize, out _, out _))
+                throw new ArgumentException("Learned model configuration requires finite learning values, a bounded positive point count and a valid active adaptive block size.");
+        }
+
+        private static byte[] CopyRaster(Mat image, CancellationToken cancellationToken)
+        {
+            int rowLength = checked(image.Width * image.Channels());
+            byte[] bytes = new byte[checked(rowLength * image.Height)];
+            for (int row = 0; row < image.Height; row++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Marshal.Copy(image.Ptr(row), bytes, row * rowLength, rowLength);
+            }
+            return bytes;
+        }
+
+        private static Mat RestoreRaster(int width, int height, int channels, byte[] bytes, CancellationToken cancellationToken)
+        {
+            Mat image = new Mat(height, width, MatType.CV_8UC(channels));
+            try
+            {
+                int rowLength = checked(width * channels);
+                for (int row = 0; row < height; row++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Marshal.Copy(bytes, row * rowLength, image.Ptr(row), rowLength);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                return image;
+            }
+            catch { image.Dispose(); throw; }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -93,12 +190,25 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override VisionToolResult Execute(Mat source)
         {
+            computeEvidence = null;
+            ResetCandidateDiagnostics();
             return AttachDiagnosticEvidence(base.Execute(source), CancellationToken.None);
         }
 
         public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
         {
-            return AttachDiagnosticEvidence(ExecuteWithCancellation(source, cancellationToken), cancellationToken);
+            computeEvidence = null;
+            ResetCandidateDiagnostics();
+            try
+            {
+                return AttachDiagnosticEvidence(ExecuteWithCancellation(source, cancellationToken), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                results.Clear();
+                computeEvidence = null;
+                throw;
+            }
         }
 
         private VisionToolResult AttachDiagnosticEvidence(VisionToolResult result, CancellationToken cancellationToken)
@@ -109,6 +219,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 if (result != null)
                 {
                     result.EdgeBasedMatchingDiagnostics = CreateDiagnosticEvidence(result);
+                    result.ComputeDiagnostics = computeEvidence;
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -137,10 +248,19 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            if (property.SCORE_MIN < -1 || property.SCORE_MIN > 1)
+            if (!IsFinite(property.SCORE_MIN) || property.SCORE_MIN < -1 || property.SCORE_MIN > 1)
             {
+                results.Clear();
                 errorCode = VisionToolErrorCode.InvalidParameter;
-                message = $"Edge based matching SCORE_MIN must be between -1 and 1. SCORE_MIN={property.SCORE_MIN}.";
+                message = $"Edge based matching SCORE_MIN must be finite and between -1 and 1. SCORE_MIN={property.SCORE_MIN}.";
+                return false;
+            }
+
+            if (!IsFinite(property.MIN_GRADIENT_MAGNITUDE) || property.MIN_GRADIENT_MAGNITUDE < 0D)
+            {
+                results.Clear();
+                errorCode = VisionToolErrorCode.InvalidParameter;
+                message = $"Edge based matching MIN_GRADIENT_MAGNITUDE must be finite and nonnegative. MIN_GRADIENT_MAGNITUDE={property.MIN_GRADIENT_MAGNITUDE}.";
                 return false;
             }
 
@@ -173,6 +293,36 @@ namespace OpenVisionLab.Vision2D.Tool
             {
                 errorCode = VisionToolErrorCode.InvalidParameter;
                 message = $"Unique edge matching score margin must be between 0 and 1. Margin={property.UNIQUE_MATCH_MIN_SCORE_MARGIN}.";
+                return false;
+            }
+
+            if (UsePoseUniquenessValidation
+                && (property.NUM_MATCH != 1 || property.USE_MULTI_ROI
+                    || !IsFinite(PoseMatchMinScoreMargin) || PoseMatchMinScoreMargin < 0D || PoseMatchMinScoreMargin > 1D
+                    || !IsFinite(PoseMatchMinAngleDifferenceDegrees) || PoseMatchMinAngleDifferenceDegrees <= 0D || PoseMatchMinAngleDifferenceDegrees > 180D
+                    || !IsFinite(PoseMatchMinRelativeScaleDifference) || PoseMatchMinRelativeScaleDifference <= 0D
+                    || !IsFinite(property.SCORE_MIN)
+                    || (property.USE_FIND_ANGLE && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE))
+                    || (property.USE_FIND_ANGLE && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
+                        && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.COARSE_ANGLE_STEP))
+                    || (property.USE_FIND_SCALE && !IsRepresentablePoseGrid(property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP))
+                    || (property.USE_HYBRID_VERIFY && !IsFinite(property.HYBRID_VERIFY_IMAGE_WEIGHT))))
+            {
+                errorCode = VisionToolErrorCode.InvalidParameter;
+                message = "Pose uniqueness validation requires one result, one search region, a finite score margin in 0..1, angle difference in (0,180], positive relative scale difference, finite score settings and active grids representable at six-decimal model precision with Int32 indices.";
+                return false;
+            }
+
+            if (UsePoseRefinement
+                && (PoseRefinementMaximumIterations < 1 || PoseRefinementMaximumIterations > 100
+                    || !IsFinite(PoseRefinementEpsilon) || PoseRefinementEpsilon <= 0D
+                    || (property.USE_FIND_ANGLE && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE))
+                    || (property.USE_FIND_ANGLE && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
+                        && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.COARSE_ANGLE_STEP))
+                    || (property.USE_FIND_SCALE && !IsRepresentablePoseGrid(property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP))))
+            {
+                errorCode = VisionToolErrorCode.InvalidParameter;
+                message = "Pose refinement requires 1..100 iterations, positive finite epsilon and representable active pose grids.";
                 return false;
             }
 
@@ -281,6 +431,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
+            computeEvidence = computeSession?.DescribeCpuExecution(CurrentCancellationToken);
             errorCode = VisionToolErrorCode.None;
             message = string.Empty;
             return true;
@@ -428,7 +579,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
                         MatchCandidate candidate = imageProposal;
                         List<MatchCandidate> candidateSeeds = new List<MatchCandidate>();
-                        bool useFastPath = TryUseHybridProposalFastPath(imageProposal, localMatchCount);
+                        bool useFastPath = !UsePoseRefinement && TryUseHybridProposalFastPath(imageProposal, localMatchCount);
                         if (useFastPath)
                         {
                             candidateDiagnostics.FastPathCount++;
@@ -451,6 +602,12 @@ namespace OpenVisionLab.Vision2D.Tool
                                 out candidateSeeds);
                             StopPhaseTiming("SearchEdgeCandidate", searchStart);
                             RecordEdgeSearchDiagnostics(candidateSeeds, candidate);
+                            if (UsePoseRefinement)
+                            {
+                                long refineStart = StartPhaseTiming();
+                                candidate = candidateSearch.RefineCandidates(source, gradients, modelCache, candidateSeeds, candidate, imageProposal);
+                                StopPhaseTiming("PoseRefinement", refineStart);
+                            }
                             long verifyStart = StartPhaseTiming();
                             candidate = ApplyHybridVerification(source, template, candidate, candidateSeeds, imageProposal);
                             StopPhaseTiming("HybridVerify", verifyStart);
@@ -483,7 +640,19 @@ namespace OpenVisionLab.Vision2D.Tool
                             break;
                         }
 
-                        if (!TryAcceptUniqueMatch(candidate))
+                        if (UsePoseUniquenessValidation)
+                        {
+                            long poseStart = StartPhaseTiming();
+                            double distanceThreshold = Math.Max(8D, Math.Min(template.Width, template.Height) * CandidateAmbiguityDistanceFactor);
+                            List<MatchCandidate> poseCandidates = candidateSearch.FindPoseAlternatives(gradients, modelCache, candidate, distanceThreshold);
+                            poseCandidates.Insert(0, candidate);
+                            if (UsePoseRefinement) candidateSearch.RefineCandidates(source, gradients, modelCache, poseCandidates, candidate, null);
+                            if (ShouldUseHybridVerify()) hybridSearch.VerifyCandidateScores(source, template, poseCandidates);
+                            matchDecision.EvaluatePoseMatch(poseCandidates, roi, useRoi, distanceThreshold);
+                            StopPhaseTiming("PoseUniqueness", poseStart);
+                        }
+
+                        if (!TryAcceptUniqueMatch(candidate) || !matchDecision.TryAcceptPoseMatch())
                         {
                             break;
                         }
@@ -514,7 +683,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<RectangleF> suppressedBounds,
             int localMatchCount)
         {
-            if (!ShouldUseScaleSeedMultiMatch(localMatchCount)
+            if (UsePoseRefinement || !ShouldUseScaleSeedMultiMatch(localMatchCount)
                 || searchModels == null
                 || searchModels.Count == 0)
             {
@@ -692,7 +861,13 @@ namespace OpenVisionLab.Vision2D.Tool
                 return;
             }
 
-            double elapsedMs = (Stopwatch.GetTimestamp() - startTimestamp) * 1000D / Stopwatch.Frequency;
+            AddPhaseTiming(phaseName, Stopwatch.GetTimestamp() - startTimestamp);
+        }
+
+        private void AddPhaseTiming(string phaseName, long elapsedTicks)
+        {
+            if (!CollectPhaseTimings) return;
+            double elapsedMs = elapsedTicks * 1000D / Stopwatch.Frequency;
             lock (phaseElapsedSync)
             {
                 if (phaseElapsedMs.TryGetValue(phaseName, out double currentMs))
@@ -713,6 +888,7 @@ namespace OpenVisionLab.Vision2D.Tool
             AddSearchSpaceDiagnostics(metrics, modelStore.Current?.Model);
             AddCandidateDiagnostics(metrics, candidateDiagnostics, property?.USE_FIND_SCALE == true);
             AddUniqueMatchDiagnostics(metrics);
+            AddPoseMatchDiagnostics(metrics);
             AddGlobalPolarityDiagnostics(metrics);
             lock (phaseElapsedSync)
             {
@@ -757,6 +933,35 @@ namespace OpenVisionLab.Vision2D.Tool
                 ? property.UNIQUE_MATCH_MIN_SCORE_MARGIN
                 : 0D;
             metrics["UniqueMatch.DistanceThresholdPx"] = NormalizeDiagnosticScore(candidateDiagnostics.UniqueMatchDistanceThreshold);
+        }
+
+        private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
+
+        private static bool IsRepresentablePoseGrid(double minimum, double maximum, double step) =>
+            IsFinite(minimum) && IsFinite(maximum) && IsFinite(step) && Math.Round(step, 6) > 0D
+            && Math.Abs(minimum / step) < int.MaxValue && Math.Abs(maximum / step) < int.MaxValue;
+
+        private void AddPoseMatchDiagnostics(IDictionary<string, double> metrics)
+        {
+            metrics["PoseRefinement.Enabled"] = UsePoseRefinement ? 1D : 0D;
+            metrics["PoseRefinement.AttemptCount"] = candidateDiagnostics.PoseRefinementAttemptCount;
+            metrics["PoseRefinement.AcceptedCount"] = candidateDiagnostics.PoseRefinementAcceptedCount;
+            metrics["PoseRefinement.NativeFailureCount"] = candidateDiagnostics.PoseRefinementNativeFailureCount;
+            metrics["PoseMatch.Enabled"] = UsePoseUniquenessValidation ? 1D : 0D;
+            metrics["PoseMatch.State"] = (double)candidateDiagnostics.PoseMatchState;
+            metrics["PoseMatch.CheckedModelCount"] = candidateDiagnostics.PoseMatchCheckedModelCount;
+            metrics["PoseMatch.EligibleAlternativeCount"] = candidateDiagnostics.PoseMatchEligibleAlternativeCount;
+            metrics["PoseMatch.PlausibleAlternativeCount"] = candidateDiagnostics.PoseMatchPlausibleAlternativeCount;
+            metrics["PoseMatch.UnverifiedCandidateCount"] = candidateDiagnostics.PoseMatchUnverifiedCandidateCount;
+            metrics["PoseMatch.SelectedScore"] = NormalizeDiagnosticScore(candidateDiagnostics.PoseMatchSelectedScore);
+            metrics["PoseMatch.StrongestAlternativeScore"] = NormalizeDiagnosticScore(candidateDiagnostics.PoseMatchStrongestAlternativeScore);
+            metrics["PoseMatch.ScoreMargin"] = NormalizeDiagnosticScore(candidateDiagnostics.PoseMatchScoreMargin);
+            metrics["PoseMatch.AngleDifferenceDegrees"] = candidateDiagnostics.PoseMatchAngleDifference;
+            metrics["PoseMatch.RelativeScaleDifference"] = candidateDiagnostics.PoseMatchRelativeScaleDifference;
+            metrics["PoseMatch.DistanceThresholdPx"] = candidateDiagnostics.PoseMatchDistanceThreshold;
+            metrics["PoseMatch.MinimumScoreMargin"] = UsePoseUniquenessValidation ? NormalizeDiagnosticScore(PoseMatchMinScoreMargin) : 0D;
+            metrics["PoseMatch.MinimumAngleDifferenceDegrees"] = UsePoseUniquenessValidation ? NormalizeDiagnosticScore(PoseMatchMinAngleDifferenceDegrees) : 0D;
+            metrics["PoseMatch.MinimumRelativeScaleDifference"] = UsePoseUniquenessValidation ? NormalizeDiagnosticScore(PoseMatchMinRelativeScaleDifference) : 0D;
         }
 
         private static void AddCandidateDiagnostics(
@@ -1143,6 +1348,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public void RecordUniqueMatchNoMatch(MatchCandidate candidate)
         {
+            if (owner.UsePoseUniquenessValidation) candidateDiagnostics.PoseMatchState = UniqueMatchState.NoMatch;
             if (!property.USE_UNIQUE_MATCH_VALIDATION)
             {
                 return;
@@ -1152,6 +1358,60 @@ namespace OpenVisionLab.Vision2D.Tool
             candidateDiagnostics.UniqueMatchSelectedScore = candidate?.Score ?? 0D;
             candidateDiagnostics.UniqueMatchStrongestAlternativeScore = 0D;
             candidateDiagnostics.UniqueMatchScoreMargin = 0D;
+        }
+
+        public void EvaluatePoseMatch(List<MatchCandidate> candidates, Rect roi, bool useRoi, double distanceThreshold)
+        {
+            MatchCandidate selected = candidates[0];
+            double selectedScore = ShouldUseHybridVerify() && !IsFinite(selected.HybridScore)
+                ? double.NaN : GetUniqueMatchSelectionScore(selected);
+            MatchCandidate strongest = null;
+            double strongestScore = double.NegativeInfinity;
+            int plausible = 0;
+            int unverified = ShouldUseHybridVerify() && !IsFinite(selected.HybridScore) ? 1 : 0;
+            foreach (MatchCandidate candidate in candidates.Skip(1))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (ShouldUseHybridVerify() && !IsFinite(candidate.HybridScore))
+                {
+                    unverified++;
+                    continue;
+                }
+
+                double score = GetUniqueMatchSelectionScore(candidate);
+                if (score > strongestScore)
+                {
+                    strongest = candidate;
+                    strongestScore = score;
+                }
+                if (selectedScore - score < owner.PoseMatchMinScoreMargin) plausible++;
+            }
+
+            candidateDiagnostics.PoseMatchState = plausible > 0 || unverified > 0 ? UniqueMatchState.Ambiguous : UniqueMatchState.Success;
+            candidateDiagnostics.PoseMatchEligibleAlternativeCount = candidates.Count - 1;
+            candidateDiagnostics.PoseMatchPlausibleAlternativeCount = plausible;
+            candidateDiagnostics.PoseMatchUnverifiedCandidateCount = unverified;
+            candidateDiagnostics.PoseMatchSelectedScore = selectedScore;
+            candidateDiagnostics.PoseMatchStrongestAlternativeScore = strongest == null ? 0D : strongestScore;
+            candidateDiagnostics.PoseMatchScoreMargin = selectedScore - candidateDiagnostics.PoseMatchStrongestAlternativeScore;
+            candidateDiagnostics.PoseMatchDistanceThreshold = distanceThreshold;
+            candidateDiagnostics.StrongestPoseAlternative = CreateCandidateDiagnostic(strongest, roi, useRoi);
+            candidateDiagnostics.PoseMatchAngleDifference = strongest == null ? 0D : GetPoseAngleDifference(selected.Angle, strongest.Angle);
+            candidateDiagnostics.PoseMatchRelativeScaleDifference = strongest == null ? 0D : GetPoseRelativeScaleDifference(selected.Scale, strongest.Scale);
+        }
+
+        public bool TryAcceptPoseMatch()
+        {
+            if (!owner.UsePoseUniquenessValidation || candidateDiagnostics.PoseMatchState != UniqueMatchState.Ambiguous) return true;
+            string reason = candidateDiagnostics.PoseMatchUnverifiedCandidateCount > 0
+                ? "Pose uniqueness could not verify all eligible candidates." : "Edge based matching rejected an ambiguous pose.";
+            SetMatchingFailure(VisionToolErrorCode.MatchingAmbiguous,
+                reason + $" BestScore={NormalizeDiagnosticScore(candidateDiagnostics.PoseMatchSelectedScore):0.######}, "
+                + $"AlternativeScore={candidateDiagnostics.PoseMatchStrongestAlternativeScore:0.######}, ScoreMargin={candidateDiagnostics.PoseMatchScoreMargin:0.######}, "
+                + $"RequiredMargin={owner.PoseMatchMinScoreMargin:0.######}, AngleDifference={candidateDiagnostics.PoseMatchAngleDifference:0.######}, "
+                + $"RelativeScaleDifference={candidateDiagnostics.PoseMatchRelativeScaleDifference:0.######}, PlausibleAlternatives={candidateDiagnostics.PoseMatchPlausibleAlternativeCount}, "
+                + $"UnverifiedCandidates={candidateDiagnostics.PoseMatchUnverifiedCandidateCount}. " + FormatMatchingOptions());
+            return false;
         }
 
         public bool TryAcceptUniqueMatch(MatchCandidate candidate)
@@ -1460,9 +1720,9 @@ namespace OpenVisionLab.Vision2D.Tool
             return candidateSearch.ShouldUseCoarseToFineAngleSearch();
         }
 
-        private static bool ShouldTrackCandidateSeed(List<MatchCandidate> seeds, double score, int capacity)
+        private static bool ShouldTrackCandidateSeed(List<MatchCandidate> seeds, double score, int capacity, double centerX, double centerY)
         {
-            return EdgeCandidateSearch.ShouldTrackCandidateSeed(seeds, score, capacity);
+            return EdgeCandidateSearch.ShouldTrackCandidateSeed(seeds, score, capacity, centerX, centerY);
         }
 
         private static bool IsBetterCandidate(MatchCandidate candidate, MatchCandidate currentBest)
@@ -1781,6 +2041,21 @@ namespace OpenVisionLab.Vision2D.Tool
 
             CandidateScoreContext scoreContext = CreateScoreContext(gradients, model);
             step = Math.Max(1, step);
+            if (owner.computeSession?.RequestedCuda == true)
+            {
+                // Tracking only changes this list, never the candidate objects from earlier models.
+                List<MatchCandidate> staged = new List<MatchCandidate>(candidates);
+                if (TryScoreGrid(scoreContext, minCenterX, minCenterY, maxCenterX, maxCenterY, step, (x, y, score) =>
+                {
+                    if (ShouldTrackCandidateSeed(staged, score, capacity, x, y))
+                        TrackCandidateSeed(staged, CreateMatchCandidate(model, x, y, CreateLocalBounds(x, y, model), score), capacity);
+                }))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    candidates.Clear(); candidates.AddRange(staged);
+                    return;
+                }
+            }
             for (int y = minCenterY; y <= maxCenterY; y += step)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1792,7 +2067,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     }
 
                     double score = ScoreCandidate(scoreContext, x, y);
-                    if (!ShouldTrackCandidateSeed(candidates, score, capacity))
+                    if (!ShouldTrackCandidateSeed(candidates, score, capacity, x, y))
                     {
                         continue;
                     }
@@ -1803,13 +2078,39 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
+        public List<MatchCandidate> FindPoseAlternatives(GradientImage gradients, TemplateModelCache modelCache, MatchCandidate selected, double distanceThreshold)
+        {
+            // Every configured pose is revisited locally; global Top-K and coarse/pyramid proposals cannot hide it.
+            List<RotatedEdgeTemplateModel> models = GetSearchModels(modelCache, property.FIND_ANGLE);
+            candidateDiagnostics.PoseMatchCheckedModelCount = models.Count;
+            List<MatchCandidate> alternatives = new List<MatchCandidate>();
+            foreach (RotatedEdgeTemplateModel model in models)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (GetPoseAngleDifference(selected.Angle, model.Angle) < owner.PoseMatchMinAngleDifferenceDegrees
+                    && GetPoseRelativeScaleDifference(selected.Scale, model.Scale) < owner.PoseMatchMinRelativeScaleDifference)
+                {
+                    continue;
+                }
+
+                int centerX = (int)Math.Round(selected.TemplateCenter.X - model.TemplateCenterOffsetX);
+                int centerY = (int)Math.Round(selected.TemplateCenter.Y - model.TemplateCenterOffsetY);
+                MatchCandidate alternative = FindBestCandidateNear(gradients, model, null, centerX, centerY,
+                    (int)Math.Ceiling(distanceThreshold), selected.TemplateCenter, distanceThreshold);
+                if (alternative != null && alternative.Score >= property.SCORE_MIN) alternatives.Add(alternative);
+            }
+            return alternatives;
+        }
+
         private MatchCandidate FindBestCandidateNear(
             GradientImage gradients,
             RotatedEdgeTemplateModel model,
             List<RectangleF> suppressedBounds,
             int centerX,
             int centerY,
-            int radius)
+            int radius,
+            Point2d? referenceTemplateCenter = null,
+            double maxCenterDistance = 0D)
         {
             int minCenterX = Math.Max(-model.MinOffsetX, centerX - radius);
             int minCenterY = Math.Max(-model.MinOffsetY, centerY - radius);
@@ -1831,6 +2132,13 @@ namespace OpenVisionLab.Vision2D.Tool
                     if ((x & 31) == 0)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    if (referenceTemplateCenter.HasValue)
+                    {
+                        double dx = x + model.TemplateCenterOffsetX - referenceTemplateCenter.Value.X;
+                        double dy = y + model.TemplateCenterOffsetY - referenceTemplateCenter.Value.Y;
+                        if (dx * dx + dy * dy >= maxCenterDistance * maxCenterDistance) continue;
                     }
 
                     RectangleF bounds = CreateLocalBounds(x, y, model);
@@ -2099,8 +2407,18 @@ namespace OpenVisionLab.Vision2D.Tool
             bool useSpatialSeeds = ShouldUseHybridSpatialSeeds();
             bool hasSuppressedBounds = HasSuppressedBounds(suppressedBounds);
             CandidateScoreContext scoreContext = CreateScoreContext(gradients, model);
-            if (allowPositionParallel && ShouldUseParallelPositionSearch(minCenterX, minCenterY, maxCenterX, maxCenterY, step))
+            CandidateSearchState gpuState = null;
+            if (owner.computeSession?.RequestedCuda == true)
             {
+                CandidateSearchState staged = new CandidateSearchState(seedCapacity, useSpatialSeeds, minCenterX, minCenterY, maxCenterX, maxCenterY);
+                if (TryScoreGrid(scoreContext, minCenterX, minCenterY, maxCenterX, maxCenterY, step, (x, y, score) =>
+                {
+                    if (!hasSuppressedBounds || !IsSuppressed(CreateLocalBounds(x, y, model), suppressedBounds)) staged.Consider(model, x, y, score);
+                })) gpuState = staged;
+            }
+            if (gpuState == null && allowPositionParallel && ShouldUseParallelPositionSearch(minCenterX, minCenterY, maxCenterX, maxCenterY, step))
+            {
+                long cpuSearchStart = owner.StartPhaseTiming();
                 best = FindBestCandidateParallelPositions(
                     gradients,
                     model,
@@ -2116,6 +2434,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     hasSuppressedBounds,
                     out candidateSeeds,
                     cancellationToken);
+                owner.StopPhaseTiming("SearchCpuParallelPositions", cpuSearchStart);
                 if (usePositionRefine && best != null)
                 {
                     best = RefineBestCandidate(
@@ -2124,6 +2443,7 @@ namespace OpenVisionLab.Vision2D.Tool
                         scoreContext,
                         suppressedBounds,
                         candidateSeeds,
+                        best,
                         minCenterX,
                         minCenterY,
                         maxCenterX,
@@ -2136,10 +2456,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 return best;
             }
 
-            candidateSeeds = seedCapacity > 0
-                ? new List<MatchCandidate>(seedCapacity)
-                : null;
-            SpatialCandidateSeedTracker spatialSeeds = useSpatialSeeds
+            candidateSeeds = gpuState != null ? gpuState.CandidateSeeds : seedCapacity > 0 ? new List<MatchCandidate>(seedCapacity) : null;
+            SpatialCandidateSeedTracker spatialSeeds = gpuState == null && useSpatialSeeds
                 ? new SpatialCandidateSeedTracker(
                     minCenterX,
                     minCenterY,
@@ -2150,66 +2468,70 @@ namespace OpenVisionLab.Vision2D.Tool
                     HybridCandidateGridTopK)
                 : null;
 
-            for (int y = minCenterY; y <= maxCenterY; y += step)
+            if (gpuState == null)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                for (int x = minCenterX; x <= maxCenterX; x += step)
+                for (int y = minCenterY; y <= maxCenterY; y += step)
                 {
-                    if ((x & 31) == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    for (int x = minCenterX; x <= maxCenterX; x += step)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    RectangleF bounds = default;
-                    bool boundsCreated = false;
-                    if (hasSuppressedBounds)
-                    {
-                        bounds = CreateLocalBounds(x, y, model);
-                        boundsCreated = true;
-                        if (IsSuppressed(bounds, suppressedBounds))
+                        if ((x & 31) == 0)
                         {
-                            continue;
+                            cancellationToken.ThrowIfCancellationRequested();
                         }
-                    }
 
-                    double score = ScoreCandidate(scoreContext, x, y);
-                    MatchCandidate candidate = null;
-                    bool shouldTrackSeed = ShouldTrackCandidateSeed(candidateSeeds, score, seedCapacity);
-                    bool shouldTrackSpatialSeed = spatialSeeds?.ShouldTrack(x, y, score) ?? false;
-                    if (IsBetterScore(score, x, y, best))
-                    {
-                        candidate = CreateMatchCandidate(
-                            model,
-                            x,
-                            y,
-                            EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
-                            score);
-                        best = candidate;
-                    }
+                        RectangleF bounds = default;
+                        bool boundsCreated = false;
+                        if (hasSuppressedBounds)
+                        {
+                            bounds = CreateLocalBounds(x, y, model);
+                            boundsCreated = true;
+                            if (IsSuppressed(bounds, suppressedBounds))
+                            {
+                                continue;
+                            }
+                        }
 
-                    if (shouldTrackSeed)
-                    {
-                        candidate = candidate ?? CreateMatchCandidate(
-                            model,
-                            x,
-                            y,
-                            EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
-                            score);
-                        TrackCandidateSeed(candidateSeeds, candidate, seedCapacity);
-                    }
+                        double score = ScoreCandidate(scoreContext, x, y);
+                        MatchCandidate candidate = null;
+                        bool shouldTrackSeed = ShouldTrackCandidateSeed(candidateSeeds, score, seedCapacity, x, y);
+                        bool shouldTrackSpatialSeed = spatialSeeds?.ShouldTrack(x, y, score) ?? false;
+                        if (IsBetterScore(score, x, y, best))
+                        {
+                            candidate = CreateMatchCandidate(
+                                model,
+                                x,
+                                y,
+                                EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
+                                score);
+                            best = candidate;
+                        }
 
-                    if (shouldTrackSpatialSeed)
-                    {
-                        candidate = candidate ?? CreateMatchCandidate(
-                            model,
-                            x,
-                            y,
-                            EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
-                            score);
-                        spatialSeeds.Track(candidate);
+                        if (shouldTrackSeed)
+                        {
+                            candidate = candidate ?? CreateMatchCandidate(
+                                model,
+                                x,
+                                y,
+                                EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
+                                score);
+                            TrackCandidateSeed(candidateSeeds, candidate, seedCapacity);
+                        }
+
+                        if (shouldTrackSpatialSeed)
+                        {
+                            candidate = candidate ?? CreateMatchCandidate(
+                                model,
+                                x,
+                                y,
+                                EnsureBounds(model, x, y, ref bounds, ref boundsCreated),
+                                score);
+                            spatialSeeds.Track(candidate);
+                        }
                     }
                 }
             }
+            else best = gpuState.Best;
 
             if (usePositionRefine && best != null)
             {
@@ -2219,6 +2541,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     scoreContext,
                     suppressedBounds,
                     candidateSeeds,
+                    best,
                     minCenterX,
                     minCenterY,
                     maxCenterX,
@@ -2227,7 +2550,8 @@ namespace OpenVisionLab.Vision2D.Tool
                     cancellationToken);
             }
 
-            MergeCandidateSeeds(candidateSeeds, spatialSeeds?.GetCandidates(), seedCapacity);
+            if (gpuState != null) gpuState.CreateMergedCandidateSeeds();
+            else MergeCandidateSeeds(candidateSeeds, spatialSeeds?.GetCandidates(), seedCapacity);
             TrackCandidateSeed(candidateSeeds, best, seedCapacity);
             return best;
         }
@@ -2310,6 +2634,7 @@ namespace OpenVisionLab.Vision2D.Tool
             CandidateScoreContext scoreContext,
             List<RectangleF> suppressedBounds,
             List<MatchCandidate> coarseSeeds,
+            MatchCandidate coarseBest,
             int minCenterX,
             int minCenterY,
             int maxCenterX,
@@ -2322,7 +2647,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 return null;
             }
 
-            MatchCandidate best = coarseSeeds.OrderByDescending(seed => seed.Score).First();
+            MatchCandidate best = coarseSeeds.OrderByDescending(seed => seed.Score).ThenBy(seed => seed.Center.Y).ThenBy(seed => seed.Center.X).First();
+            // Parallel seed merge order must not replace the selected coarse winner at an exact tie.
+            if (coarseBest != null && (coarseBest.Score > best.Score || (coarseBest.Score == best.Score && IsBetterCandidate(coarseBest, best)))) best = coarseBest;
             bool hasSuppressedBounds = HasSuppressedBounds(suppressedBounds);
             foreach (MatchCandidate seed in coarseSeeds)
             {
@@ -2352,7 +2679,7 @@ namespace OpenVisionLab.Vision2D.Tool
                         }
 
                         double score = ScoreCandidate(scoreContext, x, y);
-                        if (score > best.Score)
+                        if (score > best.Score || (score == best.Score && IsBetterScore(score, x, y, best)))
                         {
                             best = CreateMatchCandidate(
                                 model,
@@ -2368,6 +2695,151 @@ namespace OpenVisionLab.Vision2D.Tool
             return best;
         }
 
+        public MatchCandidate RefineCandidates(Mat source, GradientImage gradients, TemplateModelCache modelCache,
+            List<MatchCandidate> candidates, MatchCandidate fallback, MatchCandidate imageProposal)
+        {
+            MatchCandidate best = null;
+            foreach (MatchCandidate candidate in candidates.Concat(new[] { fallback, imageProposal }))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (candidate == null) continue;
+                RefinePose(source, gradients, modelCache, candidate);
+                if (IsBetterCandidate(candidate, best)) best = candidate;
+            }
+            return best;
+        }
+
+        private void RefinePose(Mat source, GradientImage gradients, TemplateModelCache modelCache, MatchCandidate candidate)
+        {
+            if (candidate.HasContinuousPoseScore) return;
+            bool plausible = candidate.Score >= property.SCORE_MIN;
+            EdgeTemplateModel model = modelCache.Model;
+            double signedScore = ScoreContinuousSigned(gradients, model, candidate.TemplateCenter, candidate.Angle, candidate.Scale);
+            SetContinuousPose(candidate, model, candidate.TemplateCenter, candidate.Angle, candidate.Scale, signedScore);
+            candidate.HasContinuousPoseScore = true;
+            candidate.ImageVerifyScore = candidate.DescriptorVerifyScore = candidate.HybridScore = double.NaN;
+            if (!plausible || source.Type() != MatType.CV_8UC1 || modelCache.PreparedTemplate.Type() != MatType.CV_8UC1) return;
+
+            double radius = Math.Sqrt((double)model.Width * model.Width + (double)model.Height * model.Height) * candidate.Scale / 2D
+                + Math.Max(4, property.SEARCH_STEP);
+            if (!IsFinite(radius)) return;
+            int left = (int)Math.Floor(Clamp(candidate.TemplateCenter.X - radius, 0D, source.Width));
+            int top = (int)Math.Floor(Clamp(candidate.TemplateCenter.Y - radius, 0D, source.Height));
+            int right = (int)Math.Ceiling(Clamp(candidate.TemplateCenter.X + radius, 0D, source.Width));
+            int bottom = (int)Math.Ceiling(Clamp(candidate.TemplateCenter.Y + radius, 0D, source.Height));
+            if (right <= left || bottom <= top) return;
+
+            using (Mat patch = new Mat(source, new Rect(left, top, right - left, bottom - top)))
+            using (Mat inverted = new Mat())
+            using (Mat warp = new Mat(2, 3, MatType.CV_32FC1))
+            {
+                double radians = candidate.Angle * Math.PI / 180D;
+                double a = candidate.Scale * Math.Cos(radians);
+                double b = candidate.Scale * Math.Sin(radians);
+                warp.Set(0, 0, (float)a);
+                warp.Set(0, 1, (float)b);
+                warp.Set(1, 0, (float)-b);
+                warp.Set(1, 1, (float)a);
+                warp.Set(0, 2, (float)(candidate.TemplateCenter.X - left - a * model.Width / 2D - b * model.Height / 2D));
+                warp.Set(1, 2, (float)(candidate.TemplateCenter.Y - top + b * model.Width / 2D - a * model.Height / 2D));
+                cancellationToken.ThrowIfCancellationRequested();
+                if (candidate.PolarityReversed) Cv2.BitwiseNot(patch, inverted);
+                candidateDiagnostics.PoseRefinementAttemptCount++;
+                try
+                {
+                    // ponytail: bounded native ECC is cooperative before/after each call; a cancellable optimizer needs a native seam.
+                    double correlation = Cv2.FindTransformECC(modelCache.PreparedTemplate, candidate.PolarityReversed ? inverted : patch,
+                        warp, MotionTypes.Affine, new TermCriteria(CriteriaType.Count | CriteriaType.Eps, owner.PoseRefinementMaximumIterations, owner.PoseRefinementEpsilon));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!IsFinite(correlation)) return;
+                }
+                catch (OpenCVException)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    candidateDiagnostics.PoseRefinementNativeFailureCount++;
+                    return;
+                }
+                a = ((double)warp.At<float>(0, 0) + warp.At<float>(1, 1)) / 2D;
+                b = ((double)warp.At<float>(0, 1) - warp.At<float>(1, 0)) / 2D;
+                double angle = Math.Atan2(b, a) * 180D / Math.PI;
+                angle += 360D * Math.Round((candidate.Angle - angle) / 360D);
+                double scale = Math.Sqrt(a * a + b * b);
+                if (!property.USE_FIND_ANGLE) angle = 0D;
+                if (!property.USE_FIND_SCALE) scale = 1D;
+                Point2d center = new Point2d(
+                    warp.At<float>(0, 0) * model.Width / 2D + warp.At<float>(0, 1) * model.Height / 2D + warp.At<float>(0, 2) + left,
+                    warp.At<float>(1, 0) * model.Width / 2D + warp.At<float>(1, 1) * model.Height / 2D + warp.At<float>(1, 2) + top);
+                if (!IsFinite(angle) || !IsFinite(scale) || scale <= 0D || !IsFinite(center.X) || !IsFinite(center.Y)
+                    || (property.USE_FIND_ANGLE && (angle < property.FIND_ANGLE_MIN || angle > property.FIND_ANGLE_MAX
+                        || Math.Abs(angle - candidate.Angle) > property.FIND_ANGLE))
+                    || (property.USE_FIND_SCALE && (scale < property.FIND_SCALE_MIN || scale > property.FIND_SCALE_MAX
+                        || Math.Abs(scale - candidate.Scale) > property.FIND_SCALE_STEP))
+                    || Math.Abs(center.X - candidate.TemplateCenter.X) > Math.Max(2, property.SEARCH_STEP)
+                    || Math.Abs(center.Y - candidate.TemplateCenter.Y) > Math.Max(2, property.SEARCH_STEP)) return;
+
+                signedScore = ScoreContinuousSigned(gradients, model, center, angle, scale);
+                double score = property.ALLOW_GLOBAL_POLARITY_REVERSAL ? Math.Abs(signedScore) : signedScore;
+                if (score + 0.0000001D < candidate.Score) return;
+                SetContinuousPose(candidate, model, center, angle, scale, signedScore);
+                candidateDiagnostics.PoseRefinementAcceptedCount++;
+            }
+        }
+
+        private void SetContinuousPose(MatchCandidate candidate, EdgeTemplateModel model, Point2d center, double angle, double scale, double signedScore)
+        {
+            double radians = angle * Math.PI / 180D;
+            double cos = Math.Cos(radians);
+            double sin = Math.Sin(radians);
+            double offsetX = model.Center.X - model.Width / 2D;
+            double offsetY = model.Center.Y - model.Height / 2D;
+            candidate.Center = new Point2d(center.X + scale * (offsetX * cos + offsetY * sin), center.Y + scale * (-offsetX * sin + offsetY * cos));
+            RectangleF bounds = CreateRotatedTemplateBounds(model, cos, sin);
+            candidate.Bounds = new RectangleF((float)(candidate.Center.X + bounds.X * scale), (float)(candidate.Center.Y + bounds.Y * scale),
+                (float)(bounds.Width * scale), (float)(bounds.Height * scale));
+            candidate.TemplateCenter = center;
+            candidate.Angle = angle;
+            candidate.Scale = scale;
+            candidate.Score = property.ALLOW_GLOBAL_POLARITY_REVERSAL ? Math.Abs(signedScore) : signedScore;
+            candidate.PolarityReversed = property.ALLOW_GLOBAL_POLARITY_REVERSAL && signedScore < 0D;
+            candidate.Width = Math.Max(1, (int)Math.Round(model.Width * scale));
+            candidate.Height = Math.Max(1, (int)Math.Round(model.Height * scale));
+        }
+
+        private double ScoreContinuousSigned(GradientImage gradients, EdgeTemplateModel model, Point2d center, double angle, double scale)
+        {
+            double radians = angle * Math.PI / 180D;
+            double cos = Math.Cos(radians);
+            double sin = Math.Sin(radians);
+            double sum = 0D;
+            for (int i = 0; i < model.Points.Count; i++)
+            {
+                if ((i & 255) == 0) cancellationToken.ThrowIfCancellationRequested();
+                TemplateEdgePoint point = model.Points[i];
+                double px = point.X - model.Width / 2D;
+                double py = point.Y - model.Height / 2D;
+                double x = center.X + scale * (px * cos + py * sin);
+                double y = center.Y + scale * (-px * sin + py * cos);
+                if (x < 0D || y < 0D || x > gradients.Width - 1 || y > gradients.Height - 1) continue;
+                int x0 = (int)Math.Floor(x);
+                int y0 = (int)Math.Floor(y);
+                int x1 = Math.Min(x0 + 1, gradients.Width - 1);
+                int y1 = Math.Min(y0 + 1, gradients.Height - 1);
+                double fx = x - x0;
+                double fy = y - y0;
+                double dx = InterpolateUnitComponent(gradients.UnitDxValues, gradients.Width, x0, y0, x1, y1, fx, fy);
+                double dy = InterpolateUnitComponent(gradients.UnitDyValues, gradients.Width, x0, y0, x1, y1, fx, fy);
+                double magnitude = Math.Sqrt(dx * dx + dy * dy);
+                if (magnitude > 0D)
+                    sum += (dx * (point.UnitDx * cos + point.UnitDy * sin) + dy * (-point.UnitDx * sin + point.UnitDy * cos)) / magnitude;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return sum / model.Points.Count;
+        }
+
+        private static double InterpolateUnitComponent(double[] values, int width, int x0, int y0, int x1, int y1, double fx, double fy) =>
+            (values[y0 * width + x0] * (1D - fx) + values[y0 * width + x1] * fx) * (1D - fy)
+            + (values[y1 * width + x0] * (1D - fx) + values[y1 * width + x1] * fx) * fy;
+
         public MatchCandidate ApplySubpixelRefinement(
             GradientImage gradients,
             TemplateModelCache modelCache,
@@ -2375,7 +2847,7 @@ namespace OpenVisionLab.Vision2D.Tool
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (property?.USE_SUBPIXEL_REFINE != true
-                || candidate == null
+                || candidate == null || candidate.HasContinuousPoseScore
                 || gradients == null
                 || modelCache == null)
             {
@@ -2482,12 +2954,13 @@ namespace OpenVisionLab.Vision2D.Tool
             return bounds;
         }
 
-        public static bool ShouldTrackCandidateSeed(List<MatchCandidate> seeds, double score, int capacity)
+        public static bool ShouldTrackCandidateSeed(List<MatchCandidate> seeds, double score, int capacity, double centerX, double centerY)
         {
             return seeds != null
                 && capacity > 0
                 && (seeds.Count < capacity
-                || score > seeds[seeds.Count - 1].Score);
+                || score > seeds[seeds.Count - 1].Score
+                || (score == seeds[seeds.Count - 1].Score && IsBetterScore(score, centerX, centerY, seeds[seeds.Count - 1])));
         }
 
         private static bool ShouldUseParallelModelSearch(int modelCount)
@@ -2549,6 +3022,14 @@ namespace OpenVisionLab.Vision2D.Tool
                 && centerX < currentBest.Center.X;
         }
 
+        private static int CompareCandidateSeeds(MatchCandidate left, MatchCandidate right)
+        {
+            int scoreOrder = right.Score.CompareTo(left.Score);
+            if (scoreOrder != 0) return scoreOrder;
+            int rowOrder = left.Center.Y.CompareTo(right.Center.Y);
+            return rowOrder != 0 ? rowOrder : left.Center.X.CompareTo(right.Center.X);
+        }
+
         public static void TrackCandidateSeed(List<MatchCandidate> seeds, MatchCandidate candidate, int capacity)
         {
             if (seeds == null || candidate == null || capacity <= 0)
@@ -2565,13 +3046,13 @@ namespace OpenVisionLab.Vision2D.Tool
                         seeds[i] = candidate;
                     }
 
-                    seeds.Sort((left, right) => right.Score.CompareTo(left.Score));
+                    seeds.Sort(CompareCandidateSeeds);
                     return;
                 }
             }
 
             seeds.Add(candidate);
-            seeds.Sort((left, right) => right.Score.CompareTo(left.Score));
+            seeds.Sort(CompareCandidateSeeds);
             if (seeds.Count > capacity)
             {
                 seeds.RemoveAt(seeds.Count - 1);
@@ -2626,12 +3107,58 @@ namespace OpenVisionLab.Vision2D.Tool
             return ScoreCandidate(CreateScoreContext(gradients, model), centerX, centerY);
         }
 
+        private bool TryScoreGrid(CandidateScoreContext context, int minX, int minY, int maxX, int maxY, int step,
+            Action<int, int, double> consider)
+        {
+            if (owner.computeSession?.RequestedCuda != true || context.PointCount == 0) return false;
+            int columns = (maxX - minX) / step + 1;
+            int rows = (maxY - minY) / step + 1;
+            // Eligibility belongs to the complete grid; the final small tile must not restart CPU work.
+            if ((long)columns * rows < MinimumCudaGridPositions && !owner.computeSession.EvaluateUnqualifiedWorkloads)
+            {
+                lock (owner.phaseElapsedSync)
+                    if (owner.computeEvidence?.AccelerationApplied != true)
+                        owner.computeEvidence = owner.computeEvidence == null
+                            ? owner.computeSession.DescribeCpuExecution(CudaFallbackReason.WorkloadTooSmall, cancellationToken)
+                            : owner.computeEvidence.Combine(owner.computeSession.DescribeCpuExecution(CudaFallbackReason.WorkloadTooSmall, cancellationToken));
+                return false;
+            }
+            VisionComputeSession.EdgeScoreTile tile = new VisionComputeSession.EdgeScoreTile { CollectTimings = owner.CollectPhaseTimings };
+            bool applied = owner.computeSession.TryScoreEdgeTiles(context.SourceUnitDxValues, context.SourceUnitDyValues,
+                context.OffsetXValues, context.OffsetYValues, context.TemplateUnitDxValues, context.TemplateUnitDyValues, context.BreakSumThresholds,
+                context.ImageWidth, minX, minY, columns, rows, step, context.AllowGlobalPolarityReversal, tile, () =>
+                {
+                    for (int row = 0; row < tile.Rows; row++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        int y = tile.MinY + row * step;
+                        for (int column = 0; column < tile.Columns; column++)
+                        {
+                            int x = tile.MinX + column * step;
+                            if ((x & 31) == 0) cancellationToken.ThrowIfCancellationRequested();
+                            consider(x, y, tile.Scores[row * tile.Columns + column]);
+                        }
+                    }
+                }, cancellationToken, out ComputeExecutionEvidence evidence);
+            owner.AddPhaseTiming("SearchCudaLockWait", tile.LockWaitTicks);
+            owner.AddPhaseTiming("SearchCudaPreparation", tile.PreparationTicks);
+            owner.AddPhaseTiming("SearchCudaAllocation", tile.AllocationTicks);
+            owner.AddPhaseTiming("SearchCudaPacking", tile.PackingTicks);
+            owner.AddPhaseTiming("SearchCudaNativeCall", tile.NativeCallTicks);
+            owner.AddPhaseTiming("SearchCudaValidation", tile.ValidationTicks);
+            owner.AddPhaseTiming("SearchCudaCandidateConsumption", tile.ConsumptionTicks);
+            lock (owner.phaseElapsedSync) owner.computeEvidence = owner.computeEvidence == null ? evidence : owner.computeEvidence.Combine(evidence);
+            return applied;
+        }
+
         private CandidateScoreContext CreateScoreContext(GradientImage gradients, RotatedEdgeTemplateModel model)
         {
             return new CandidateScoreContext(
                 gradients.Width,
                 model.PointCount,
                 model.GetIndexOffsets(gradients.Width),
+                model.OffsetXValues,
+                model.OffsetYValues,
                 model.UnitDxValues,
                 model.UnitDyValues,
                 gradients.UnitDxValues,
@@ -2715,6 +3242,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 return;
             }
 
+            if (candidate.HasContinuousPoseScore) return;
             candidate.PolarityReversed = false;
             if (!property.ALLOW_GLOBAL_POLARITY_REVERSAL)
             {
@@ -2991,14 +3519,16 @@ namespace OpenVisionLab.Vision2D.Tool
             return modelStore.GetTemplateForRun();
         }
 
-        private Mat CreatePreparedGrayImage(Mat source)
+        private Mat CreatePreparedGrayImage(Mat source) => CreatePreparedGrayImage(source, CurrentCancellationToken);
+
+        private Mat CreatePreparedGrayImage(Mat source, CancellationToken cancellationToken)
         {
-            CurrentCancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             Mat image = source.Clone();
             try
             {
                 ApplyCommonPreprocessing(image, property);
-                CurrentCancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
                 return image;
             }
             catch
@@ -3039,21 +3569,23 @@ namespace OpenVisionLab.Vision2D.Tool
             return OpenCvHelper.IsImageEmpty(originalTemplate) ? owner.imageTemplate : originalTemplate;
         }
 
-        public TemplateModelCache GetTemplateModelCache()
+        public TemplateModelCache GetTemplateModelCache() => GetTemplateModelCache(cancellationToken);
+
+        public TemplateModelCache GetTemplateModelCache(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Mat template = GetTemplateForRun();
-            string key = CreateTemplateModelCacheKey(template);
+            string key = CreateTemplateModelCacheKey(template, templateRevision);
             if (templateModelCache != null && string.Equals(templateModelCache.Key, key, StringComparison.Ordinal))
             {
                 return templateModelCache;
             }
 
             Clear();
-            Mat preparedTemplate = owner.CreatePreparedGrayImage(template);
+            Mat preparedTemplate = owner.CreatePreparedGrayImage(template, cancellationToken);
             try
             {
-                EdgeTemplateModel model = CreateModel(preparedTemplate);
+                EdgeTemplateModel model = CreateTemplateModel(preparedTemplate, 1D, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 templateModelCache = new TemplateModelCache(key, preparedTemplate, model, CreateTemplateModel);
                 preparedTemplate = null;
@@ -3071,49 +3603,70 @@ namespace OpenVisionLab.Vision2D.Tool
             templateModelCache = null;
         }
 
-        private string CreateTemplateModelCacheKey(Mat template)
+        private string CreateTemplateModelCacheKey(Mat template, long revision)
         {
-            if (OpenCvHelper.IsImageEmpty(template))
-            {
-                return "empty";
-            }
-
+            if (OpenCvHelper.IsImageEmpty(template)) return "empty";
             string path = property?.PATTERN_PATH ?? string.Empty;
             long fileTicks = 0L;
             if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
-            {
                 fileTicks = System.IO.File.GetLastWriteTimeUtc(path).Ticks;
-            }
+            return string.Format(CultureInfo.InvariantCulture, "Tpl:{0}:{1}:{2}:{3}:{4}|Path:{5}:{6}|{7}",
+                template.Width, template.Height, template.Type(), template.Data.ToInt64(), revision, path, fileTicks, CreateLearningParameters());
+        }
 
-            long dataPointer = template.Data.ToInt64();
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "Tpl:{0}:{1}:{2}:{3}:{4}|Path:{5}:{6}|Prep:{7}:{8}:{9:0.###}:{10}:{11}:{12:0.###}:{13}:{14}:{15}:{16}|Edge:{17}:{18}:{19}:{20}:{21}:{22}:{23}:{24:0.###}",
-                template.Width,
-                template.Height,
-                template.Type(),
-                dataPointer,
-                templateRevision,
-                path,
-                fileTicks,
-                property.USE_THRESHOLD,
-                property.THRESHOLD_TYPES,
-                property.THRESHOLD,
-                property.USE_ADAPTIVE_THRESHOLD,
-                property.ADAPTIVE_THRESHOLD_TYPES,
-                property.ADAPTIVE_THRESHOLD,
-                property.ADAPTIVE_THRESHOLD_ALGORITHM,
-                property.BlockSize,
-                property.Weight,
-                property.USE_BITWISENOT,
-                property.CANNY_LOW,
-                property.CANNY_HIGH,
-                property.CANNY_APERTURE_SIZE,
-                property.USE_L2_GRADIENT,
-                property.CONTOUR_RETRIEVAL_MODE,
-                property.CONTOUR_APPROXIMATION_MODE,
-                property.MAX_TEMPLATE_POINTS,
-                property.MIN_GRADIENT_MAGNITUDE);
+        public string CreateLearningParameters()
+        {
+            return string.Format(CultureInfo.InvariantCulture,
+                "Prep:{0}:{1}:{2:R}:{3}:{4}:{5:R}:{6}:{7}:{8}:{9}|Edge:{10}:{11}:{12}:{13}:{14}:{15}:{16}:{17:R}",
+                property.USE_THRESHOLD, property.THRESHOLD_TYPES, property.THRESHOLD,
+                property.USE_ADAPTIVE_THRESHOLD, property.ADAPTIVE_THRESHOLD_TYPES, property.ADAPTIVE_THRESHOLD,
+                property.ADAPTIVE_THRESHOLD_ALGORITHM, property.BlockSize, property.Weight, property.USE_BITWISENOT,
+                property.CANNY_LOW, property.CANNY_HIGH, property.CANNY_APERTURE_SIZE, property.USE_L2_GRADIENT,
+                property.CONTOUR_RETRIEVAL_MODE, property.CONTOUR_APPROXIMATION_MODE, property.MAX_TEMPLATE_POINTS, property.MIN_GRADIENT_MAGNITUDE);
+        }
+
+        public void Restore(EdgeTemplateModelArtifact artifact, CancellationToken cancellationToken)
+        {
+            Mat original = null, prepared = null, display = null;
+            TemplateModelCache cache = null;
+            try
+            {
+                original = RestoreRaster(artifact.Width, artifact.Height, artifact.SourceChannels, artifact.SourceBytes, cancellationToken);
+                prepared = RestoreRaster(artifact.Width, artifact.Height, 1, artifact.PreparedBytes, cancellationToken);
+                display = original.Clone();
+                List<TemplateEdgePoint> points = new List<TemplateEdgePoint>(artifact.Points.Count);
+                foreach (EdgeTemplateModelPoint point in artifact.Points)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    points.Add(new TemplateEdgePoint
+                    {
+                        X = point.X, Y = point.Y, UnitDx = point.UnitDx, UnitDy = point.UnitDy, InvMagnitude = point.InverseMagnitude,
+                        OffsetX = (int)Math.Round(point.X - artifact.CenterX), OffsetY = (int)Math.Round(point.Y - artifact.CenterY)
+                    });
+                }
+                EdgeTemplateModel model = new EdgeTemplateModel(artifact.Width, artifact.Height,
+                    new Point2d(artifact.CenterX, artifact.CenterY), points, artifact.RawPointCount, 1D);
+                cache = new TemplateModelCache(CreateTemplateModelCacheKey(original, templateRevision + 1), prepared, model, CreateTemplateModel);
+                prepared = null;
+                cancellationToken.ThrowIfCancellationRequested();
+                Clear();
+                originalTemplate?.Dispose();
+                owner.imageTemplate?.Dispose();
+                originalTemplate = original;
+                owner.imageTemplate = display;
+                templateModelCache = cache;
+                templateRevision++;
+                original = null;
+                display = null;
+                cache = null;
+            }
+            finally
+            {
+                cache?.Dispose();
+                original?.Dispose();
+                prepared?.Dispose();
+                display?.Dispose();
+            }
         }
 
         public EdgeTemplateModel CreateModel(Mat template)
@@ -3121,14 +3674,17 @@ namespace OpenVisionLab.Vision2D.Tool
             return CreateTemplateModel(template, 1D);
         }
 
-        private EdgeTemplateModel CreateTemplateModel(Mat template, double scale)
+        private EdgeTemplateModel CreateTemplateModel(Mat template, double scale) => CreateTemplateModel(template, scale, cancellationToken);
+
+        private EdgeTemplateModel CreateTemplateModel(Mat template, double scale, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (Mat edges = new Mat())
             using (GradientImage gradients = GradientImage.Create(
                 template,
                 property.MIN_GRADIENT_MAGNITUDE,
-                cancellationToken))
+                cancellationToken,
+                retainMagnitude: true))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Cv2.Canny(
@@ -3956,8 +4512,6 @@ namespace OpenVisionLab.Vision2D.Tool
             }
 
             int topN = Math.Max(1, property.HYBRID_VERIFY_TOP_N);
-            double imageWeight = Clamp(property.HYBRID_VERIFY_IMAGE_WEIGHT, 0D, 1D);
-            double edgeWeight = 1D - imageWeight;
             int verifyCapacity = Math.Max(topN, GetCandidateSeedCapacity());
             List<MatchCandidate> candidates = new List<MatchCandidate>(verifyCapacity + 1);
             TrackCandidateSeed(candidates, fallback, verifyCapacity);
@@ -3966,6 +4520,22 @@ namespace OpenVisionLab.Vision2D.Tool
             bool containsImageProposal = imageProposal != null
                 && candidates.Any(candidate => IsSameCandidate(candidate, imageProposal));
 
+            int verifiedCount = VerifyCandidateScores(source, template, candidates);
+            MatchCandidate best = fallback;
+            foreach (MatchCandidate candidate in candidates)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsBetterHybridCandidate(candidate, best)) best = candidate;
+            }
+            RecordHybridVerificationDiagnostics(candidates.Count, verifiedCount, containsImageProposal, imageProposal, fallback, best);
+            RecordCandidateAmbiguityDiagnostics(candidates, best, template);
+            return best;
+        }
+
+        public int VerifyCandidateScores(Mat source, Mat template, List<MatchCandidate> candidates)
+        {
+            double imageWeight = Clamp(property.HYBRID_VERIFY_IMAGE_WEIGHT, 0D, 1D);
+            double edgeWeight = 1D - imageWeight;
             List<HybridVerificationScore> verifiedScores = new List<HybridVerificationScore>(candidates.Count);
             double bestImageScore = double.MinValue;
             MatchCandidate bestImageCandidate = null;
@@ -3987,7 +4557,6 @@ namespace OpenVisionLab.Vision2D.Tool
                 }
             }
 
-            MatchCandidate best = fallback;
             foreach (HybridVerificationScore verifiedScore in verifiedScores)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -4008,21 +4577,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 candidate.ImageVerifyScore = imageScore;
                 candidate.DescriptorVerifyScore = descriptorScore;
                 candidate.HybridScore = (candidate.Score * edgeWeight) + (finalVerificationScore * imageWeight);
-                if (IsBetterHybridCandidate(candidate, best))
-                {
-                    best = candidate;
-                }
             }
-
-            RecordHybridVerificationDiagnostics(
-                candidates.Count,
-                verifiedScores.Count,
-                containsImageProposal,
-                imageProposal,
-                fallback,
-                best);
-            RecordCandidateAmbiguityDiagnostics(candidates, best, template);
-            return best;
+            return verifiedScores.Count;
         }
 
         private void RecordHybridVerificationDiagnostics(
@@ -4396,7 +4952,8 @@ namespace OpenVisionLab.Vision2D.Tool
                     (float)(model?.Center.X ?? 0D),
                     (float)(model?.Center.Y ?? 0D)),
                 SelectedCandidate = candidateDiagnostics.SelectedCandidate?.Clone(),
-                StrongestSpatialAlternative = candidateDiagnostics.StrongestSpatialAlternative?.Clone()
+                StrongestSpatialAlternative = candidateDiagnostics.StrongestSpatialAlternative?.Clone(),
+                StrongestPoseAlternative = candidateDiagnostics.StrongestPoseAlternative?.Clone()
             };
             if (model?.Points != null)
             {
@@ -4643,19 +5200,17 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private sealed class GradientImage : IDisposable
         {
+            private const int MagnitudeBatchBytes = 4 * 1024 * 1024;
+
             private GradientImage(
                 int width,
                 int height,
-                double[] dxValues,
-                double[] dyValues,
                 double[] magnitudeValues,
                 double[] unitDxValues,
                 double[] unitDyValues)
             {
                 Width = width;
                 Height = height;
-                DxValues = dxValues ?? Array.Empty<double>();
-                DyValues = dyValues ?? Array.Empty<double>();
                 MagnitudeValues = magnitudeValues ?? Array.Empty<double>();
                 UnitDxValues = unitDxValues ?? Array.Empty<double>();
                 UnitDyValues = unitDyValues ?? Array.Empty<double>();
@@ -4663,62 +5218,76 @@ namespace OpenVisionLab.Vision2D.Tool
 
             public int Width { get; }
             public int Height { get; }
-            private double[] DxValues { get; }
-            private double[] DyValues { get; }
             private double[] MagnitudeValues { get; }
             public double[] UnitDxValues { get; }
             public double[] UnitDyValues { get; }
 
-            public static GradientImage Create(
+            public static unsafe GradientImage Create(
                 Mat image,
                 double unitMagnitudeThreshold,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken,
+                bool retainMagnitude = false)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using (Mat dx = new Mat())
-                using (Mat dy = new Mat())
-                using (Mat magnitude = new Mat())
+                int width = image.Width;
+                int height = image.Height;
+                int length = width * height;
+                double[] unitDxValues = new double[length];
+                double[] unitDyValues = new double[length];
+                double[] magnitudeValues = retainMagnitude ? new double[length] : Array.Empty<double>();
+                int rowsPerBatch = Math.Max(1, Math.Min(height, (MagnitudeBatchBytes / sizeof(double)) / width));
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // OpenCV writes Sobel into the final arrays. Headers and scratch are released before unpinning.
+                fixed (double* unitDx = unitDxValues)
+                fixed (double* unitDy = unitDyValues)
+                using (Mat dx = new Mat(height, width, MatType.CV_64FC1, (IntPtr)unitDx))
+                using (Mat dy = new Mat(height, width, MatType.CV_64FC1, (IntPtr)unitDy))
+                using (Mat magnitude = new Mat(rowsPerBatch, width, MatType.CV_64FC1))
                 {
                     Cv2.Sobel(image, dx, MatType.CV_64F, 1, 0, 3);
                     cancellationToken.ThrowIfCancellationRequested();
                     Cv2.Sobel(image, dy, MatType.CV_64F, 0, 1, 3);
                     cancellationToken.ThrowIfCancellationRequested();
-                    Cv2.Magnitude(dx, dy, magnitude);
+
+                    for (int firstRow = 0; firstRow < height; firstRow += rowsPerBatch)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        int rowCount = Math.Min(rowsPerBatch, height - firstRow);
+                        using (Mat dxRows = dx.RowRange(firstRow, firstRow + rowCount))
+                        using (Mat dyRows = dy.RowRange(firstRow, firstRow + rowCount))
+                        using (Mat magnitudeRows = magnitude.RowRange(0, rowCount))
+                        {
+                            Cv2.Magnitude(dxRows, dyRows, magnitudeRows);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            int index = firstRow * width;
+                            for (int y = 0; y < rowCount; y++)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                double* magnitudes = (double*)magnitudeRows.Ptr(y);
+                                for (int x = 0; x < width; x++, index++)
+                                {
+                                    if ((index & 4095) == 0) cancellationToken.ThrowIfCancellationRequested();
+                                    double value = magnitudes[x];
+                                    if (retainMagnitude) magnitudeValues[index] = value;
+                                    if (value <= unitMagnitudeThreshold)
+                                    {
+                                        unitDxValues[index] = 0D;
+                                        unitDyValues[index] = 0D;
+                                        continue;
+                                    }
+
+                                    double inverseMagnitude = 1D / value;
+                                    unitDxValues[index] *= inverseMagnitude;
+                                    unitDyValues[index] *= inverseMagnitude;
+                                }
+                            }
+                        }
+                    }
+
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    // Scoring visits gradient values for every candidate center and template point.
-                    // Cache compact arrays once so the hot loop avoids repeated Mat.At<T>() calls.
-                    double[] dxValues = CopyMatToArray(dx, cancellationToken);
-                    double[] dyValues = CopyMatToArray(dy, cancellationToken);
-                    double[] magnitudeValues = CopyMatToArray(magnitude, cancellationToken);
-                    CreateUnitGradientArrays(
-                        dxValues,
-                        dyValues,
-                        magnitudeValues,
-                        unitMagnitudeThreshold,
-                        out double[] unitDxValues,
-                        out double[] unitDyValues,
-                        cancellationToken);
-
-                    return new GradientImage(
-                        image.Width,
-                        image.Height,
-                        dxValues,
-                        dyValues,
-                        magnitudeValues,
-                        unitDxValues,
-                        unitDyValues);
+                    return new GradientImage(width, height, magnitudeValues, unitDxValues, unitDyValues);
                 }
-            }
-
-            public double GetDx(int x, int y)
-            {
-                return DxValues[GetIndex(x, y)];
-            }
-
-            public double GetDy(int x, int y)
-            {
-                return DyValues[GetIndex(x, y)];
             }
 
             public double GetMagnitude(int x, int y)
@@ -4739,55 +5308,6 @@ namespace OpenVisionLab.Vision2D.Tool
             private int GetIndex(int x, int y)
             {
                 return (y * Width) + x;
-            }
-
-            private static double[] CopyMatToArray(Mat mat, CancellationToken cancellationToken)
-            {
-                int width = mat.Width;
-                int height = mat.Height;
-                double[] values = new double[width * height];
-                int index = 0;
-                for (int y = 0; y < height; y++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    for (int x = 0; x < width; x++)
-                    {
-                        values[index++] = mat.At<double>(y, x);
-                    }
-                }
-
-                return values;
-            }
-
-            private static void CreateUnitGradientArrays(
-                double[] dxValues,
-                double[] dyValues,
-                double[] magnitudeValues,
-                double magnitudeThreshold,
-                out double[] unitDxValues,
-                out double[] unitDyValues,
-                CancellationToken cancellationToken)
-            {
-                int length = magnitudeValues?.Length ?? 0;
-                unitDxValues = new double[length];
-                unitDyValues = new double[length];
-                for (int i = 0; i < length; i++)
-                {
-                    if ((i & 4095) == 0)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    double magnitude = magnitudeValues[i];
-                    if (magnitude <= magnitudeThreshold)
-                    {
-                        continue;
-                    }
-
-                    double inverseMagnitude = 1D / magnitude;
-                    unitDxValues[i] = dxValues[i] * inverseMagnitude;
-                    unitDyValues[i] = dyValues[i] * inverseMagnitude;
-                }
             }
 
             public void Dispose()
@@ -5059,6 +5579,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 int imageWidth,
                 int pointCount,
                 int[] indexOffsets,
+                int[] offsetXValues,
+                int[] offsetYValues,
                 double[] templateUnitDxValues,
                 double[] templateUnitDyValues,
                 double[] sourceUnitDxValues,
@@ -5069,6 +5591,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 ImageWidth = imageWidth;
                 PointCount = pointCount;
                 IndexOffsets = indexOffsets ?? Array.Empty<int>();
+                OffsetXValues = offsetXValues ?? Array.Empty<int>();
+                OffsetYValues = offsetYValues ?? Array.Empty<int>();
                 TemplateUnitDxValues = templateUnitDxValues ?? Array.Empty<double>();
                 TemplateUnitDyValues = templateUnitDyValues ?? Array.Empty<double>();
                 SourceUnitDxValues = sourceUnitDxValues ?? Array.Empty<double>();
@@ -5080,6 +5604,8 @@ namespace OpenVisionLab.Vision2D.Tool
             public int ImageWidth { get; }
             public int PointCount { get; }
             public int[] IndexOffsets { get; }
+            public int[] OffsetXValues { get; }
+            public int[] OffsetYValues { get; }
             public double[] TemplateUnitDxValues { get; }
             public double[] TemplateUnitDyValues { get; }
             public double[] SourceUnitDxValues { get; }
@@ -5138,7 +5664,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     Best = candidate;
                 }
 
-                bool shouldTrackSeed = ShouldTrackCandidateSeed(CandidateSeeds, score, seedCapacity);
+                bool shouldTrackSeed = ShouldTrackCandidateSeed(CandidateSeeds, score, seedCapacity, centerX, centerY);
                 bool shouldTrackSpatialSeed = spatialSeeds?.ShouldTrack(centerX, centerY, score) ?? false;
                 if (shouldTrackSeed)
                 {
@@ -5235,7 +5761,8 @@ namespace OpenVisionLab.Vision2D.Tool
                 List<MatchCandidate> cell = candidates[GetIndex(centerX, centerY)];
                 return cell == null
                     || cell.Count < cellCapacity
-                    || score > cell[cell.Count - 1].Score;
+                    || score > cell[cell.Count - 1].Score
+                    || (score == cell[cell.Count - 1].Score && IsBetterScore(score, centerX, centerY, cell[cell.Count - 1]));
             }
 
             public void Track(MatchCandidate candidate)
@@ -5306,12 +5833,21 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
+        private static double GetPoseAngleDifference(double left, double right)
+        {
+            double difference = Math.Abs((left - right) % 360D);
+            return Math.Min(difference, 360D - difference);
+        }
+
+        private static double GetPoseRelativeScaleDifference(double left, double right) => Math.Max(left, right) / Math.Min(left, right) - 1D;
+
         private sealed class MatchCandidate
         {
             public Point2d Center { get; set; }
             public Point2d TemplateCenter { get; set; }
             public RectangleF Bounds { get; set; }
             public double Score { get; set; }
+            public bool HasContinuousPoseScore { get; set; }
             public double ImageVerifyScore { get; set; } = double.NaN;
             public double DescriptorVerifyScore { get; set; } = double.NaN;
             public double HybridScore { get; set; } = double.NaN;
@@ -5324,8 +5860,23 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private sealed class CandidateDiagnostics
         {
+            public int PoseRefinementAttemptCount { get; set; }
+            public int PoseRefinementAcceptedCount { get; set; }
+            public int PoseRefinementNativeFailureCount { get; set; }
             public EdgeBasedMatchingCandidateDiagnostic SelectedCandidate { get; set; }
             public EdgeBasedMatchingCandidateDiagnostic StrongestSpatialAlternative { get; set; }
+            public EdgeBasedMatchingCandidateDiagnostic StrongestPoseAlternative { get; set; }
+            public UniqueMatchState PoseMatchState { get; set; }
+            public int PoseMatchCheckedModelCount { get; set; }
+            public int PoseMatchEligibleAlternativeCount { get; set; }
+            public int PoseMatchPlausibleAlternativeCount { get; set; }
+            public int PoseMatchUnverifiedCandidateCount { get; set; }
+            public double PoseMatchSelectedScore { get; set; }
+            public double PoseMatchStrongestAlternativeScore { get; set; }
+            public double PoseMatchScoreMargin { get; set; }
+            public double PoseMatchAngleDifference { get; set; }
+            public double PoseMatchRelativeScaleDifference { get; set; }
+            public double PoseMatchDistanceThreshold { get; set; }
             public UniqueMatchState UniqueMatchState { get; set; }
             public int UniqueMatchPlausibleAlternativeCount { get; set; }
             public double UniqueMatchSelectedScore { get; set; } = double.NegativeInfinity;
