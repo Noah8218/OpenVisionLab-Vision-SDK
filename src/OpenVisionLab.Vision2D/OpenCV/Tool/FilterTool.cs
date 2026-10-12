@@ -103,7 +103,7 @@ namespace OpenVisionLab.Vision2D.Tool
                     Cv2.MedianBlur(imageResult, imageResult, property.MedianKernelSize);
                     break;
                 case FilterToolType.BoxFilter:
-                    Cv2.BoxFilter(imageResult, imageResult, MatType.CV_8UC3, new Size(property.KernelWidth, property.KernelHeight), new Point(-1, -1));
+                    Cv2.BoxFilter(imageResult, imageResult, MatType.CV_8UC3, new Size(property.KernelWidth, property.KernelHeight), new Point(-1, -1), true, property.BorderType);
                     break;
                 case FilterToolType.BilateralFilter:
                     {

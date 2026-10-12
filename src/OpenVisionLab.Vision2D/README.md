@@ -2,12 +2,14 @@
 
 OpenCvSharp-based 2D inspection tools with explicit properties and disposable `VisionToolResult` output.
 
-`3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.1.0-dev.1` is only the current
-repository-local default.
+`3.0.0` is the API baseline. Source, package and CLR assembly version values
+are owned by [Directory.Build.props](../../Directory.Build.props); these are
+distinct identities. Install the exact immutable version from your selected
+package source and keep all OpenVisionLab packages on that version. A local
+development default does not establish that a package has been published.
 
 ```powershell
-$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
 dotnet add package OpenVisionLab.Vision2D --version $packageVersion
 ```
 
@@ -37,6 +39,14 @@ if (!result.Success)
 Console.WriteLine($"Output: {result.ResultImage.Width}x{result.ResultImage.Height}");
 ```
 
+## Scharr execution evidence
+
+`EdgeDetectionTool` can borrow a host-owned `VisionComputeSession`, directly or
+through the existing Factory overload. Read the [Compute local-operation guide](../OpenVisionLab.Compute/README.md#local-operations)
+for the measured CPU policy, result diagnostics and serial disposal. Public
+Scharr remains CPU; the qualified CUDA subset is internal verification only.
+Construction/restoration never executes. CPU remains the default.
+
 ## Ready-to-use property models
 
 The package provides concrete configuration models for every current non-legacy 2D Tool. Implement the interfaces directly only when an application needs its own persistence model. `BlobToolProperty` is supplied by the separate `OpenVisionLab.Vision2D.Blob` package.
@@ -56,6 +66,7 @@ The package provides concrete configuration models for every current non-legacy 
 | `SiftTool` | `SiftToolProperty` |
 | `MeanTool` | `MeanToolProperty` |
 | `LineGaugeTool` | `LineGaugeToolProperty` |
+| `QrCodeTool` | `QrCodeToolProperty` |
 
 Models derived from `OpenCvToolPropertyBase` default to whole-image processing with thresholds and inversion disabled. Threshold, Morphology, Filter, EdgeDetection, RotateScale, Affine and AutoMPoint have their own property contracts. `LineGaugeTool` requires a taught `CvROI` because scan direction and extent are part of the measurement definition.
 
@@ -67,6 +78,48 @@ On success or a completed no-match attempt, exactly one is `1` once a detector w
 selected. Early validation and exception results can omit both keys. Missing keys
 do not establish that SIFT ran. `SCORE_MIN` here is the descriptor nearest-neighbor
 ratio threshold (`0.6` by default), not a confidence percentage.
+
+## QR text reading
+
+`QrCodeTool` accepts a non-empty 8-bit grayscale or **BGR** Mat and non-empty
+ASCII/UTF-8 text. It uses the bundled native decoder. Set an optional single
+in-bounds `CvROI` and `ExpectedCodeCount` (default 1). It rejects BGRA/other
+depths, active common threshold/inversion/multi-ROI options and non-empty masks.
+This BGR contract is separate from the legacy common preprocessing described below.
+
+```csharp
+using QrCodeTool reader = new QrCodeTool();
+reader.property.ExpectedCodeCount = 1;
+using VisionToolResult reading = reader.Execute(source);
+if (reading.QrCodeReading != null)
+    foreach (var candidate in reading.QrCodeReading.Candidates)
+        Console.WriteLine($"{candidate.CandidateIndex}: {candidate.Text} ({candidate.Decoded})");
+```
+
+Check `Success` and `ErrorCode` before accepting a reading. `QrCodeNotDetected`,
+`QrCodeCountMismatch` and `QrCodeDecodeFailed` preserve the completed observation,
+including readable text and four corners of unreadable candidates. Infrastructure
+exceptions and pre-run rejection have no completed QR evidence. Backend load/export
+failures are distinct from absence; complete native absence can fail Tool construction.
+
+`QrCodeReading` is immutable managed evidence with input size, applied ROI,
+expected/detected/decoded counts and candidates. Corners are in the current input
+Mat's pixels with the ROI offset applied once. Candidate order can change between
+runs; text and corners stay together. The observed count does not guarantee every
+code in the scene was detected. Text is neither trimmed nor normalized, and identical
+payloads remain separate candidates. The host owns expected-text comparison and
+part acceptance; `Passed` means the expected number of observed candidates decoded.
+
+The caller owns input Mat, Tool and returned result. `ResultImage` is a separate
+full-frame snapshot. `LatestReading` is cleared on new execution, cancellation and
+infrastructure failure; older returned evidence survives image/Tool disposal.
+Serialize settings through the existing `qrcode`/`QrCodeTool` Pipeline descriptor,
+which exposes only `NAME`, `USE_ROI`, `CvROI`, `ExpectedCodeCount` and no artifacts.
+Construction/restoration performs no QR inspection. Cancellation is cooperative
+between native calls; there is no native hard timeout or same-instance concurrency.
+Empty/binary/NUL payloads, other encodings, DPM/quality grading and industrial
+reading-rate guarantees are outside this text contract. See [the Tool contract](OpenCV/Tool/QrCodeTool.cs)
+and [its focused cases](../../tests/OpenVisionLab.Inspection.Smoke/Suites/QrCodeSmokeSuite.cs).
 
 ## Input and option contracts
 
@@ -82,6 +135,25 @@ output is BGR: use `ImreadModes.Grayscale` or explicitly convert BGR before pass
 it to an RGB-based grayscale path. Adaptive threshold needs 8-bit single-channel
 working data, an odd `BlockSize > 1`, and `Binary`/`BinaryInv` mode.
 
+For a file whose original type must be preserved, read with `ImreadModes.Unchanged`
+and validate its depth/channels before conversion. For a configured `tool` and
+caller-selected `path`, this host boundary accepts 8-bit gray/BGR/BGRA and rejects
+other inputs rather than silently reducing their depth:
+
+```csharp
+using Mat raw = Cv2.ImRead(path, ImreadModes.Unchanged);
+if (raw.Empty() || raw.Depth() != MatType.CV_8U || (raw.Channels() != 1 && raw.Channels() != 3 && raw.Channels() != 4))
+    throw new ArgumentException("Expected a nonempty 8-bit gray, BGR or BGRA file.", nameof(path));
+using Mat gray = new Mat();
+if (raw.Channels() == 1) raw.CopyTo(gray);
+else Cv2.CvtColor(raw, gray, raw.Channels() == 3 ? ColorConversionCodes.BGR2GRAY : ColorConversionCodes.BGRA2GRAY);
+using VisionToolResult result = tool.Execute(gray);
+```
+
+Raw camera-memory RGB/RGBA is a different channel contract: use the corresponding
+explicit conversion for that input. Record the original type and chosen conversion
+with inspection evidence. The SDK does not infer a camera's channel order.
+
 For common ROI tools, set `USE_ROI` with an in-bounds, positive `CvROI`, or
 `USE_MULTI_ROI` with a non-empty `CvROIS` list; multi-ROI takes precedence. Coordinates
 use pixels, X right, Y down, and `Rect(x, y, width, height)`. Do not reuse a taught
@@ -94,7 +166,7 @@ because `PIXELPERMM` exists.
 | `ThresholdTool` / [properties](OpenCV/Property/ThresholdToolProperty.cs) | Whole image; converts color to gray; Range outputs a binary mask | `Threshold=1`, `MaxValue=255`, Binary. Validate finite values, ordered range and adaptive block size; `ThresholdInvalid*` identifies the setting. |
 | `MorphologyTool` / [properties](OpenCV/Property/MorphologyToolProperty.cs) | Whole image; preserves channels; start with a binary 8-bit mask | Rect 3×3, Erode, one iteration. `MorphologyInvalidKernel/Iterations`: use positive sizes/count. |
 | `FilterTool` / [properties](OpenCV/Property/FilterToolProperty.cs) | Whole image; no automatic gray conversion; depth support depends on filter | Blur 3×3. Gaussian/Median require odd kernels; bilateral uses a separate destination. `FilterInvalidKernel/Sigma`: correct the selected filter's options. |
-| `EdgeDetectionTool` / [properties](OpenCV/Property/EdgeDetectionToolProperty.cs) | Whole image; start with `CV_8UC1`; no gray conversion | Canny 100/200, aperture 3. Sobel/Scharr need explicit nonzero derivative orders; their output is unsigned 8-bit, so negative responses are clipped. Check `EdgeDetectionInvalid*`. |
+| `EdgeDetectionTool` / [properties](OpenCV/Property/EdgeDetectionToolProperty.cs) | Whole image; Canny accepts `CV_8UC1`/`CV_8UC3` and returns `CV_8UC1` without gray conversion | Canny 100/200, aperture 3. Sobel/Scharr need explicit nonzero derivative orders; their output is unsigned 8-bit, so negative responses are clipped. Check `EdgeDetectionInvalid*`. |
 | `RotateScaleTool` / [properties](OpenCV/Property/RotateScaleToolProperty.cs) | Whole image; resizes, then rotates within the scaled canvas | 100% X/Y, 0 degrees, Linear. Rotation may clip content. `RotateScaleInvalidScale`: use finite positive scales. |
 | `AffineTransformTool` / [properties](OpenCV/Property/AffineTransformToolProperty.cs) | Whole image; explicit source/destination triangle and output canvas | Identity triangles; output size zero uses source size. Check `AffineDegenerate*`, `AffineInvalid*`, `AffineInsufficientCoverage`; [full contract](../../docs/AFFINE_TRANSFORM_2D.md). |
 | `ContourTool` / [properties](OpenCV/Property/ContourToolProperty.cs) | Common preprocessing/ROI; working image converted to `CV_8UC1` before labeling | External, ApproxSimple, area 200–1,000,000 px². Set threshold for a meaningful foreground. `ContourNoResult`: review polarity/area; `ContourRoiInvalid`: reteach ROI. |
@@ -113,15 +185,44 @@ after that validation. Representative executable calls live in
 [`Vision2DSmokeSuite`](../../tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSmokeSuite.cs)
 and the [isolated package consumer](../../tests/OpenVisionLab.PackageConsumer.Smoke/Program.cs).
 
+## Optional LineGauge peak measurement
+
+Subpixel measurement is disabled by default. On `LineGaugeToolProperty`, set
+`UseSubpixelMeasurement = true` to enable original-gray gradient centroid
+evidence. To select logarithmic interpolation of the dominant gradient peak,
+also set `UseSubpixelPeakMeasurement = true`; both options must be `true`.
+
+Both Boolean options are supported in Pipeline parameters; restoring them
+creates no inspection result. With `UseSubpixelMeasurement = false`, a saved
+peak option is ignored and integer-edge behavior is retained. Recipes that
+omit the peak option retain centroid evidence when subpixel measurement is enabled.
+
+Peak measurement needs a complete profile window and positive gradients on both
+sides of the maximum. Flat profiles and non-adjacent competing gradients within
+two gray levels are rejected; two levels account for comparison of quantized
+8-bit differences. With fewer than three admitted samples the Tool returns
+`LineGaugeFitFailed`, with rejected-sample evidence. After this mode reaches
+measurement, `LineGauge.SubpixelPeakMeasurement` is `1`; early validation failures
+can omit it. Check `VisionToolResult.Success` and `SubpixelEvidence.HasFit` before
+using values.
+
+This option can separate a dominant transition from a weaker reflected response.
+It estimates a pixel-domain response, not a physical surface boundary or calibrated
+uncertainty. An asymmetric ramp has no unique peak and needs an independently
+defined boundary for metrology. Review the [property contract](OpenCV/Property/LineGaugeToolProperty.cs)
+and [focused checks](../../tests/OpenVisionLab.Inspection.Smoke/Suites/LineGaugeSubpixelSmokeSuite.cs)
+for the exact implementation and tested scope.
+
 ## Pipeline descriptors and Tool reconstruction
 
-`VisionPipelineToolFactory.Descriptors` is the immutable machine-readable catalog
-for the 14 Tools owned by this package. Each `VisionPipelineToolDescriptor` exposes
+[`VisionPipelineToolFactory.Descriptors`](OpenCV/Pipeline/VisionPipelineToolFactory.cs)
+is the immutable machine-readable catalog for the Tools owned by this package,
+including `qrcode`. Each `VisionPipelineToolDescriptor` exposes
 the canonical `ToolType`, documented aliases, package and CLR type identity,
 parameter names/defaults/value kinds, and required artifacts. Use
 `TryGetDescriptor` to validate a selected Tool ID without constructing it. The Blob
-package's `VisionPipelineBlobToolFactory.Descriptors` composes `BlobTool` into the
-same contract for all 15 non-legacy 2D Tools.
+package's [`VisionPipelineBlobToolFactory.Descriptors`](../OpenVisionLab.Vision2D.Blob/VisionPipelineBlobToolFactory.cs)
+composes `BlobTool` with this base catalog.
 
 Factory parameter values are invariant text. Integers and finite numbers use
 invariant culture; Booleans use `true`/`false`; enums use a named value or a valid
@@ -218,10 +319,13 @@ if (!result.Success)
     Console.Error.WriteLine($"{result.ErrorCodeValue}/{result.ErrorName}: {result.Message}");
     if (result.Exception != null) Console.Error.WriteLine(result.Exception.GetType().FullName);
 }
-else if (result.Metrics.TryGetValue("FeatureDetector.OrbFallback", out double usedOrb))
-{
-    Console.WriteLine($"ORB fallback used: {usedOrb == 1}");
-}
+// For a SiftTool result, detector evidence is independent of Success.
+string detector = result.Metrics.TryGetValue("FeatureDetector.Sift", out double usedSift) && usedSift == 1
+    ? "SIFT"
+    : result.Metrics.TryGetValue("FeatureDetector.OrbFallback", out double usedOrb) && usedOrb == 1
+        ? "ORB fallback"
+        : "Not established for this execution";
+Console.WriteLine(detector);
 ```
 
 ## Lifetime, threads and time limits
@@ -237,7 +341,7 @@ reported. To retain an output after disposing a result, make an owned `Clone()`.
 Use one Tool per sequential worker. Concurrent execution, property changes,
 template changes, input mutation and disposal on the same instance are unsupported.
 All 2D calls remain synchronous. `MatchingTool`,
-`EdgeBasedTemplateMatchingTool`, `AutoMPointTool`, and `SiftTool` implement
+`EdgeBasedTemplateMatchingTool`, `EdgeDetectionTool`, `AutoMPointTool`, `SiftTool`, and `LineGaugeTool` implement
 `ICancellableVisionTool.Execute(Mat, CancellationToken)`. Their managed ROI,
 candidate, angle, scale and feature loops observe the token, and native OpenCV calls
 are checked before and after returning. A native call already in progress cannot be

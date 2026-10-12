@@ -1,3 +1,4 @@
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,6 +25,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public string Message { get; }
         public IReadOnlyList<double> Values { get; }
         public int ChangedCount { get; }
+        public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
 
         internal static DeterministicMedianFilterResult Completed(IReadOnlyList<double> values, int changedCount)
         {
@@ -46,6 +48,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     /// </summary>
     public sealed class DeterministicMedianFilterTool
     {
+        private readonly VisionComputeSession computeSession;
+
+        public DeterministicMedianFilterTool() : this(null) { }
+
+        /// <summary>Borrows a host-owned session without probing. The caller owns session disposal.</summary>
+        public DeterministicMedianFilterTool(VisionComputeSession computeSession) { this.computeSession = computeSession; }
         public DeterministicMedianFilterResult Execute(
             int rowCount,
             int columnCount,
@@ -56,6 +64,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             try
             {
                 Validate(rowCount, columnCount, values, options);
+                ComputeExecutionEvidence computeEvidence = null;
+                if (computeSession != null && computeSession.TryMedian3D(rowCount, columnCount, values, options.KernelSize,
+                    false, 0, 0, cancellationToken, out double[] accelerated, out computeEvidence))
+                {
+                    int changed = 0;
+                    for (int i = 0; i < accelerated.Length; i++)
+                    {
+                        if ((i & 0x3fff) == 0) cancellationToken.ThrowIfCancellationRequested();
+                        if (IsFinite(values[i]) && accelerated[i] != values[i]) changed++;
+                    }
+                    var result = DeterministicMedianFilterResult.Completed(accelerated, changed);
+                    result.ComputeDiagnostics = computeEvidence;
+                    return result;
+                }
                 double[] output = new double[values.Count];
                 double[] neighbors = new double[49];
                 int radius = options.KernelSize / 2;
@@ -108,7 +130,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     }
                 }
 
-                return DeterministicMedianFilterResult.Completed(output, changedCount);
+                var completed = DeterministicMedianFilterResult.Completed(output, changedCount);
+                completed.ComputeDiagnostics = computeEvidence;
+                return completed;
             }
             catch (ArgumentException exception)
             {

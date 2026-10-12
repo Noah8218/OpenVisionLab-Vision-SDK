@@ -21,8 +21,16 @@ namespace OpenVisionLab.Inspection
             CombinedInspectionRunResult result = new CombinedInspectionRunResult();
             CombinedInspectionInput resolvedInput = input ?? new CombinedInspectionInput();
 
-            ExecuteTwoDTools(result, resolvedInput, twoDTools);
-            ExecuteThreeDTools(result, resolvedInput, threeDTools);
+            try
+            {
+                ExecuteTwoDTools(result, resolvedInput, twoDTools);
+                ExecuteThreeDTools(result, resolvedInput, threeDTools);
+            }
+            catch
+            {
+                result.Dispose();
+                throw;
+            }
 
             stopwatch.Stop();
             result.Elapsed = stopwatch.Elapsed;

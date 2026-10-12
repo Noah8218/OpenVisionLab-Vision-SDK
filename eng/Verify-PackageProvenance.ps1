@@ -165,6 +165,17 @@ $expectedDependencies = @{
     'OpenVisionLab.Vision3D' = @('OpenVisionLab.Compute')
 }
 
+# Core.csproj owns versions; both references are required by the vendored OpenCvSharp DLL.
+[xml] $coreProject = Get-Content -LiteralPath (Join-Path $repositoryRoot 'src/OpenVisionLab.Core/OpenVisionLab.Core.csproj') -Raw
+$requiredCoreManagedDependencies = [ordered] @{}
+foreach ($dependencyId in @('System.Memory', 'System.Runtime.CompilerServices.Unsafe')) {
+    $references = @($coreProject.SelectNodes("//*[local-name()='PackageReference']") | Where-Object { $_.GetAttribute('Include') -ceq $dependencyId })
+    if ($references.Count -ne 1 -or [string]::IsNullOrWhiteSpace($references[0].GetAttribute('Version'))) {
+        throw "Core.csproj must declare one versioned PackageReference for $dependencyId."
+    }
+    $requiredCoreManagedDependencies[$dependencyId] = $references[0].GetAttribute('Version')
+}
+
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $packages = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.nupkg' -File | Sort-Object Name)
 if ($packages.Count -ne $expectedPackageIds.Count) {
@@ -411,6 +422,30 @@ try {
             foreach ($dependency in $actualDependencies) {
                 if ($requiredDependencies -notcontains [string] $dependency.id) {
                     $failures.Add("$packageId contains unexpected internal dependency '$($dependency.id)'.")
+                }
+            }
+
+            if ($packageId -eq 'OpenVisionLab.Core') {
+                $groups = @($nuspec.SelectNodes("//*[local-name()='dependencies']/*[local-name()='group']"))
+                if ($groups.Count -ne 1 -or $groups[0].GetAttribute('targetFramework') -cne '.NETStandard2.0') {
+                    $failures.Add('OpenVisionLab.Core must contain one .NETStandard2.0 dependency group.')
+                }
+                else {
+                    $managedDependencies = @($groups[0].SelectNodes("*[local-name()='dependency']") | Where-Object { -not $_.GetAttribute('id').StartsWith('OpenVisionLab.', [StringComparison]::Ordinal) })
+                    if ($managedDependencies.Count -ne $requiredCoreManagedDependencies.Count) {
+                        $failures.Add("OpenVisionLab.Core has $($managedDependencies.Count) managed dependencies; expected $($requiredCoreManagedDependencies.Count).")
+                    }
+                    foreach ($dependencyId in $requiredCoreManagedDependencies.Keys) {
+                        $matches = @($managedDependencies | Where-Object { $_.GetAttribute('id') -ceq $dependencyId })
+                        if ($matches.Count -ne 1) {
+                            $failures.Add("OpenVisionLab.Core must contain one managed dependency on $dependencyId.")
+                            continue
+                        }
+                        $expectedDeclaration = $requiredCoreManagedDependencies[$dependencyId]
+                        if ($matches[0].GetAttribute('version') -cne $expectedDeclaration) {
+                            $failures.Add("OpenVisionLab.Core managed dependency $dependencyId version '$($matches[0].GetAttribute('version'))' does not match Core.csproj declaration '$expectedDeclaration'.")
+                        }
+                    }
                 }
             }
 

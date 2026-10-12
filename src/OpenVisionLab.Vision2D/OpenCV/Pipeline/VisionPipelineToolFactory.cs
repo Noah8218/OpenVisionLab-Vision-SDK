@@ -90,7 +90,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 case "filter":
                     return CreateFilterTool(parameters);
                 case "edgedetection":
-                    return CreateEdgeDetectionTool(parameters);
+                    return CreateEdgeDetectionTool(parameters, computeSession);
                 case "rotatescale":
                     return CreateRotateScaleTool(parameters);
                 case "affinetransform":
@@ -111,6 +111,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     return CreateLineGaugeTool(parameters);
                 case "mean":
                     return CreateMeanTool(parameters);
+                case "qrcode":
+                    return CreateQrCodeTool(parameters);
                 default:
                     throw new NotSupportedException($"Unsupported vision tool type '{step.ToolType}'.");
             }
@@ -178,7 +180,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
             return tool;
         }
 
-        private static EdgeDetectionTool CreateEdgeDetectionTool(VisionPipelineParameterReader parameters)
+        private static EdgeDetectionTool CreateEdgeDetectionTool(VisionPipelineParameterReader parameters, VisionComputeSession computeSession)
         {
             EdgeDetectionToolProperty property = new EdgeDetectionToolProperty();
             property.EdgeType = parameters.GetEnum(nameof(property.EdgeType), property.EdgeType);
@@ -193,7 +195,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
             property.ScharrDegreeY = parameters.GetInt(nameof(property.ScharrDegreeY), property.ScharrDegreeY);
             property.LaplacianKernelSize = parameters.GetInt(nameof(property.LaplacianKernelSize), property.LaplacianKernelSize);
 
-            EdgeDetectionTool tool = new EdgeDetectionTool();
+            EdgeDetectionTool tool = new EdgeDetectionTool(computeSession);
             tool.SetProperty(property);
             return tool;
         }
@@ -491,6 +493,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
             property.SHOW_CONTOUR = parameters.GetBool(nameof(property.SHOW_CONTOUR), property.SHOW_CONTOUR);
             property.SHOW_FITLINE = parameters.GetBool(nameof(property.SHOW_FITLINE), property.SHOW_FITLINE);
             property.UseSubpixelMeasurement = parameters.GetBool(nameof(property.UseSubpixelMeasurement), property.UseSubpixelMeasurement);
+            property.UseSubpixelPeakMeasurement = parameters.GetBool(nameof(property.UseSubpixelPeakMeasurement), property.UseSubpixelPeakMeasurement);
             property.SubpixelProfileRadius = parameters.GetInt(nameof(property.SubpixelProfileRadius), property.SubpixelProfileRadius);
 
             LineGaugeTool tool = new LineGaugeTool();
@@ -509,6 +512,18 @@ namespace OpenVisionLab.Vision2D.Pipeline
             MeanTool tool = new MeanTool();
             tool.SetProperty(property);
             return tool;
+        }
+
+        private static QrCodeTool CreateQrCodeTool(VisionPipelineParameterReader parameters)
+        {
+            QrCodeToolProperty property = new QrCodeToolProperty();
+            property.NAME = parameters.GetString(nameof(property.NAME), property.NAME);
+            property.USE_ROI = parameters.GetBool(nameof(property.USE_ROI), property.USE_ROI);
+            property.CvROI = parameters.GetRectangle(nameof(property.CvROI), property.CvROI);
+            property.ExpectedCodeCount = parameters.GetInt(nameof(property.ExpectedCodeCount), property.ExpectedCodeCount);
+            if (property.ExpectedCodeCount < 1) throw new ArgumentException("QR expected count must be positive.");
+            if (property.USE_ROI && (property.CvROI.X < 0 || property.CvROI.Y < 0 || property.CvROI.Width < 1 || property.CvROI.Height < 1)) throw new ArgumentException("QR ROI must be a positive rectangle with a non-negative origin.");
+            return new QrCodeTool { property = property };
         }
 
         private static void PopulateCommonProperty(OpenCvToolPropertyBase property, VisionPipelineParameterReader parameters)

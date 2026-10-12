@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <IsPackable>false</IsPackable>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenVisionLab.Inspection" Version="[$(SdkPackageVersion)]" />
+    <PackageReference Include="OpenVisionLab.Vision2D.Blob" Version="[$(SdkPackageVersion)]" />
+  </ItemGroup>
+  <Target Name="RequireExactSdkPackageVersion" BeforeTargets="CollectPackageReferences">
+    <Error Condition="'$(SdkPackageVersion)' == ''" Text="Specify SdkPackageVersion from the isolated local package feed." />
+  </Target>
+</Project>

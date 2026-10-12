@@ -24,6 +24,8 @@ namespace OpenVisionLab.Vision2D.Property
         public bool SHOW_FITLINE { get; set; } = true;
         /// <summary>Opt-in original-gray signed-gradient centroid and double line evidence. Integer edge/fit results and the legacy property interface remain unchanged.</summary>
         public bool UseSubpixelMeasurement { get; set; }
+        /// <summary>When subpixel measurement is enabled, opt into logarithmic interpolation of a dominant gray-gradient peak instead of the default centroid. Flat, competing peaks within two gray levels, or zero neighboring gradients are rejected; this does not define a calibrated physical boundary.</summary>
+        public bool UseSubpixelPeakMeasurement { get; set; }
         /// <summary>Full gradient window radius in pixels, from 2 through 32. Border windows are rejected rather than silently truncated.</summary>
         public int SubpixelProfileRadius { get; set; } = 6;
     }

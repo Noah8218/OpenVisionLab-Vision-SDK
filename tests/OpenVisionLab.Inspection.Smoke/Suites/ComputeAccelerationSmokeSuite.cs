@@ -30,16 +30,21 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Compute preserves 3D CPU coverage poses no-match validation cancellation and recovery", TestThreeD);
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_COMPUTE_TEST_MODULES")))
             {
-                yield return new SmokeCase("Compute native ABI device installation and malformed-output failure matrix", TestNativeFixtures);
-                yield return new SmokeCase("Compute releases a cancelled native probe and recovers without stale discovery", TestNativeCancellation);
+                yield return new SmokeCase("Compute first-use detection-only module reports execution fallback and fresh-session recovery", () => TestFirstUse(Fixture(0), false), "native-fixture");
+                yield return new SmokeCase("Compute native ABI device installation and malformed-output failure matrix", TestNativeFixtures, "native-fixture");
+                yield return new SmokeCase("Compute releases a cancelled native probe and recovers without stale discovery", TestNativeCancellation, "native-fixture");
             }
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_COMPUTE_REAL_PROBE")))
-                yield return new SmokeCase("Compute actual Driver API device discovery keeps inspection on CPU", TestActualDevice);
+                yield return new SmokeCase("Compute actual Driver API device discovery keeps inspection on CPU", TestActualDevice, "cuda-probe");
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_CUDA_TEST_MODULE")))
+                yield return new SmokeCase("Compute first-use actual CUDA separates discovery initialization and application", () => TestFirstUse(Environment.GetEnvironmentVariable("OVL_CUDA_TEST_MODULE"), true), "cuda-device");
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_CUDA_TEST_MODULE")) && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES")))
+                yield return new SmokeCase("Compute first-use initialization and execution failures retain precise support and CPU recovery", TestExecutionFailures, "native-fixture");
         }
 
         private static CudaSupportReport Devices()
         {
-            return new CudaSupportReport(CudaFallbackReason.KernelNotImplemented, driverApiVersion: 12090,
+            return new CudaSupportReport(CudaFallbackReason.None, driverApiVersion: 12090,
                 devices: new[] { new CudaDeviceInfo(0, "Synthetic 6.1", 6, 1, 3UL << 30), new CudaDeviceInfo(2, "Synthetic 8.6", 8, 6, 8UL << 30) });
         }
 
@@ -66,6 +71,8 @@ namespace OpenVisionLab.Inspection.Smoke
             ComputeExecutionEvidence first = session.DescribeCpuExecution();
             Require(first.RequestedCuda && !first.AccelerationApplied && !first.Support.IsAccelerationAvailable && first.Support.SelectedDeviceOrdinal == 2,
                 "Device discovery must retain the requested ordinal and never claim a kernel was applied.");
+            Require(first.Support.Reason == CudaFallbackReason.None && first.Support.InstallationAction == CudaInstallationAction.None
+                && first.FallbackReason == CudaFallbackReason.KernelNotImplemented, "Untested discovery must not demand an update; unsupported CPU work retains its separate fallback reason.");
             Require(ReferenceEquals(first.Support, session.ProbeCuda()) && calls == 1 && before.Reason == CudaFallbackReason.NotProbed, "Discovery must be cached while older snapshots stay unchanged.");
             Require(first.Support.Devices[1].ComputeCapabilityMajor == 8 && first.Support.Devices[1].TotalMemoryBytes == 8UL << 30, "Device capability and total memory must survive selection.");
             RequireThrows<NotSupportedException>(() => ((IList<CudaDeviceInfo>)first.Support.Devices).Clear());
@@ -254,16 +261,135 @@ namespace OpenVisionLab.Inspection.Smoke
             Require(session.ProbeCuda().DeviceDetected, "2D and 3D borrowers must share the host lifetime.");
         }
 
+        private static void TestFirstUse(string modulePath, bool executeCuda)
+        {
+            using Mat template = EdgePoseRefinementSmokeSuite.CreateTemplate();
+            using Mat small = EdgePoseRefinementSmokeSuite.CreateSource(template, 0, 1, 43, 29);
+            VisionPipelineStep step = EdgeStep(template, out byte[] encoded);
+            int probes = 0;
+            VisionComputeOptions options = new VisionComputeOptions { UseCuda = true };
+            using VisionComputeSession session = new VisionComputeSession(options, token => { probes++; return CudaNativeProbe.Probe(modulePath, token); });
+            options.UseCuda = false;
+            using EdgeBasedTemplateMatchingTool tool = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(step, _ => encoded, session);
+            using EdgeBasedTemplateMatchingTool cpu = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(step, _ => encoded);
+            Require(session.RequestedCuda && session.Support.Reason == CudaFallbackReason.NotProbed && probes == 0 && tool.results.Count == 0,
+                "Copied options and restored factory state must not probe or inspect.");
+            CudaSupportReport discovered = session.ProbeCuda();
+            Require(discovered.DeviceDetected && discovered.Reason == CudaFallbackReason.None && !discovered.IsAccelerationAvailable
+                && discovered.InstallationAction == CudaInstallationAction.None && probes == 1, "Successful discovery must remain unqualified without an update instruction.");
+            Require(session.DescribeCpuExecution().FallbackReason == CudaFallbackReason.KernelNotImplemented && ReferenceEquals(session.Support, discovered),
+                "An unsupported CPU algorithm must not convert untested discovery into a module failure.");
+            using VisionToolResult expectedSmall = cpu.Execute(small);
+            using (VisionToolResult actualSmall = tool.Execute(small))
+            {
+                RequireCpuParity(expectedSmall, actualSmall);
+                Require(actualSmall.ComputeDiagnostics.FallbackReason == CudaFallbackReason.WorkloadTooSmall
+                    && !session.Support.IsAccelerationAvailable && ReferenceEquals(session.Support, discovered), "A small grid must not initialize or qualify kernels.");
+            }
+
+            double[] sourceX = { 1, -1, 0, 0.5 };
+            bool applied = session.TryScoreEdgeGrid(sourceX, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },
+                4, 0, 0, 4, 1, 1, false, CancellationToken.None, out double[] scores, out ComputeExecutionEvidence evidence);
+            Require(applied == executeCuda && evidence.AccelerationApplied == executeCuda, "Only a completed kernel batch may report applied acceleration.");
+            Require(discovered.Reason == CudaFallbackReason.None && !discovered.IsAccelerationAvailable && discovered.InstallationAction == CudaInstallationAction.None,
+                "An earlier discovery snapshot must remain immutable after initialization.");
+            if (!executeCuda)
+            {
+                Require(scores == null && evidence.FallbackReason == CudaFallbackReason.KernelNotImplemented
+                    && session.Support.Reason == CudaFallbackReason.KernelNotImplemented && !session.Support.IsAccelerationAvailable
+                    && session.Support.InstallationAction == CudaInstallationAction.UpdateAccelerationModule, "A detection-only DLL needs an execution module only after explicit work is attempted.");
+                using VisionToolResult recovered = tool.Execute(small);
+                RequireCpuParity(expectedSmall, recovered);
+                Require(recovered.ComputeDiagnostics.FallbackReason == CudaFallbackReason.KernelNotImplemented,
+                    "Small-grid CPU recovery must retain the remembered execution-module failure.");
+                using VisionComputeSession retry = new VisionComputeSession(new VisionComputeOptions { UseCuda = true }, token => CudaNativeProbe.Probe(modulePath, token));
+                Require(retry.Support.Reason == CudaFallbackReason.NotProbed && retry.ProbeCuda().Reason == CudaFallbackReason.None
+                    && retry.Support.InstallationAction == CudaInstallationAction.None && !retry.Support.IsAccelerationAvailable, "A new session must clear remembered failure without running kernels.");
+            }
+            else
+            {
+                Require(evidence.FallbackReason == CudaFallbackReason.None && session.Support.IsAccelerationAvailable
+                    && session.Support.Reason == CudaFallbackReason.None && session.Support.InstallationAction == CudaInstallationAction.None
+                    && scores.SequenceEqual(sourceX), "Actual CUDA initialization and independent FP64 results must qualify capability separately from discovery.");
+                using Mat large = new Mat(512, 512, MatType.CV_8UC1, Scalar.All(17));
+                using (Mat patch = new Mat(large, new Rect(43, 29, template.Width, template.Height))) template.CopyTo(patch);
+                using VisionToolResult expected = cpu.Execute(large);
+                using VisionToolResult actual = tool.Execute(large);
+                Require(expected.Success && actual.Success && actual.ComputeDiagnostics.AccelerationApplied
+                    && actual.ComputeDiagnostics.FallbackReason == CudaFallbackReason.None, "The eligible public Edge grid must report its own actual CUDA application.");
+                Require(expected.Metrics.Count == actual.Metrics.Count && expected.Metrics.All(pair => actual.Metrics.TryGetValue(pair.Key, out double value) && value.Equals(pair.Value)),
+                    "Public CPU/CUDA non-time metrics must remain equal.");
+                Require(expected.ResultImage.ToBytes(".png").SequenceEqual(actual.ResultImage.ToBytes(".png")), "Public CPU/CUDA result pixels must remain equal.");
+                DeterministicRigidSurfacePoseSearchResult threeD = new DeterministicRigidSurfacePoseSearchTool(session).Execute(Model(), Model(), SurfaceSearchRobustnessSmokeSuite.Options());
+                Require(threeD.Success && threeD.Matched && !threeD.ComputeDiagnostics.AccelerationApplied
+                    && threeD.ComputeDiagnostics.FallbackReason == CudaFallbackReason.NoMeasuredBenefit && session.Support.IsAccelerationAvailable,
+                    "Qualified CUDA capability must not imply public 3D acceleration.");
+            }
+            Require(probes == 1, "Execution and CPU recovery must retain the session's cached discovery.");
+            Console.WriteLine("CUDA first-use | actualDevice=" + executeCuda + " | module=" + modulePath + " | SHA256=" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(modulePath)))
+                + " | discovery=None/available:false/action:None | execution=" + evidence.FallbackReason + " | applied=" + evidence.AccelerationApplied);
+        }
+
+        private static void TestExecutionFailures()
+        {
+            string directory = Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES");
+            using Mat template = EdgePoseRefinementSmokeSuite.CreateTemplate();
+            using Mat source = EdgePoseRefinementSmokeSuite.CreateSource(template, 0, 1, 43, 29);
+            VisionPipelineStep step = EdgeStep(template, out byte[] encoded);
+            using EdgeBasedTemplateMatchingTool cpu = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(step, _ => encoded);
+            using VisionToolResult expected = cpu.Execute(source);
+            foreach ((int kind, CudaFallbackReason reason, CudaInstallationAction action) in new[] {
+                (1, CudaFallbackReason.KernelInitializationFailed, CudaInstallationAction.UseCpu),
+                (6, CudaFallbackReason.NativeAbiMismatch, CudaInstallationAction.UseCompatibleAccelerationModule),
+                (3, CudaFallbackReason.GpuExecutionFailed, CudaInstallationAction.UseCpu),
+                (4, CudaFallbackReason.InvalidKernelResult, CudaInstallationAction.UseCpu),
+                (7, CudaFallbackReason.InvalidKernelResult, CudaInstallationAction.UseCpu) })
+            {
+                string path = Path.Combine(directory, "execution-" + kind + ".dll");
+                IntPtr module = NativeLibrary.Load(path);
+                try
+                {
+                    LiveProbes live = Marshal.GetDelegateForFunctionPointer<LiveProbes>(NativeLibrary.GetExport(module, "ovl_test_live_executions"));
+                    using VisionComputeSession session = new VisionComputeSession(new VisionComputeOptions { UseCuda = true }, token => CudaNativeProbe.Probe(path, token));
+                    CudaSupportReport discovered = session.ProbeCuda();
+                    Require(discovered.Reason == CudaFallbackReason.None && discovered.InstallationAction == CudaInstallationAction.None, "Failure fixtures must begin with successful untested discovery.");
+                    bool applied = session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5, 1.0 }, new double[5], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },
+                        5, 0, 0, 5, 1, 1, false, CancellationToken.None, out _, out ComputeExecutionEvidence evidence);
+                    Require(!applied && !evidence.AccelerationApplied && evidence.FallbackReason == reason && session.Support.Reason == reason
+                        && session.Support.InstallationAction == action && session.Support.NativeErrorCode == evidence.NativeExecutionErrorCode
+                        && !session.Support.IsAccelerationAvailable && live() == 0, "Initialization or execution failure must publish its actual condition and release partial handles: " + kind);
+                    Require(session.DescribeCpuExecution().NativeExecutionErrorCode == evidence.NativeExecutionErrorCode, "General CPU diagnostics must retain the remembered native error: " + kind);
+                    using EdgeBasedTemplateMatchingTool tool = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(step, _ => encoded, session);
+                    using VisionToolResult recovered = tool.Execute(source);
+                    RequireCpuParity(expected, recovered);
+                    Require(recovered.ComputeDiagnostics.FallbackReason == reason && ReferenceEquals(recovered.ComputeDiagnostics.Support, session.Support)
+                        && discovered.Reason == CudaFallbackReason.None, "CPU recovery must retain failure diagnostics and immutable earlier discovery: " + kind);
+                    using VisionComputeSession retry = new VisionComputeSession(new VisionComputeOptions { UseCuda = true }, token => CudaNativeProbe.Probe(path, token));
+                    Require(retry.Support.Reason == CudaFallbackReason.NotProbed && retry.ProbeCuda().Reason == CudaFallbackReason.None
+                        && !retry.Support.IsAccelerationAvailable && live() == 0, "A new session must reset failure without starting execution: " + kind);
+                    Console.WriteLine("CUDA first-use fixture | kind=" + kind + " | fallback=" + reason + " | action=" + action + " | error=" + evidence.NativeExecutionErrorCode + " | live=" + live());
+                }
+                finally { NativeLibrary.Free(module); }
+            }
+        }
+
+        private static void RequireCpuParity(VisionToolResult expected, VisionToolResult actual)
+        {
+            Require(expected.Success && actual.Success && !actual.ComputeDiagnostics.AccelerationApplied, "CPU fallback must preserve a successful inspection.");
+            Require(expected.Metrics.Count == actual.Metrics.Count && expected.Metrics.All(pair => actual.Metrics.TryGetValue(pair.Key, out double value) && value.Equals(pair.Value)), "CPU fallback metrics must remain equal.");
+            Require(expected.ResultImage.ToBytes(".png").SequenceEqual(actual.ResultImage.ToBytes(".png")), "CPU fallback pixels must remain equal.");
+        }
+
         private static string Fixture(int kind) => Path.Combine(Environment.GetEnvironmentVariable("OVL_COMPUTE_TEST_MODULES"), "fixture-" + kind + ".dll");
 
         private static void TestNativeFixtures()
         {
             CudaFallbackReason[] expected = {
-                CudaFallbackReason.KernelNotImplemented, CudaFallbackReason.NativeAbiMismatch, CudaFallbackReason.NativeExportMissing,
+                CudaFallbackReason.None, CudaFallbackReason.NativeAbiMismatch, CudaFallbackReason.NativeExportMissing,
                 CudaFallbackReason.DriverMissing, CudaFallbackReason.DriverApiMissing, CudaFallbackReason.DriverInitializationFailed,
                 CudaFallbackReason.DeviceQueryFailed, CudaFallbackReason.NoCudaDevice, CudaFallbackReason.InvalidNativeResult,
                 CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.DeviceQueryFailed,
-                CudaFallbackReason.KernelNotImplemented, CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.InvalidNativeResult,
+                CudaFallbackReason.None, CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.InvalidNativeResult,
                 CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.NoCudaDevice,
                 CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.InvalidNativeResult, CudaFallbackReason.NativeExportMissing,
                 CudaFallbackReason.InvalidNativeResult
@@ -279,7 +405,7 @@ namespace OpenVisionLab.Inspection.Smoke
                     Require(report.Reason == expected[kind] && !report.IsAccelerationAvailable, "Native fixture " + kind + " returned " + report.Reason + ".");
                     Require(Marshal.GetDelegateForFunctionPointer<LiveProbes>(NativeLibrary.GetExport(reference, "ovl_test_live_probes"))() == 0, "Native probe leaked a handle on fixture " + kind + ".");
                     if (kind == 0) Require(report.Devices.Count == 3 && report.Devices[0].ComputeCapabilityMajor == 6 && report.Devices[2].ComputeCapabilityMajor == 12
-                        && report.DriverApiVersion == 12090 && report.InstallationAction == CudaInstallationAction.UpdateAccelerationModule, "Distinct synthetic architectures must retain diagnostic identity.");
+                        && report.DriverApiVersion == 12090 && report.InstallationAction == CudaInstallationAction.None, "Untested synthetic devices must retain their identity without an update instruction.");
                     if (kind >= 3 && kind <= 5) Require(report.InstallationAction == CudaInstallationAction.InstallOrUpdateNvidiaDriver, "Driver failures must return an installation action.");
                 }
                 finally { NativeLibrary.Free(reference); }
@@ -330,8 +456,9 @@ namespace OpenVisionLab.Inspection.Smoke
                     Require(session.Support.Reason == CudaFallbackReason.NotProbed, "Public construction must stay lazy even with an installed module.");
                     DeterministicRigidSurfacePoseSearchResult result = new DeterministicRigidSurfacePoseSearchTool(session).Execute(Model(), Model(), SurfaceSearchRobustnessSmokeSuite.Options());
                     Require(result.Success && result.Matched && !result.ComputeDiagnostics.AccelerationApplied && session.Support.DeviceDetected
-                        && session.Support.Reason == CudaFallbackReason.KernelNotImplemented && session.Support.ModulePath == deployedModule,
-                        "Public device discovery must resolve the deployed module and preserve CPU inspection with absent kernels.");
+                        && session.Support.Reason == CudaFallbackReason.None && session.Support.ModulePath == deployedModule
+                        && !session.Support.IsAccelerationAvailable && session.Support.InstallationAction == CudaInstallationAction.None,
+                        "Public device discovery must preserve CPU inspection without claiming kernel availability or an update requirement.");
                     using Mat template = EdgePoseRefinementSmokeSuite.CreateTemplate();
                     using Mat source = EdgePoseRefinementSmokeSuite.CreateSource(template, 0, 1, 43, 29);
                     VisionPipelineStep step = EdgeStep(template, out byte[] encoded);

@@ -1,15 +1,17 @@
 # OpenVisionLab.Core
 
-Shared runtime and geometry support for OpenVisionLab Vision SDK 3.x.
+Shared runtime and geometry support for OpenVisionLab Vision SDK.
 
 Most applications should install `OpenVisionLab.Vision2D`, `OpenVisionLab.Vision2D.Blob`, or `OpenVisionLab.Inspection` and receive this package transitively.
 
-`3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.1.0-dev.1` is only the current
-repository-local default.
+`3.0.0` is the API baseline. Source, package and CLR assembly version values
+are owned by [Directory.Build.props](../../Directory.Build.props); these are
+distinct identities. Install the exact immutable version from your selected
+package source and keep all OpenVisionLab packages on that version. A local
+development default does not establish that a package has been published.
 
 ```powershell
-$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
 dotnet add package OpenVisionLab.Core --version $packageVersion
 ```
 
@@ -25,18 +27,21 @@ The package contains:
 
 `OpenCvSharpExtern.dll` currently makes Windows x64 the supported native runtime.
 Modern SDK-style `win-x64` consumers resolve the runtime asset directly; the
-`.NET Framework` fallback has been reviewed from source but has not been executed in
-a runtime consumer. Keep all OpenVisionLab packages on the same version.
+`.NET Framework` fallback has a dedicated `net48` x64
+[package-only consumer](../../tests/OpenVisionLab.PackageConsumer.NetFrameworkSmoke/Program.cs).
+Run [its verification script](../../eng/Test-NetFrameworkPackageConsumer.ps1) against
+an exact local package feed and a new D: output directory. It checks automatic native
+copy/load, CPU execution, failure recovery and ownership; it does not qualify every
+Framework host. Keep all OpenVisionLab packages on the same version.
 
-The managed DLL matches official `OpenCvSharp4 4.4.0.20200915`; the native DLL
-matches the official OpenCvSharp `4.3.0.20200708` release ZIP. Do not collapse this
-mixed provenance into one upstream version. The current two-binary inventory,
-preserved terms and remaining distribution-owner approval are authoritative in
-`third-party/NOTICE.md` and `third-party/provenance.json`. The former
-`OpenCvSharp.Blob.dll` is not included. Redistribution clearance remains blocked
-pending the distribution/legal owner's approval of the final notices and
-distribution workflow. The notice is technical evidence, not legal advice or
-publication approval.
+The current binary inventory, exact mixed upstream provenance and remaining
+distribution-owner approval are recorded in [ThirdParty/NOTICE.md](ThirdParty/NOTICE.md)
+and [provenance.json](ThirdParty/provenance.json). In the installed package these
+files are under `third-party/`. Redistribution clearance remains blocked pending
+the distribution/legal owner's approval of the final notice bundle and workflow.
+The removed Blob binary is a historical dependency and is not a current package
+or redistribution requirement. Technical build or consumer checks do not grant
+redistribution or publication approval.
 
 This package deliberately does not provide WinForms/WPF image conversion, serial-port,
 system-time, drive-management, or other application-platform helpers. Consumers that

@@ -49,7 +49,7 @@
         "productVersion": "1.0.0+daa955c6e0263a7ba201404e5aa72f4c1bd144ae",
         "publicKeyToken": "6adad1e807fea099",
         "mvid": "7bf27df7-5c34-4d9d-ab35-d168a19854af",
-        "strongNameVerification": "verified during PL-0004; this is not a publisher signature",
+        "strongNameVerification": "verified; this is not a publisher signature",
         "authenticode": "NotSigned"
       },
       "officialArtifact": {
@@ -59,7 +59,7 @@
         "containerUrl": "https://api.nuget.org/v3-flatcontainer/opencvsharp4/4.4.0.20200915/opencvsharp4.4.4.0.20200915.nupkg",
         "containerSize": 2682577,
         "containerSha256": "D6F6C98D45C84D0FFA0C9154400BFAAA65FF3957E290349BE9C9B1190E807BF1",
-        "containerSignature": "NuGet.org repository signature verified during PL-0004",
+        "containerSignature": "NuGet.org repository signature verified",
         "entryPath": "lib/netstandard2.0/OpenCvSharp.dll",
         "entrySize": 862208,
         "entrySha256": "A5C477750EB4321B608F4B9183949915D4A42FE0B5D80CFB8376F5A326FA5F24",

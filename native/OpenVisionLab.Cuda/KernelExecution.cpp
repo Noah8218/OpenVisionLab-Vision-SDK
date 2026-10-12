@@ -426,3 +426,132 @@ extern "C" __declspec(dllexport) int __cdecl ovl_cuda_release_edge_workspace(voi
     *driverError = value->ReleaseEdgeWorkspace();
     return *driverError ? 9 : 0;
 }
+
+
+// These additive exports are optional to managed callers; execution ABI 1 remains unchanged.
+static bool CellTiming(Timing* timing)
+{
+    if (!timing || timing->size != sizeof(Timing)) return false;
+    memset(timing, 0, sizeof(Timing)); timing->size = sizeof(Timing); return true;
+}
+static int LaunchCells(Execution* value, const char* name, int total, int& first, int& count,
+    void** arguments, Cancel cancel, Timing* timing)
+{
+    if (Cancelled(cancel)) return 10;
+    // Pageable HtoD can return after staging. Fence its default stream before the nonblocking stream.
+    double start = Now();
+    int error = value->synchronize(nullptr);
+    timing->uploadMs += Now() - start;
+    if (error) return Fail(timing, error, 9);
+    void* kernel = nullptr;
+    error = value->function(&kernel, value->module, name);
+    if (error) return Fail(timing, error, 9);
+    for (first = 0; first < total; first += count)
+    {
+        if (Cancelled(cancel)) return 10;
+        count = total - first < 16384 ? total - first : 16384;
+        start = Now();
+        error = value->launch(kernel, (count + 127) / 128, 1, 1, 128, 1, 1, 0, value->stream, arguments, nullptr);
+        if (!error) error = value->synchronize(value->stream);
+        timing->kernelWaitMs += Now() - start;
+        ++timing->launches;
+        if (error) return Fail(timing, error, 9);
+    }
+    return Cancelled(cancel) ? 10 : 0;
+}
+extern "C" __declspec(dllexport) int __cdecl ovl_cuda_median3d(void* handle, const double* source,
+    int width, int rows, int kernel, int local, int minimum, double limit, double* output, Cancel cancel, Timing* timing)
+{
+    Execution* value = static_cast<Execution*>(handle);
+    if (!value || !source || !output || !CellTiming(timing) || width <= 0 || rows <= 0
+        || (int64_t)width * rows > INT32_MAX || (kernel != 3 && kernel != 5 && kernel != 7)
+        || local < 0 || local > 1 || (local && (minimum < 1 || minimum >= kernel * kernel || !std::isfinite(limit) || limit <= 0))) return 12;
+    if (Cancelled(cancel)) return 10;
+    CurrentContext current(value); if (current.status) return Fail(timing, current.status, 9);
+    // Keep the existing scratch cap; full-width row tiles include the complete clipped halo.
+    size_t freeBytes = 0, totalBytes = 0;
+    int memoryStatus = value->memoryInfo(&freeBytes, &totalBytes);
+    if (memoryStatus) return Fail(timing, memoryStatus, 9);
+    uint64_t maximumBytes = 64ULL * 1024 * 1024;
+    if (freeBytes / 2 < maximumBytes) maximumBytes = freeBytes / 2;
+    uint64_t maximumCells = maximumBytes / 16;
+    int radius = kernel / 2;
+    int tileRows = static_cast<int>(maximumCells / width);
+    if (tileRows > rows) tileRows = rows;
+    if (tileRows <= 0 || (tileRows < rows && tileRows <= 2 * radius)) return Fail(timing, 0, 8);
+    int coreRows = tileRows == rows ? rows : tileRows - 2 * radius;
+    int status = Budget(value, (uint64_t)tileRows * width * 16, timing);
+    if (status) return status;
+    Buffer input(value), result(value);
+    int error = input.Allocate((size_t)tileRows * width * 8);
+    if (!error) error = result.Allocate((size_t)tileRows * width * 8);
+    if (error) return Fail(timing, error, 8);
+    for (int row = 0; row < rows;)
+    {
+        if (Cancelled(cancel)) return 10;
+        int countRows = rows - row < coreRows ? rows - row : coreRows;
+        int sourceRow = row > radius ? row - radius : 0;
+        int lastRow = (int64_t)row + countRows + radius < rows ? row + countRows + radius : rows;
+        int localRows = lastRow - sourceRow, total = localRows * width;
+        double start = Now();
+        error = input.Upload(source + (size_t)sourceRow * width, (size_t)total * 8);
+        timing->uploadMs += Now() - start;
+        if (error) return Fail(timing, error, 9);
+        int first = 0, count = 0;
+        void* arguments[] = { &input.pointer, &width, &localRows, &kernel, &local, &minimum, &limit, &first, &count, &result.pointer };
+        status = LaunchCells(value, "median3d", total, first, count, arguments, cancel, timing);
+        if (status) return status;
+        start = Now();
+        error = value->download(output + (size_t)row * width, result.pointer + (uint64_t)(row - sourceRow) * width * 8, (size_t)countRows * width * 8);
+        timing->downloadMs += Now() - start;
+        if (error) return Fail(timing, error, 9);
+        row += countRows;
+    }
+    return Cancelled(cancel) ? 10 : 0;
+}
+extern "C" __declspec(dllexport) int __cdecl ovl_cuda_normals3d(void* handle, const double* source,
+    int width, int rows, double columnPitch, double rowPitch, double* output, Cancel cancel, Timing* timing)
+{
+    Execution* value = static_cast<Execution*>(handle);
+    if (!value || !source || !output || !CellTiming(timing) || width <= 0 || rows <= 0
+        || (int64_t)width * rows > INT32_MAX / 6 || !std::isfinite(columnPitch) || !std::isfinite(rowPitch)
+        || columnPitch <= 0 || rowPitch <= 0) return 12;
+    if (Cancelled(cancel)) return 10;
+    CurrentContext current(value); if (current.status) return Fail(timing, current.status, 9);
+    int total = width * rows, status = Budget(value, (uint64_t)total * 56, timing);
+    if (status) return status;
+    Buffer input(value), result(value); double start = Now();
+    int error = input.Allocate((size_t)total * 8);
+    if (!error) error = result.Allocate((size_t)total * 48);
+    if (error) return Fail(timing, error, 8);
+    error = input.Upload(source, (size_t)total * 8); timing->uploadMs = Now() - start;
+    if (error) return Fail(timing, error, 9);
+    int first = 0, count = 0;
+    void* arguments[] = { &input.pointer, &width, &rows, &columnPitch, &rowPitch, &first, &count, &result.pointer };
+    status = LaunchCells(value, "normals3d", total, first, count, arguments, cancel, timing);
+    if (status) return status;
+    start = Now(); error = value->download(output, result.pointer, (size_t)total * 48); timing->downloadMs = Now() - start;
+    return error ? Fail(timing, error, 9) : Cancelled(cancel) ? 10 : 0;
+}
+extern "C" __declspec(dllexport) int __cdecl ovl_cuda_scharr8u(void* handle, const unsigned char* source,
+    int width, int rows, int channels, int axis, unsigned char* output, Cancel cancel, Timing* timing)
+{
+    Execution* value = static_cast<Execution*>(handle);
+    if (!value || !source || !output || !CellTiming(timing) || width <= 0 || rows <= 0
+        || (channels != 1 && channels != 3) || (int64_t)width * rows * channels > INT32_MAX || axis < 0 || axis > 1) return 12;
+    if (Cancelled(cancel)) return 10;
+    CurrentContext current(value); if (current.status) return Fail(timing, current.status, 9);
+    int total = width * rows * channels, status = Budget(value, (uint64_t)total * 2, timing);
+    if (status) return status;
+    Buffer input(value), result(value); double start = Now();
+    int error = input.Allocate(total); if (!error) error = result.Allocate(total);
+    if (error) return Fail(timing, error, 8);
+    error = input.Upload(source, total); timing->uploadMs = Now() - start;
+    if (error) return Fail(timing, error, 9);
+    int first = 0, count = 0;
+    void* arguments[] = { &input.pointer, &width, &rows, &channels, &axis, &first, &count, &result.pointer };
+    status = LaunchCells(value, "scharr8u", total, first, count, arguments, cancel, timing);
+    if (status) return status;
+    start = Now(); error = value->download(output, result.pointer, total); timing->downloadMs = Now() - start;
+    return error ? Fail(timing, error, 9) : Cancelled(cancel) ? 10 : 0;
+}

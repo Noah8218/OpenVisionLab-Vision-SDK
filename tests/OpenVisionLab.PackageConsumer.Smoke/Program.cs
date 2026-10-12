@@ -1,5 +1,6 @@
 using OpenCvSharp;
 using OpenVisionLab.Inspection;
+using OpenVisionLab.Vision2D;
 using OpenVisionLab.Vision2D.Blob;
 using OpenVisionLab.Vision2D.Pipeline;
 using OpenVisionLab.Vision2D.Property;
@@ -8,7 +9,17 @@ using OpenVisionLab.Vision2D.Tool;
 using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.Vision3D.Geometry;
 using OpenVisionLab.Vision3D.Inspection;
+using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
+
+if (args.Length > 0 && args[0] == "--cuda-local")
+{
+    Environment.ExitCode = CudaPackageConsumerSmoke.Run(args);
+    return;
+}
+
+CheckCanny();
 
 using Mat image = new Mat(2, 2, MatType.CV_8UC1, new Scalar(100));
 using ThresholdTool threshold = new ThresholdTool();
@@ -281,8 +292,11 @@ using (VisionPipelineContext canceledPipelineContext = new VisionPipelineContext
     }
 }
 
-if (VisionPipelineToolFactory.Descriptors.Count != 14
-    || VisionPipelineBlobToolFactory.Descriptors.Count != 15
+if (VisionPipelineToolFactory.Descriptors.Count != 15
+    || VisionPipelineBlobToolFactory.Descriptors.Count != 16
+    || !VisionPipelineToolFactory.TryGetDescriptor("QrCodeTool", out VisionPipelineToolDescriptor qrDescriptor)
+    || qrDescriptor.ToolType != "qrcode"
+    || qrDescriptor.PackageId != "OpenVisionLab.Vision2D"
     || !VisionPipelineBlobToolFactory.TryGetDescriptor("BlobTool", out VisionPipelineToolDescriptor blobDescriptor)
     || blobDescriptor.PackageId != "OpenVisionLab.Vision2D.Blob")
 {
@@ -470,3 +484,86 @@ if (!comparison.Success
 
 Console.WriteLine(
     "OpenVisionLab package-only 2D properties, tools, Pipeline, Blob, 3D crop, connected-region presence and fill-height, surface-match, and mesh consumer passed.");
+
+Console.WriteLine("RUNTIME|" + Environment.Version + "|" + AppContext.TargetFrameworkName + "|" + (Environment.Is64BitProcess ? "x64" : "x86"));
+foreach (string name in new[] { "OpenVisionLab.Core", "OpenVisionLab.Compute", "OpenVisionLab.Vision2D", "OpenVisionLab.Vision2D.Blob", "OpenVisionLab.Vision3D", "OpenVisionLab.Inspection", "OpenCvSharp" })
+{
+    Assembly assembly = Assembly.Load(name);
+    Console.WriteLine("ASSEMBLY|" + name + "|" + assembly.Location + "|" + assembly.ManifestModule.ModuleVersionId + "|" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(assembly.Location))));
+}
+using (Process process = Process.GetCurrentProcess())
+{
+    ProcessModule native = process.Modules.Cast<ProcessModule>().Single(module => string.Equals(module.ModuleName, "OpenCvSharpExtern.dll", StringComparison.OrdinalIgnoreCase));
+    Console.WriteLine("NATIVE|" + native.FileName + "|" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(native.FileName))));
+}
+Console.WriteLine("PASS|net8-package-consumer");
+
+static void CheckCanny()
+{
+    using (Mat parent = new Mat(31, 43, MatType.CV_8UC3, Scalar.White))
+    using (Mat color = parent.SubMat(new Rect(3, 4, 31, 23)))
+    using (Mat gray = new Mat())
+    using (Mat expectedColor = new Mat())
+    {
+        for (int row = 0; row < color.Rows; row++)
+            for (int column = 0; column < color.Cols; column++)
+                color.Set(row, column, column < 15 ? new Vec3b(255, 0, 0) : new Vec3b(0, 49, 0));
+        Cv2.CvtColor(color, gray, ColorConversionCodes.BGR2GRAY);
+        Cv2.ImEncode(".png", parent, out byte[] encodedInput);
+        using (SHA256 hash = SHA256.Create())
+            Console.WriteLine("INPUT|canny-padded-bgr|" + BitConverter.ToString(hash.ComputeHash(encodedInput)).Replace("-", string.Empty));
+        using (Mat before = parent.Clone())
+        using (Mat referenceColor = color.Clone())
+        {
+            Cv2.Canny(referenceColor, expectedColor, 100, 200, 3, false);
+            VisionToolResult retained = null;
+            try
+            {
+                using (EdgeDetectionTool tool = new EdgeDetectionTool())
+                {
+                    tool.SetProperty(new EdgeDetectionToolProperty { UseL2Gradient = false });
+                    retained = tool.Execute(color);
+                    Require(retained.Success && retained.ResultImage.Type() == MatType.CV_8UC1, "Color Canny must return an 8UC1 image: " + retained.Message);
+                    foreach (Mat input in new[] { gray, color })
+                        using (Mat referenceInput = input.Clone())
+                        using (Mat expected = new Mat())
+                        using (VisionToolResult actual = tool.Execute(input))
+                        {
+                            Cv2.Canny(referenceInput, expected, 100, 200, 3, false);
+                            Require(actual.Success && actual.ResultImage.Type() == MatType.CV_8UC1 && actual.ResultImage.Size() == input.Size()
+                                && Cv2.Norm(actual.ResultImage, expected, NormTypes.L1) == 0, "Packaged Canny must match the distinct-output native reference.");
+                            Require(actual.Metrics["SourceImageChannels"] == input.Channels() && actual.Metrics["ResultImageChannels"] == 1, "Canny source/output channel metrics differ.");
+                            Require(input == color ? Cv2.CountNonZero(actual.ResultImage) > 0 : Cv2.CountNonZero(actual.ResultImage) == 0, "Color Canny must retain gradients at equal grayscale intensity.");
+                        }
+                    tool.SetProperty(new EdgeDetectionToolProperty { CannyThresholdLow = 400, CannyThresholdHigh = 200 });
+                    using (VisionToolResult invalid = tool.Execute(color))
+                        Require(!invalid.Success && invalid.ErrorCode == VisionToolErrorCode.EdgeDetectionInvalidThreshold
+                            && invalid.Exception == null && invalid.ResultImage == null, "Invalid Canny settings must return a typed failure.");
+                    tool.SetProperty(new EdgeDetectionToolProperty { UseL2Gradient = false });
+                    using (Mat unsupported = new Mat(23, 31, MatType.CV_16UC3, Scalar.All(17)))
+                    using (Mat unsupportedBefore = unsupported.Clone())
+                    using (VisionToolResult failed = tool.Execute(unsupported))
+                        Require(!failed.Success && failed.ErrorCode == VisionToolErrorCode.OpenCvExecutionFailed
+                            && failed.Exception != null && failed.ResultImage == null && Cv2.Norm(unsupported, unsupportedBefore, NormTypes.L1) == 0,
+                            "Unsupported Canny depth must fail without altering caller pixels.");
+                    using (VisionToolResult recovered = tool.Execute(color))
+                        Require(recovered.Success && Cv2.Norm(recovered.ResultImage, expectedColor, NormTypes.L1) == 0, "Canny must recover on the same instance after failure.");
+                    VisionPipelineStep step = new VisionPipelineStep { ToolType = "edgeDetection" };
+                    step.Parameters["UseL2Gradient"] = "false";
+                    using (EdgeDetectionTool restored = (EdgeDetectionTool)VisionPipelineToolFactory.Create(step))
+                    using (VisionToolResult result = restored.Execute(gray))
+                        Require(result.Success && result.ResultImage.Type() == MatType.CV_8UC1 && Cv2.CountNonZero(result.ResultImage) == 0, "Restored Canny must preserve the grayscale contract.");
+                }
+                Require(!retained.ResultImage.IsDisposed && Cv2.Norm(retained.ResultImage, expectedColor, NormTypes.L1) == 0, "A returned Canny snapshot must survive later calls and Tool disposal.");
+                Require(Cv2.Norm(parent, before, NormTypes.L1) == 0, "Canny must preserve caller pixels and ROI padding.");
+            }
+            finally { retained?.Dispose(); }
+        }
+    }
+    Console.WriteLine("PASS|canny-package-consumer|Gray=1|Color=3|PaddedRoi|NativeReference|InvalidDepthRecovery|RetainedResult|SourcePreserved");
+}
+
+static void Require(bool condition, string message)
+{
+    if (!condition) throw new InvalidOperationException(message);
+}

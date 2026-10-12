@@ -51,6 +51,7 @@ C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MatchingToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MeanToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MorphologyToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|()
+C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.QrCodeToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.ThresholdToolProperty|()
@@ -94,11 +95,13 @@ C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.CornerTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|(OpenVisionLab.Compute.VisionComputeSession computeSession)
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|()
+C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|(OpenVisionLab.Compute.VisionComputeSession computeSession)
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.FilterTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MatchingTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|()
+C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.ThresholdTool|()
@@ -138,8 +141,10 @@ C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicL
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLineFitTool|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterOptions|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterTool|()
+C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterTool|(OpenVisionLab.Compute.VisionComputeSession computeSession)
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterOptions|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterTool|()
+C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterTool|(OpenVisionLab.Compute.VisionComputeSession computeSession)
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicModelKeyPointExtractionOptions|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicModelKeyPointExtractionTool|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicModelSurfaceEdgeExtractionOptions|()
@@ -194,6 +199,7 @@ C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapCropT
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapDomainMaskTool|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationOptions|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationTool|()
+C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationTool|(OpenVisionLab.Compute.VisionComputeSession computeSession)
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapRegionStatisticsTool|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapThresholdBackgroundRemovalOptions|()
 C|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapThresholdBackgroundRemovalTool|()
@@ -452,6 +458,7 @@ F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MatchingTool|results|System
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|property|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMean||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|results|System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.MeanResult>||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|property|OpenVisionLab.Vision2D.Property.IOpenCVPropertyMorphology||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|property|OpenVisionLab.Vision2D.Property.QrCodeToolProperty||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|property|OpenVisionLab.Vision2D.Property.IOpenCVPropertyRotateScale||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|property|OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|results|System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.MatchingResult>||
@@ -516,6 +523,10 @@ F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|Morphol
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|MorphologyInvalidKernel|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=360
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|None|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=0
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|OpenCvExecutionFailed|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=220
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|QrCodeBackendUnavailable|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1103
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|QrCodeCountMismatch|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1102
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|QrCodeDecodeFailed|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1101
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|QrCodeNotDetected|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1100
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|RotateScaleInvalidScale|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1000
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|StepCanceled|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=301
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|StepTimeout|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=300
@@ -944,6 +955,7 @@ M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|Execute|O
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|Execute|OpenVisionLab.Inspection.ThreeDToolExecutionResult<TResult>|(System.Threading.CancellationToken cancellationToken optional=<null>)|
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|Run|OpenVisionLab.Inspection.ThreeDToolExecutionReport|(System.Collections.Generic.IEnumerable<OpenVisionLab.Inspection.IThreeDToolAdapter> adapters)|static
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|Run|OpenVisionLab.Inspection.ThreeDToolExecutionReport|(System.Collections.Generic.IEnumerable<OpenVisionLab.Inspection.IThreeDToolAdapter> adapters,System.Threading.CancellationToken cancellationToken)|static
+M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source)|virtual
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.BlobTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Blob.IOpenCVPropertyBlob propertyBase)|
 M|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.CVBlob|Run|System.Void|()|virtual
@@ -1045,6 +1057,7 @@ M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTo
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|SetLearnedModel|System.Void|(OpenVisionLab.Vision2D.Tool.EdgeTemplateModelArtifact artifact,System.Threading.CancellationToken cancellationToken optional=<null>)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching propertyBase)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|SetTemplateImage|System.Void|(OpenCvSharp.Mat image)|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source,System.Threading.CancellationToken cancellationToken)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeDetection property)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelArtifactCodec|Decode|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelArtifact|(System.Byte[] bytes,System.Threading.CancellationToken cancellationToken optional=<null>)|static
@@ -1072,6 +1085,10 @@ M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|SetProperty|System
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|SingleRun|System.Void|()|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.IOpenCVPropertyMorphology property)|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source)|virtual
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source,System.Threading.CancellationToken cancellationToken)|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|Run|System.Void|()|virtual
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.QrCodeToolProperty property)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.IOpenCVPropertyRotateScale property)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|Transform|OpenCvSharp.Mat|(OpenCvSharp.Mat source,System.Double angle,System.Double scaleXPercent,System.Double scaleYPercent,OpenCvSharp.InterpolationFlags interpolation,OpenCvSharp.BorderTypes borderType)|static
@@ -1728,6 +1745,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|T
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|USE_EXTEND_FIT_LINE|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|USE_MANUAL_ANGLE|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|UseSubpixelMeasurement|System.Boolean|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|UseSubpixelPeakMeasurement|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.LineGaugeToolProperty|VER_PRJ_DIR|OpenVisionLab.Core.FormulaUtil+PROJECTION_DIR|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MatchingToolProperty|CANNY_HIGH|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MatchingToolProperty|CANNY_LOW|System.Int32|index=|get,set|
@@ -1782,6 +1800,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|USE_ROI|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|USE_THRESHOLD|System.Boolean|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|Weight|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.QrCodeToolProperty|ExpectedCodeCount|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|Angle|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|BorderType|OpenCvSharp.BorderTypes|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|Interpolation|OpenCvSharp.InterpolationFlags|index=|get,set|
@@ -1948,6 +1967,16 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MeanResult|Bounding|Syste
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MeanResult|Center|System.Drawing.PointF|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MeanResult|index|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MeanResult|meanValue|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeCandidate|CandidateIndex|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeCandidate|Corners|System.Collections.Generic.IReadOnlyList<OpenCvSharp.Point2f>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeCandidate|Decoded|System.Boolean|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeCandidate|Text|System.String|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|AppliedRoi|OpenCvSharp.Rect|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|Candidates|System.Collections.Generic.IReadOnlyList<OpenVisionLab.Vision2D.Result.QrCodeCandidate>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|DecodedCount|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|DetectedCount|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|ExpectedCodeCount|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|InputImageSize|OpenCvSharp.Size|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateDecision|Accepted|System.Boolean|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateDecision|Code|OpenVisionLab.Vision2D.Result.VisionObjectCandidateRejectReasonCode|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateDecision|Text|System.String|index=|get|
@@ -2002,6 +2031,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelPoint|Y|Sy
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.IVisionTool|Name|System.String|index=|get|abstract
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|property|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|resultList|System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.LineGaugeResult>|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|LatestReading|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Angle|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Bounds|System.Drawing.RectangleF|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Center|System.Drawing.PointF|index=|get,set|
@@ -2021,6 +2051,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|HasError|S
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|Message|System.String|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|Metrics|System.Collections.Generic.Dictionary<System.String,System.Double>|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|Overlays|System.Collections.Generic.List<OpenVisionLab.Vision2D.Tool.VisionToolOverlay>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|QrCodeReading|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|ResultImage|OpenCvSharp.Mat|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|ResultStatusName|System.String|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|ResultStatus|OpenVisionLab.Vision2D.Tool.VisionToolResultStatus|index=|get,set|
@@ -2280,12 +2311,14 @@ P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicL
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterOptions|MaximumAbsoluteDeviation|System.Double|index=|get,set|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterOptions|MinimumValidNeighbors|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterOptions|WindowSize|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterResult|ComputeDiagnostics|OpenVisionLab.Compute.ComputeExecutionEvidence|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterResult|Message|System.String|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterResult|OutlierIndices|System.Collections.Generic.IReadOnlyList<System.Int32>|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterResult|Success|System.Boolean|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterResult|Values|System.Collections.Generic.IReadOnlyList<System.Double>|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterOptions|KernelSize|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterResult|ChangedCount|System.Int32|index=|get|
+P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterResult|ComputeDiagnostics|OpenVisionLab.Compute.ComputeExecutionEvidence|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterResult|Message|System.String|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterResult|Success|System.Boolean|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterResult|Values|System.Collections.Generic.IReadOnlyList<System.Double>|index=|get|
@@ -2620,6 +2653,7 @@ P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNorma
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|CalculatedNormalCount|System.Int32|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|CentralDerivativeCount|System.Int32|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|ColumnCount|System.Int32|index=|get|
+P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|ComputeDiagnostics|OpenVisionLab.Compute.ComputeExecutionEvidence|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|ConsistentNormalCount|System.Int32|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|InputFiniteSampleCount|System.Int32|index=|get|
 P|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationResult|MaximumAngularErrorDegrees|System.Double|index=|get|
@@ -3370,6 +3404,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MeanToolProperty|class|
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MorphologyToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyMorphology|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|class|abstract|base=System.Object|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|class|abstract|base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.QrCodeToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyRotateScale|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase,OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.ThresholdToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyThreshold|underlying=-
@@ -3393,6 +3428,8 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.LineGaugeVerticalLines|cl
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MatchingCoordinateTransform|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MatchingResult|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.MeanResult|class||base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeCandidate|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateCoordinateFrame|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateDecision|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateEvaluator|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
@@ -3412,7 +3449,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.CVSIFT|class||base=OpenVisi
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.ContourTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.CornerTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
-T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeDetectionTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelArtifactCodec|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelArtifact|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.EdgeTemplateModelPoint|class|sealed|base=System.Object|interfaces=|underlying=-
@@ -3423,6 +3460,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|class||base=O
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MatchingTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.ThresholdTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-

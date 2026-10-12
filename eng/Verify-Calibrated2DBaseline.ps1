@@ -14,6 +14,7 @@ Set-StrictMode -Version Latest
 
 $script:errors = [System.Collections.Generic.List[object]]::new()
 $script:validatedFiles = [System.Collections.Generic.List[object]]::new()
+$script:inputPaths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
 function Add-ValidationError {
     param(
@@ -71,7 +72,7 @@ function Test-RequiredObject {
     )
 
     $value = Get-Field $Object $Name
-    if ($null -eq $value -or $value -is [array] -or $value -is [string] -or @($value.PSObject.Properties).Count -eq 0) {
+    if ($null -eq $value -or $value.GetType() -ne [System.Management.Automation.PSCustomObject] -or @($value.PSObject.Properties).Count -eq 0) {
         Add-ValidationError 'required.object' $Path "Required object '$Name' is missing."
         return $null
     }
@@ -90,7 +91,7 @@ function Test-RequiredArray {
         Add-ValidationError 'required.array' $Path "Required non-empty array '$Name' is missing."
         return @()
     }
-    return @($value)
+    return ,$value
 }
 
 function Test-FiniteNumber {
@@ -208,6 +209,21 @@ function Resolve-DataFile {
     return $candidate
 }
 
+function Resolve-PhysicalFilePath {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $parent = [System.IO.Path]::GetDirectoryName($fullPath)
+    if ([string]::IsNullOrEmpty($parent)) { return $fullPath }
+    $physicalParent = Resolve-PhysicalFilePath $parent
+    $candidate = [System.IO.Path]::Combine($physicalParent, [System.IO.Path]::GetFileName($fullPath))
+    if (-not (Test-Path -LiteralPath $candidate)) { return $candidate }
+    $item = Get-Item -LiteralPath $candidate -Force
+    $target = $item.ResolveLinkTarget($true)
+    if ($null -ne $target) { return Resolve-PhysicalFilePath $target.FullName }
+    return $item.FullName
+}
+
 function Test-ReferencedFile {
     param(
         [Parameter(Mandatory = $true)] $Object,
@@ -218,6 +234,13 @@ function Test-ReferencedFile {
     )
 
     $relativePath = Test-NonEmptyString $Object $PathName "$ObjectPath.$PathName"
+    $filePath = $null
+    if ($null -ne $relativePath) {
+        $filePath = Resolve-DataFile $relativePath "$ObjectPath.$PathName" $ManifestDirectory
+        if ($null -ne $filePath) {
+            [void] $script:inputPaths.Add($filePath)
+        }
+    }
     $expectedHash = Test-NonEmptyString $Object $HashName "$ObjectPath.$HashName"
     if ($null -eq $expectedHash) {
         return
@@ -226,7 +249,6 @@ function Test-ReferencedFile {
     if ($null -eq $relativePath -or -not $validHash) {
         return
     }
-    $filePath = Resolve-DataFile $relativePath "$ObjectPath.$PathName" $ManifestDirectory
     if ($null -eq $filePath) {
         return
     }
@@ -305,10 +327,11 @@ if (-not (Test-Path -LiteralPath $reportParent -PathType Container)) {
 try {
     $manifestFullPath = (Resolve-Path -LiteralPath $ManifestPath -ErrorAction Stop).Path
     $manifestDirectory = Split-Path -Parent $manifestFullPath
+    [void] $script:inputPaths.Add($manifestFullPath)
     $manifestBytes = [System.IO.File]::ReadAllBytes($manifestFullPath)
     $manifestSha256 = [System.BitConverter]::ToString(
         [System.Security.Cryptography.SHA256]::HashData($manifestBytes)).Replace('-', '').ToUpperInvariant()
-    $manifest = Get-Content -LiteralPath $manifestFullPath -Raw | ConvertFrom-Json -DateKind String
+    $manifest = Get-Content -LiteralPath $manifestFullPath -Raw | ConvertFrom-Json -DateKind String -NoEnumerate
 }
 catch {
     $manifestSha256 = ''
@@ -317,10 +340,14 @@ catch {
 }
 
 $evidenceClass = 'invalid'
+if ($null -eq $manifest -or $manifest.GetType() -ne [System.Management.Automation.PSCustomObject]) {
+    Add-ValidationError 'manifest.object' '$' 'Manifest root must be a JSON object.'
+    $manifest = $null
+}
 if ($null -ne $manifest) {
     $schemaVersion = Get-Field $manifest 'schemaVersion'
-    if ($schemaVersion -ne 1) {
-        Add-ValidationError 'schema.version' '$.schemaVersion' 'schemaVersion must be 1.'
+    if (($schemaVersion -isnot [int] -and $schemaVersion -isnot [long] -and $schemaVersion -isnot [double] -and $schemaVersion -isnot [decimal]) -or $schemaVersion -ne 1) {
+        Add-ValidationError 'schema.version' '$.schemaVersion' 'schemaVersion must be the JSON number 1.'
     }
 
     $dataset = Test-RequiredObject $manifest 'dataset' '$.dataset'
@@ -397,7 +424,7 @@ if ($null -ne $manifest) {
     $sampleIndex = 0
     foreach ($sample in $samples) {
         $samplePath = "$.samples[$sampleIndex]"
-        if ($null -eq $sample -or $sample -is [string]) {
+        if ($null -eq $sample -or $sample.GetType() -ne [System.Management.Automation.PSCustomObject]) {
             Add-ValidationError 'sample.object' $samplePath 'Each sample must be an object.'
             $sampleIndex++
             continue
@@ -428,7 +455,8 @@ if ($null -ne $manifest) {
             $sampleGroundTruthFrame = Test-NonEmptyString $sampleGroundTruth 'frameId' "$samplePath.groundTruth.frameId"
             [void] (Test-FiniteNumber $sampleGroundTruth 'uncertainty' "$samplePath.groundTruth.uncertainty" 0)
             [void] (Test-PositiveInteger $sampleGroundTruth 'repeatCount' "$samplePath.groundTruth.repeatCount" 2)
-            if ((Get-Field $sampleGroundTruth 'independent') -ne $true) {
+            $independent = Get-Field $sampleGroundTruth 'independent'
+            if ($independent -isnot [bool] -or -not $independent) {
                 Add-ValidationError 'groundTruth.independence' "$samplePath.groundTruth.independent" 'Ground truth must be explicitly independent.'
             }
             if ($null -ne $calibrationUnit -and $null -ne $sampleGroundTruthUnit -and
@@ -456,7 +484,8 @@ if ($null -ne $manifest) {
         $groundTruthFrame = Test-NonEmptyString $groundTruth 'frameId' '$.groundTruth.frameId'
         [void] (Test-FiniteNumber $groundTruth 'uncertainty' '$.groundTruth.uncertainty' 0)
         [void] (Test-PositiveInteger $groundTruth 'repeatCount' '$.groundTruth.repeatCount' 2)
-        if ((Get-Field $groundTruth 'independent') -ne $true) {
+        $independent = Get-Field $groundTruth 'independent'
+        if ($independent -isnot [bool] -or -not $independent) {
             Add-ValidationError 'groundTruth.independence' '$.groundTruth.independent' 'Ground truth must be explicitly independent.'
         }
         if ($null -ne $calibrationUnit -and $null -ne $groundTruthUnit -and
@@ -477,6 +506,11 @@ if ($null -ne $manifest) {
         $outputIndex = 0
         foreach ($output in $outputs) {
             $outputPath = "$.tolerance.outputs[$outputIndex]"
+            if ($null -eq $output -or $output.GetType() -ne [System.Management.Automation.PSCustomObject]) {
+                Add-ValidationError 'required.object' $outputPath 'Each tolerance output must be an object.'
+                $outputIndex++
+                continue
+            }
             $outputName = Test-NonEmptyString $output 'name' "$outputPath.name"
             if ($null -ne $outputName -and -not $outputNames.Add($outputName)) {
                 Add-ValidationError 'tolerance.output.duplicate' "$outputPath.name" "Tolerance output '$outputName' is duplicated."
@@ -516,10 +550,27 @@ if ($status -eq 'failed') {
     $evidenceClass = 'invalid'
 }
 $report = New-ValidationReport $status $evidenceClass $manifestSha256
-[System.IO.File]::WriteAllText(
-    $reportFullPath,
-    (($report | ConvertTo-Json -Depth 8) + [Environment]::NewLine),
-    [System.Text.UTF8Encoding]::new($false))
+if ($script:inputPaths.Contains($reportFullPath)) {
+    throw "report.inputCollision: ReportPath must not overwrite the manifest or a referenced input: '$reportFullPath'."
+}
+$physicalReportPath = Resolve-PhysicalFilePath $reportFullPath
+foreach ($inputPath in $script:inputPaths) {
+    if ([string]::Equals((Resolve-PhysicalFilePath $inputPath), $physicalReportPath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "report.inputCollision: ReportPath resolves to the manifest or a referenced input: '$reportFullPath'."
+    }
+}
+# Replace only the report directory entry; writing through an existing hard link would modify the input's shared bytes.
+$reportTemporaryPath = Join-Path $reportParent ('.' + [System.IO.Path]::GetFileName($reportFullPath) + '.' + [Guid]::NewGuid().ToString('N') + '.tmp')
+try {
+    [System.IO.File]::WriteAllText(
+        $reportTemporaryPath,
+        (($report | ConvertTo-Json -Depth 8) + [Environment]::NewLine),
+        [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::Move($reportTemporaryPath, $reportFullPath, $true)
+}
+finally {
+    if ([System.IO.File]::Exists($reportTemporaryPath)) { [System.IO.File]::Delete($reportTemporaryPath) }
+}
 
 Write-Host "Calibrated 2D baseline verification: $status"
 Write-Host "Report: $reportFullPath"

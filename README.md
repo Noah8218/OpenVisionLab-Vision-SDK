@@ -7,17 +7,17 @@ and [3D execution/outcome contracts](./docs/three-d-inspection.md#execution-fail
 
 > **3.0 naming change:** `Library-Noah` and `Lib.* 2.9.1` remain available as
 > the compatibility baseline for existing consumers. This source builds the
-> `OpenVisionLab.* 3.0` packages, DLLs, and namespaces. Before migrating an
+> `OpenVisionLab.* 3.x` packages, DLLs, and namespaces. Before migrating an
 > existing project, read the
 > [2.9.1 to 3.0.0 migration guide](./docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md).
 
 OpenVisionLab Vision SDK is a C# vision inspection library for OpenCvSharp-based 2D inspection and UI-independent height-map/full-XYZ 3D computation.
 
-It provides application-ready 2D image-processing tools, 3D feature extraction and measurement algorithms, and shared result states and metrics.
+It includes 2D image-processing tools, 3D feature extraction and measurement algorithms, with common result states and metrics.
 
 ## Version
 
-Current source version: `v3.1.0`.
+Current source version: `v3.2.0-rc.4` (prerelease).
 
 This project is maintained using explicit version numbers. The source version is
 defined in [`Directory.Build.props`](./Directory.Build.props). CLR assembly identity
@@ -25,6 +25,12 @@ remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a N
 package or binary release has been published.
 
 ### Recent version history
+
+#### `v3.2.0-rc.4` (2026-10-12)
+
+- Add QR text reading with immutable reading results and examples for configuration, restoration and inspection.
+- Add optional 3D median/local-median CUDA execution and serialized Compute session reuse with CPU recovery.
+- Preserve color Canny gradients and improve input, catalog and Windows x64 package-consumer guidance.
 
 #### `v3.1.0` (2026-10-04)
 
@@ -38,11 +44,11 @@ package or binary release has been published.
 
 ## 1-Minute Overview
 
-- `OpenVisionLab.Compute` provides optional CUDA discovery, host-owned sessions and per-execution fallback evidence.
+- `OpenVisionLab.Compute` provides optional CUDA discovery, host-owned sessions and diagnostics for execution and CPU fallback.
 - `OpenVisionLab.Core` provides UI-independent coordinate and line calculations and packages the native OpenCV DLL.
-- `OpenVisionLab.Vision2D` provides primary inspection tools including Threshold, Filter, Edge, Contour, Matching, and LineGauge.
+- `OpenVisionLab.Vision2D` provides primary inspection tools including Threshold, Filter, Edge, Contour, Matching, LineGauge, and QR text reading.
 - `OpenVisionLab.Vision2D.Blob` provides Blob labeling and area filtering.
-- `OpenVisionLab.Vision3D` provides UI-independent 3D contracts and algorithms for height maps, connected-region labeling/metrics/presence, full-XYZ geometry, rigid point-pair alignment, affine/regrid operations, thickness, warpage, flatness, gap/flush, volume, and more.
+- `OpenVisionLab.Vision3D` provides UI-independent 3D contracts and algorithms for height maps, connected-region labeling/metrics/presence, full-XYZ geometry, rigid point-pair alignment, affine/regrid operations, thickness, warpage, flatness, gap/flush, volume, and other 3D measurements.
 - `OpenVisionLab.Inspection` preserves existing 2D tools and `IThreeDInspectionTool` results in one combined run result.
 - Run 2D tools with `Execute(Mat source)` and height-map inspection tools with `Execute(HeightMap3D source)`.
 - The SDK has no direct UI-framework dependency. The host application owns rendering, ROI editing, and recipe management around the measurements.
@@ -108,12 +114,164 @@ available to the consumer or place `OpenCvSharpExtern.dll` beside the executable
 
 The example assumes the consumer project is next to the SDK checkout; adjust
 `VisionSdkRoot` for another layout. The direct-reference route is Windows x64
-only and is intended for local development. Use the package route for a clean
-consumer-output contract.
+only and is intended for local development. Use the package route to deliver the managed and native dependencies together.
 
 Package roles and runtime requirements are listed in [Packaging Notes](#packaging-notes).
 Use the source build below for this checkout and keep the managed and native OpenCV
 assets together. Do not infer an available NuGet release from the source version.
+
+## First inspection example
+
+The [package-only console example](samples/OpenVisionLab.FirstInspection/Program.cs)
+demonstrates teaching, locating a datum, moving ROIs, checking presence and measuring an edge in pixels. It uses Windows x64/.NET 8 and the transitive dependencies of
+`OpenVisionLab.Vision2D.Blob`. Copy its
+[project file](samples/OpenVisionLab.FirstInspection/OpenVisionLab.FirstInspection.csproj)
+and `Program.cs` to an independent directory, or build it in this checkout.
+Select an exact, immutable package version from a feed you are authorized to use;
+the source version does not indicate package availability. Keep the managed
+OpenCvSharp and native OpenCV assets supplied by Core together. Current
+[notices and distribution conditions](src/OpenVisionLab.Core/ThirdParty/NOTICE.md)
+still apply.
+
+Choose an absolute writable work path for generated data, output and temporary files. The commands below start from the checkout root.
+After copying the two files to an independent directory, run there and set
+`$sampleProject` to `"./OpenVisionLab.FirstInspection.csproj"` instead. `prepare` requires an empty
+directory and `teach` requires a new destination filename.
+
+```powershell
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
+$packageFeed = Read-Host "Package feed URL or absolute local feed directory"
+$workRoot = Read-Host "Absolute directory for build output and sample files"
+New-Item -ItemType Directory -Force -Path $workRoot | Out-Null
+$sampleProject = "samples/OpenVisionLab.FirstInspection/OpenVisionLab.FirstInspection.csproj"
+dotnet build $sampleProject -c Release -p:PackageVersion=$packageVersion --source $packageFeed --artifacts-path "$workRoot/build" -o "$workRoot/bin"
+if ($LASTEXITCODE -ne 0) { throw "Build failed; check the selected version and feed before running the example." }
+$sample = "$workRoot/bin/OpenVisionLab.FirstInspection.dll"
+dotnet $sample prepare "$workRoot/scene"
+if ($LASTEXITCODE -ne 0) { throw "Prepare failed; choose a new empty scene directory." }
+$taughtJson = dotnet $sample teach "$workRoot/scene" "$workRoot/inspection.zip"
+if ($LASTEXITCODE -ne 0) { throw ($taughtJson -join [Environment]::NewLine) }
+($taughtJson -join [Environment]::NewLine) | ConvertFrom-Json | Format-List Status, Bundle
+
+$inspectionJson = dotnet $sample inspect "$workRoot/inspection.zip" "$workRoot/scene/translated.png"
+$inspectionExit = $LASTEXITCODE
+$inspectionJson | Set-Content -LiteralPath "$workRoot/inspection-result.json" -Encoding utf8
+$inspection = ($inspectionJson -join [Environment]::NewLine) | ConvertFrom-Json
+$inspection | Format-List Status, Units, BlobCount, BlobAreaPx
+$inspection.Pose | Format-List X, Y
+$inspection.Line | Format-List Slope, InterceptPx, OrthogonalRmsePx
+$inspection.Compute | Format-List RequestedCuda, AccelerationApplied, FallbackReason
+$inspection.Stages | Format-List Name, Success, ErrorName, Message
+Write-Output "Inspection exit: $inspectionExit"
+
+$loadedJson = dotnet $sample load "$workRoot/inspection.zip"
+if ($LASTEXITCODE -ne 0) { throw ($loadedJson -join [Environment]::NewLine) }
+$loaded = ($loadedJson -join [Environment]::NewLine) | ConvertFrom-Json
+$loaded | Format-List Status, InspectionPerformed, ProbePerformed
+$loaded.Host | Format-List Units, Geometry, UseCuda
+$restartedJson = dotnet $sample inspect "$workRoot/inspection.zip" "$workRoot/scene/translated.png"
+$restarted = ($restartedJson -join [Environment]::NewLine) | ConvertFrom-Json
+$restarted | Format-List Status, Units, BlobCount, BlobAreaPx
+```
+
+The build requires a selected version and uses an exact NuGet version range;
+an unavailable version fails instead of choosing a nearby package. With this
+synthetic input, compare the reported pose, area and line with the authored
+`translated` entry rather than inferring success from process completion:
+
+```powershell
+$expected = Get-Content -LiteralPath "$workRoot/scene/expected.json" -Raw | ConvertFrom-Json
+$expected.Cases | Where-Object Name -eq translated | Format-List CenterX, CenterY, MarkAreaPx, LineSlope, LineInterceptPx
+```
+
+The expected file records the synthetic tolerances. These are pixel checks, not
+sensor calibration. The full inspection JSON remains in `inspection-result.json`
+for diagnostics; the short view above shows the values needed for this workflow.
+Running the executable without arguments prints usage with exit `3`; `--help`
+is not supported by this example.
+
+Each command starts a new process. `load` validates and restores settings/model,
+prints `LoadedOnly`, and performs no inspection or CUDA probe. Run inspection again after restoration. The example Host owns the ZIP bundle and maps ROIs
+from the saved reference pose; the SDK's Pipeline XML and learned-model codec
+own Tool settings/model validation. This ZIP is an example format, not an SDK
+recipe-storage service. Pipeline runtime acceptance rules and layer routing are
+unsupported in this example and are rejected on restoration. The saved compute
+preference remains visible in `load`.
+`teach --cuda` explicitly saves that preference; `inspect --cuda` requests it only
+for the current execution. Read `Compute.AccelerationApplied` and `FallbackReason`
+in that result to determine what actually ran. See the
+[Compute setup and lifetime contract](src/OpenVisionLab.Compute/README.md).
+
+Stdout contains readable JSON with current stage errors, image/configuration/model
+hashes, loaded DLL identities, global pixel coordinates and compute diagnostics for the current run;
+stderr identifies the command being run; determine failure from the exit code and
+`Status`. For this example's `MatchingNoResult` message, `BestScore` is shown
+as a percentage and `ScoreMin` as a 0..1 threshold (0.9 means 90%). Read
+`Stages` to distinguish location failure from mark absence or invalid input.
+Exit `0` means the command succeeded, `2` is a
+completed inspection reporting absence or rejection, `3` is invalid input/settings
+or file failure, and `130` is cancellation. `Accepted` means the example produced all required inspection results; the application owns the equipment decision.
+Missing/unexecuted measurements are null. `Line` expresses the global pixel line
+`x = Slope * y + InterceptPx`; `BlobAreaPx` counts pixels in the detected mark.
+The authored reference and analytic
+answers are created by `prepare`, independently of inspection results.
+
+Try `pattern-absent.png`, `mark-absent.png`, `edge-absent.png`, `border.png` or
+`unsupported-16bit.png`, then inspect `translated.png` to recover. File inputs use
+explicit 8-bit gray/BGR/BGRA conversion. The example supports translation within
+the same frame size and measurements in `px`; rotation, scale and physical
+calibration require their own workflow. Transferred ROIs outside the image are
+rejected. Ctrl+C requests cooperative cancellation; `--cancel-before` and
+`inspect --cancel-after-ms N` demonstrate token cancellation. Native work already
+in progress may finish before cancellation is observed. Saving never overwrites
+an existing bundle and cleans its own temporary file after failure/cancellation.
+
+For a local package feed, the focused
+[consumer check](eng/Test-FirstInspectionSample.ps1) copies just the two source
+files, clears other package sources, uses an isolated cache, and verifies
+known answers, corruption, save/restore, cancellation and optional CUDA fallback.
+Its required parameters are `-PackageDirectory`, `-ExpectedVersion` and
+`-OutputDirectory`; `-PackageSelectionOnly` runs just the missing/unavailable/exact
+version and restoration-recovery gate. `-CudaModule` optionally supplies a compatible native module
+for that owned test output. These automated checks do not establish first-use
+usability, field accuracy or performance superiority.
+
+### QR configure, restore and explicit inspection
+
+The same package-only example adds QR text reading. Its existing bundle v1 and
+prepare/teach/load/inspect commands keep their contracts. Choose a new profile
+filename; configuration never replaces a confirmed file. The saved four reader
+settings stay visible in `qr load`. To change or reset settings, create a new
+profile with the desired count/ROI, or omit both for whole-image/count 1 defaults.
+
+```powershell
+dotnet $sample qr configure "$workRoot/qr.xml"
+dotnet $sample qr load "$workRoot/qr.xml"
+dotnet $sample qr inspect "$workRoot/qr.xml" "D:/your-input/label.png" "PART-A"
+# Explicit count and optional single ROI: x,y,width,height in input pixels.
+dotnet $sample qr configure "$workRoot/qr-roi.xml" 1 "180,50,280,280"
+# This profile ROI is in the bundle's reference frame; matching moves it for this run.
+dotnet $sample qr inspect-located "$workRoot/qr-roi.xml" "$workRoot/inspection.zip" "D:/your-input/current.png" "PART-A"
+```
+
+Configure/load report `InspectionPerformed=false`; each command starts a fresh
+process. Inspect accepts 8-bit gray/BGR and rejects BGRA/other depths. Read the
+`Reading` candidates, exact text, observed counts, current-input pixel corners and
+error rather than parsing the message. Without an expected string, success is
+`Read`; with one, the host uses an ordinal comparison and reports `TextMatched`
+or `TextMismatch`. Single expected-text comparison requires count 1. A tool can
+read successfully while that comparison fails. Exit codes remain 0/2/3/130.
+QR native load/export failures, including failure during Tool construction, report
+`BackendUnavailable` with exit `3`; restore the supplied native dependencies before retrying.
+
+Located inspection requires the existing translation-only bundle, matching frame
+size and an explicit reference ROI. Matching failure or a transferred ROI outside
+the image reports no QR execution. The saved profile is unchanged by translation
+or cancellation. `--cancel-before` and inspect `--cancel-after-ms N` preserve the
+cooperative cancellation contract. Native calls may finish before cancellation.
+After a malformed profile, unsupported image or reading failure, reload the last
+confirmed profile and explicitly inspect valid input. The [QR contract](src/OpenVisionLab.Vision2D/README.md#qr-text-reading)
+defines supported text and the information returned by the reader; commercial notices still apply.
 
 ## 2D Quick Start
 
@@ -202,9 +360,12 @@ Console.WriteLine($"{result.MeasurementOutcome}, Mean={mean} {meanUnit}");
 
 ## Optional CUDA Acceleration
 
-CPU execution is the default. The current CUDA path accelerates edge-based template
-matching scores; it does not move every 2D or 3D algorithm onto the GPU. Public 3D
-surface-pose search currently uses CPU execution.
+CPU execution is the default. Optional CUDA covers edge-based template matching
+scores and deterministic 3D Median/LocalMedian. Read the
+[local-operation contracts](src/OpenVisionLab.Compute/README.md#local-operations)
+before opting in. Normal preparation, Scharr and 3D
+surface-pose search remain on CPU based on total execution cost.
+The source does not include a prebuilt CUDA module or indicate package availability.
 
 Create one host-owned session and pass it to the tool. `UseCuda` is the single
 enable option; changing a settings object after session construction does not
@@ -242,14 +403,22 @@ Disabling CUDA avoids loading the optional module.
 Consumers do not need the CUDA Toolkit, NVRTC or `cudart` DLLs to run the built
 module. Building that module from source requires MSVC x64, the Windows SDK and
 NVRTC for offline kernel compilation; see [`eng/Build-CudaProbe.ps1`](./eng/Build-CudaProbe.ps1).
-The SDK reports installation actions through `CudaSupportReport.InstallationAction`;
-it does not install or update drivers automatically.
+Omitting `NvrtcLibraryPath` builds a discovery-only DLL with the same filename,
+not an execution module. The [Compute first-use guide](./src/OpenVisionLab.Compute/README.md#optional-native-module)
+explains the build modes, module identity and supported operations.
+
+Successful device discovery reports `Reason=None` with kernel availability still
+false and no installation action. Only eligible explicit execution qualifies
+the kernels; read each result's `AccelerationApplied` and `FallbackReason`.
+An execution-module failure records the failure reason and recommended action in `Support` and
+retains CPU recovery. Correct the setup, dispose Tools before their session and
+create a new session to retry. The SDK never installs or updates drivers automatically.
 
 Large score grids use bounded GPU tiles and release their workspace after each
 search. This bounds temporary GPU storage, not the host application's total RAM.
 Preprocessing, full-image CPU gradients and output images still use host memory.
 The [Compute guide](./src/OpenVisionLab.Compute/README.md) describes discovery,
-execution evidence and session lifetime.
+execution diagnostics and session lifetime.
 
 ### Measured large-image example
 
@@ -345,7 +514,9 @@ Smoke check including packaging:
 dotnet restore OpenVisionLab.VisionSdk.sln
 dotnet build OpenVisionLab.VisionSdk.sln -c Debug
 dotnet run --project tests\OpenVisionLab.Inspection.Smoke\OpenVisionLab.Inspection.Smoke.csproj -c Debug --no-build
-$packageVersion = "3.1.0-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+[xml] $versionProps = Get-Content -LiteralPath Directory.Build.props -Raw
+$sourceVersion = [string] $versionProps.Project.PropertyGroup.Version
+$packageVersion = "$($sourceVersion.Split('-')[0])-dev.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$packageVersion"
 ```
 
@@ -355,8 +526,8 @@ dotnet pack OpenVisionLab.VisionSdk.sln -c Debug --no-build "-p:PackageVersion=$
 
 The [GitHub Actions workflow](./.github/workflows/build.yml) defines the checks for
 `main` pushes and pull requests: Release build, synthetic smoke/coverage checks,
-public-API and analyzer baselines, package provenance and an isolated package-only
-consumer. Its exact commands and package version are owned by the workflow and
+public-API and analyzer baselines, package provenance and isolated package-only
+.NET 8 and .NET Framework 4.8 consumers on Windows x64. Its exact commands and package version are owned by the workflow and
 [`eng`](./eng). The workflow does not publish packages or create releases.
 
 ## License
@@ -379,8 +550,7 @@ Copyright (c) 2026 Noah Choi (최노아)
 `4.4.0.20200915` with an official native binary from `4.3.0.20200708`. Their exact
 bytes are proven. The current binary inventory, preserved terms, and remaining
 distribution-owner approval are authoritative in
-[Core's notice record](./src/OpenVisionLab.Core/ThirdParty/NOTICE.md) and the
-[redistribution checklist](./docs/THIRD_PARTY_REDISTRIBUTION_CLEARANCE_CHECKLIST.md).
+[Core's notice record](./src/OpenVisionLab.Core/ThirdParty/NOTICE.md).
 `OpenCvSharp.Blob` and its Blob-only LGPL evidence were removed from the current
 bundle; their historical provenance remains in Git. Redistribution clearance for
 the two remaining binaries still requires approval of the final notices and
@@ -451,7 +621,7 @@ OpenVisionLab-Vision-SDK
 
 | Project | Role |
 | --- | --- |
-| `OpenVisionLab.Compute` | Optional acceleration discovery, session lifetime and execution/fallback evidence |
+| `OpenVisionLab.Compute` | Optional acceleration discovery, session lifetime and execution/fallback diagnostics |
 | `OpenVisionLab.Core` | UI-independent coordinate/ROI conversion, numerical and geometric calculations, line calculations, and OpenCV runtime assets |
 | `OpenVisionLab.Vision2D` | Primary OpenCV inspection tools, property interfaces, result models, and pipeline execution |
 | `OpenVisionLab.Vision2D.Blob` | Blob labeling and area-filtering tools |
@@ -572,6 +742,7 @@ else
 | `SiftTool` | SIFT feature-point matching, with an ORB fallback when the native runtime lacks SIFT | `SiftToolProperty` or an `IOpenCVPropertyFeatureSIFT` implementation |
 | `LineGaugeTool` | Edge detection and line fitting inside an ROI | `LineGaugeToolProperty` or an `IOpenCvPropertyLineGauge` implementation |
 | `MeanTool` | ROI mean and standard-deviation calculation | `MeanToolProperty` or an `IOpenCVPropertyMean` implementation |
+| `QrCodeTool` | ASCII/UTF-8 QR text and candidate corners | `QrCodeToolProperty` |
 
 Multi-ROI execution in `MeanTool` measures each region in `CvROIS` order and returns `MeanResult.index` values in the same order. `CornerTool` returns each sub-pixel-refined point as a `CornerResult` in global image coordinates and returns `CornerNoResult` when no point is detected.
 
@@ -603,12 +774,12 @@ Height-map inspections return input, ROI, and coverage errors as controlled `Not
 
 `ConstrainedBestFitRigidAlignmentTool` accepts four to sixty-four ordered
 source/reference full-XYZ pairs and fits one proper rotation plus translation
-using every pair. The route is deliberately constrained: it uses no scale,
+using every pair. The fit uses no scale,
 shear, reflection, weighting, or automatic outlier rejection. It rejects
 non-finite, duplicate, over-cap, and collinear correspondence sets, returns
 per-pair residuals plus RMS/maximum diagnostics, and honors cancellation. Unit,
 frame, identity, acceptance, and point-cloud lifecycle policy remain with the
-caller; the tool produces pose evidence and does not move a cloud.
+caller; the tool returns a pose and residuals and does not move a cloud.
 
 ## Basic Usage Examples
 
@@ -650,7 +821,10 @@ public static class ThresholdExample
 
 ### Filter Then Edge Detection
 
-Canny-based edge detection is safest with single-channel input.
+Canny accepts non-empty 8-bit grayscale or three-channel input and returns a
+one-channel edge image. Three-channel Canny preserves channel gradients; it does
+not silently convert the source to grayscale. The caller image remains unchanged.
+Other depths can return `OpenCvExecutionFailed`; check the result before using it.
 
 ```csharp
 using OpenVisionLab.Vision2D;
@@ -743,13 +917,11 @@ using (Mat source = Cv2.ImRead("docs/samples/vision_sample.png", ImreadModes.Gra
 
 Pipelines execute multiple tools sequentially through named layers.
 
-`VisionPipelineToolFactory` owns 14 canonical Tool IDs: `threshold`, `morphology`,
-`filter`, `edgeDetection`, `rotateScale`, `affineTransform`, `contour`, `corner`,
-`matching`, `edgeBasedTemplateMatching`, `autoMPoint`, `sift`, `lineGauge`, and
-`mean`. `VisionPipelineBlobToolFactory` composes `blob` with those 14. Their
-immutable `Descriptors` catalogs expose aliases, package/type identity, parameters,
-invariant defaults/value kinds, and artifact requirements without reflection or a
-global registry.
+[`VisionPipelineToolFactory.Descriptors`](./src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs)
+is the immutable catalog of supported base Tool IDs, including `qrcode`.
+[`VisionPipelineBlobToolFactory.Descriptors`](./src/OpenVisionLab.Vision2D.Blob/VisionPipelineBlobToolFactory.cs)
+composes that catalog with `blob`. Query these catalogs for aliases, package/type
+identity, parameters and required artifacts instead of maintaining a separate count.
 
 Pipeline configuration fails closed:
 
@@ -820,8 +992,7 @@ using (VisionPipelineContext context = new VisionPipelineContext())
 }
 ```
 
-`Run` preserves the original 3.x exception contract. `RunWithFailureResults` is the
-additive host boundary: a missing layer, factory exception/null return, or throwing/
+`Run` preserves the original 3.x exception contract. `RunWithFailureResults` adds structured failure results for the host: a missing layer, factory exception/null return, or throwing/
 null custom Tool result becomes a typed failed step. Invalid Pipeline definitions
 still throw before execution. See the
 [Vision2D execution contract](./src/OpenVisionLab.Vision2D/README.md#pipeline-descriptors-and-tool-reconstruction).
@@ -1200,10 +1371,13 @@ published bytes under an existing package ID/version.
 The package contents, required files, internal dependencies and source commit are
 checked by [`Verify-PackageProvenance.ps1`](./eng/Verify-PackageProvenance.ps1).
 [`OpenVisionLab.PackageConsumer.Smoke`](./tests/OpenVisionLab.PackageConsumer.Smoke)
-checks the package-only consumer path. A source build or CI package check does not
+checks the .NET 8 package-only consumer path. The existing
+[.NET Framework consumer check](./eng/Test-NetFrameworkPackageConsumer.ps1) builds
+and runs an independent .NET Framework 4.8/x64 consumer, including Canny failure
+and recovery. A source build or CI package check does not
 establish that a package has been published.
 
-Each NuGet package includes a dedicated README for its specific role and first-use workflow.
+Each NuGet package includes a README with its purpose and getting-started instructions.
 
 | Package | Package README |
 | --- | --- |
@@ -1217,8 +1391,10 @@ Each NuGet package includes a dedicated README for its specific role and first-u
 `OpenVisionLab.Core` packages `OpenCvSharpExtern.dll` under
 `runtimes/win-x64/native`. Modern SDK-style `win-x64` consumers resolve that runtime
 asset to the output root. `buildTransitive/OpenVisionLab.Core.targets` is a
-`.NET Framework` fallback only; its source contract is reviewed, but no .NET
-Framework runtime consumer has been executed.
+`.NET Framework` fallback only. The isolated consumer verifies transitive managed
+dependencies and the native copy at runtime without a manual copy step. These
+checks cover the declared .NET 8 and .NET Framework 4.8/x64 consumer paths; they
+do not establish support for every application host or other native platform.
 
 The Core package also carries `third-party/provenance.json`, the current
 `third-party/NOTICE.md`, and the exact upstream license/scope evidence named by
@@ -1228,4 +1404,6 @@ five packages must not contain Core's vendored DLL or `third-party/` entries. Th
 technical gate does not change the blocked redistribution-clearance status.
 
 GitHub Actions separately restores and runs
-`tests/OpenVisionLab.PackageConsumer.Smoke`, which references only the packed output. This check verifies that 2D native calls, height-map inspection, Surface Match, and Mesh Comparison work without a ProjectReference.
+`tests/OpenVisionLab.PackageConsumer.Smoke` and the .NET Framework consumer, which
+reference only the packed output. The workflow owns their exact checks; neither
+consumer uses an SDK ProjectReference.

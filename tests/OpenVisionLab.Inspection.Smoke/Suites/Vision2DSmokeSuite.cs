@@ -63,9 +63,11 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Edge threshold preserves finite boundaries and restored factory settings", TestEdgeThresholdFiniteBoundaries);
             yield return new SmokeCase("MorphologyTool direct Execute transforms a synthetic image", TestMorphologyDirectExecution);
             yield return new SmokeCase("FilterTool direct Execute transforms a synthetic image", TestFilterDirectExecution);
+            yield return new SmokeCase("BoxFilter preserves selected borders through direct and factory execution", TestBoxFilterBorderExecution);
             yield return new SmokeCase("ThresholdTool rejects non-finite numeric parameters", TestThresholdRejectsNonFiniteValues);
             yield return new SmokeCase("OpenCV execution errors retain type-based classification", TestExecutionErrorClassification);
             yield return new SmokeCase("EdgeDetectionTool direct Execute finds synthetic edges", TestEdgeDetectionDirectExecution);
+            yield return new SmokeCase("Canny color execution preserves gradients recovery and ownership", TestCannyColorExecution);
             yield return new SmokeCase("RotateScaleTool direct Execute applies the requested output size", TestRotateScaleDirectExecution);
             yield return new SmokeCase("LineGaugeTool rejects unsupported image depth explicitly", TestLineGaugeUnsupportedDepth);
             yield return new SmokeCase("2D tool and result disposal release only owned images", TestVisionToolResourceOwnership);
@@ -85,7 +87,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Pipeline XML preserves versioned settings and rejects unsupported input", TestVisionPipelineSerialization);
             yield return new SmokeCase("Pipeline failure-result execution classifies infrastructure failures", TestVisionPipelineFailureResults);
             yield return new SmokeCase("Pipeline descriptors cover every non-legacy 2D Tool", TestVisionPipelineDescriptors);
-            yield return new SmokeCase("Pipeline factories create all 15 non-legacy 2D Tools", TestVisionPipelineFactoryBuiltIns);
+            yield return new SmokeCase("Pipeline factories create all 16 non-legacy 2D Tools", TestVisionPipelineFactoryBuiltIns);
             yield return new SmokeCase("Pipeline model artifacts enforce identity format hash and ownership", TestVisionPipelineModelArtifacts);
             yield return new SmokeCase("Pipeline factory rejects malformed, unknown, and duplicate parameters", TestVisionPipelineFactoryRejectsInvalidParameters);
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
@@ -1765,6 +1767,73 @@ namespace OpenVisionLab.Inspection.Smoke
             }
         }
 
+        private static void TestBoxFilterBorderExecution()
+        {
+            // Independent 3x3 normalized sums: Replicate counts the corner impulse 4/2/1 times.
+            int[] replicated = { 40, 20, 0, 20, 10, 0, 0, 0, 0 };
+            int[] reflected = { 10, 10, 0, 10, 10, 0, 0, 0, 0 };
+            foreach (MatType type in new[] { MatType.CV_8UC1, MatType.CV_8UC3 })
+            {
+                using (Mat source = new Mat(3, 3, type, Scalar.Black))
+                using (FilterTool direct = new FilterTool())
+                {
+                    if (source.Channels() == 1) source.Set<byte>(0, 0, 90);
+                    else source.Set(0, 0, new Vec3b(90, 90, 90));
+                    using (Mat original = source.Clone())
+                    {
+                        direct.SetProperty(new FilterToolProperty { FilterType = FilterToolType.BoxFilter, BorderType = BorderTypes.Replicate });
+                        using (VisionToolResult retained = direct.Execute(source))
+                        {
+                            RequireFilterPixels(retained, source, replicated, "Direct Replicate");
+                            direct.property.KernelWidth = 0;
+                            using (VisionToolResult rejected = direct.Execute(source))
+                            {
+                                Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.FilterInvalidKernel
+                                    && rejected.ResultImage == null, "BoxFilter invalid kernel did not return an empty failure result.");
+                            }
+
+                            direct.property.KernelWidth = 3;
+                            direct.property.BorderType = new FilterToolProperty().BorderType;
+                            using (VisionToolResult recovered = direct.Execute(source))
+                            {
+                                RequireFilterPixels(recovered, source, reflected, "Default Reflect101 recovery");
+                            }
+                            RequireFilterPixels(retained, source, replicated, "Retained result after recovery");
+                        }
+
+                        VisionPipelineStep step = CreatePipelineStep("filter");
+                        step.Parameters[nameof(FilterToolProperty.FilterType)] = nameof(FilterToolType.BoxFilter);
+                        step.Parameters[nameof(FilterToolProperty.BorderType)] = nameof(BorderTypes.Replicate);
+                        using (FilterTool factory = (FilterTool)VisionPipelineToolFactory.Create(step))
+                        using (VisionToolResult result = factory.Execute(source))
+                        {
+                            Require(factory.property.BorderType == BorderTypes.Replicate, "Filter factory lost the selected border.");
+                            RequireFilterPixels(result, source, replicated, "Factory Replicate");
+                        }
+                        Require(Cv2.Norm(source, original, NormTypes.L1) == 0d, "BoxFilter modified the caller-owned source.");
+                    }
+                }
+            }
+        }
+
+        private static void RequireFilterPixels(VisionToolResult result, Mat source, int[] values, string caseName)
+        {
+            Require(result.Success && result.ResultImage != null && result.ResultImage.Type() == source.Type(), caseName + " did not return the source image type.");
+            using (Mat expected = new Mat(3, 3, source.Type(), Scalar.Black))
+            {
+                for (int row = 0; row < 3; row++)
+                {
+                    for (int column = 0; column < 3; column++)
+                    {
+                        byte value = (byte)values[row * 3 + column];
+                        if (source.Channels() == 1) expected.Set(row, column, value);
+                        else expected.Set(row, column, new Vec3b(value, value, value));
+                    }
+                }
+                Require(Cv2.Norm(result.ResultImage, expected, NormTypes.L1) == 0d, caseName + " differs from independent normalized box sums.");
+            }
+        }
+
         private static void TestThresholdRejectsNonFiniteValues()
         {
             using (Mat source = new Mat(new Size(4, 4), MatType.CV_8UC1, Scalar.All(10)))
@@ -1826,6 +1895,74 @@ namespace OpenVisionLab.Inspection.Smoke
                         && result.ResultImage.Size() == source.Size()
                         && Cv2.CountNonZero(result.ResultImage) > 0,
                         "EdgeDetectionTool direct Execute did not publish the synthetic rectangle edges.");
+                }
+            }
+        }
+
+        private static void TestCannyColorExecution()
+        {
+            using (Mat parent = new Mat(31, 43, MatType.CV_8UC3, Scalar.White))
+            using (Mat source = parent.SubMat(new Rect(3, 4, 31, 23)))
+            using (Mat gray = new Mat())
+            using (Mat expectedRetained = new Mat())
+            {
+                for (int row = 0; row < source.Rows; row++)
+                    for (int column = 0; column < source.Cols; column++)
+                        source.Set(row, column, column < 15 ? new Vec3b(255, 0, 0) : new Vec3b(0, 49, 0));
+                Cv2.CvtColor(source, gray, ColorConversionCodes.BGR2GRAY);
+                using (Mat before = parent.Clone())
+                using (Mat expectedSource = source.Clone())
+                {
+                    Cv2.Canny(expectedSource, expectedRetained, 100, 200, 3, false);
+                    VisionToolResult retained = null;
+                    try
+                    {
+                        using (EdgeDetectionTool tool = new EdgeDetectionTool())
+                        {
+                            tool.SetProperty(new EdgeDetectionToolProperty { UseL2Gradient = false });
+                            retained = tool.Execute(source);
+                            Require(retained.Success && retained.ResultImage.Type() == MatType.CV_8UC1,
+                                "Color Canny must succeed with a one-channel result: " + retained.Message);
+                            foreach (Mat input in new[] { source, gray })
+                                foreach (int aperture in new[] { 3, 5, 7 })
+                                    foreach (bool l2 in new[] { false, true })
+                                    {
+                                        tool.SetProperty(new EdgeDetectionToolProperty { CannyApertureSize = aperture, UseL2Gradient = l2 });
+                                        using (Mat referenceSource = input.Clone())
+                                        using (Mat expected = new Mat())
+                                        using (VisionToolResult result = tool.Execute(input))
+                                        {
+                                            Cv2.Canny(referenceSource, expected, 100, 200, aperture, l2);
+                                            Require(result.Success && result.ResultImage.Type() == MatType.CV_8UC1
+                                                && result.ResultImage.Size() == input.Size() && Cv2.Norm(result.ResultImage, expected, NormTypes.L1) == 0,
+                                                "Canny pixels/type differ from the distinct-output CPU reference.");
+                                            Require(result.Metrics["SourceImageChannels"] == input.Channels() && result.Metrics["ResultImageChannels"] == 1,
+                                                "Canny result channel metrics must describe source and output separately.");
+                                            Require(input == source ? Cv2.CountNonZero(result.ResultImage) > 0 : Cv2.CountNonZero(result.ResultImage) == 0,
+                                                "Canny must preserve color-channel gradients at equal grayscale intensity.");
+                                        }
+                                    }
+                            tool.SetProperty(new EdgeDetectionToolProperty { CannyThresholdLow = 400, CannyThresholdHigh = 200 });
+                            using (VisionToolResult invalid = tool.Execute(source))
+                                Require(!invalid.Success && invalid.ErrorCode == VisionToolErrorCode.EdgeDetectionInvalidThreshold
+                                    && invalid.Exception == null && invalid.ResultImage == null, "Invalid Canny settings must retain typed failure.");
+                            tool.SetProperty(new EdgeDetectionToolProperty { UseL2Gradient = false });
+                            using (Mat unsupported = new Mat(23, 31, MatType.CV_16UC3, Scalar.All(17)))
+                            using (Mat unsupportedBefore = unsupported.Clone())
+                            using (VisionToolResult nativeFailure = tool.Execute(unsupported))
+                                Require(!nativeFailure.Success && nativeFailure.ErrorCode == VisionToolErrorCode.OpenCvExecutionFailed
+                                    && nativeFailure.Exception != null && nativeFailure.ResultImage == null
+                                    && Cv2.Norm(unsupported, unsupportedBefore, NormTypes.L1) == 0,
+                                    "The color Canny exception path must preserve caller pixels and typed failure.");
+                            using (VisionToolResult recovered = tool.Execute(source))
+                                Require(recovered.Success && Cv2.Norm(recovered.ResultImage, expectedRetained, NormTypes.L1) == 0,
+                                    "The same Canny instance must recover after invalid settings.");
+                        }
+                        Require(!retained.ResultImage.IsDisposed && Cv2.Norm(retained.ResultImage, expectedRetained, NormTypes.L1) == 0,
+                            "A retained color Canny result must survive later calls and Tool disposal.");
+                        Require(Cv2.Norm(parent, before, NormTypes.L1) == 0, "Canny must preserve the caller image and ROI padding.");
+                    }
+                    finally { retained?.Dispose(); }
                 }
             }
         }
@@ -2812,12 +2949,13 @@ namespace OpenVisionLab.Inspection.Smoke
                 "sift",
                 "lineGauge",
                 "mean",
+                "qrcode",
                 "blob"
             };
-            Require(VisionPipelineToolFactory.Descriptors.Count == 14,
-                "The base Vision2D descriptor catalog must contain its 14 owned Tools.");
+            Require(VisionPipelineToolFactory.Descriptors.Count == 15,
+                "The base Vision2D descriptor catalog must contain its 15 owned Tools.");
             Require(VisionPipelineBlobToolFactory.Descriptors.Select(item => item.ToolType).SequenceEqual(expectedToolTypes),
-                "The Blob composite descriptor catalog does not contain the exact 15-Tool contract.");
+                "The Blob composite descriptor catalog does not contain the exact 16-Tool contract.");
 
             foreach (VisionPipelineToolDescriptor descriptor in VisionPipelineBlobToolFactory.Descriptors)
             {
@@ -2843,6 +2981,12 @@ namespace OpenVisionLab.Inspection.Smoke
                     .Where(item => item.CanWrite)
                     .ToDictionary(item => item.Name, StringComparer.Ordinal);
                 writableProperties.Remove(nameof(MatchingToolProperty.PATTERN_PATH));
+                if (descriptor.ToolTypeName == typeof(QrCodeTool).FullName)
+                {
+                    // QR intentionally exposes only its supported subset of the inherited common property model.
+                    string[] supported = { "NAME", "USE_ROI", "CvROI", "ExpectedCodeCount" };
+                    writableProperties = writableProperties.Where(item => supported.Contains(item.Key)).ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+                }
                 if (descriptor.ToolTypeName == typeof(EdgeBasedTemplateMatchingTool).FullName)
                 {
                     // These additive Tool-owned settings preserve the required Property interface.

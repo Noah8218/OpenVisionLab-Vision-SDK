@@ -3,12 +3,14 @@
 Execution contracts for independent OpenVisionLab 2D tools, height-map
 `IThreeDInspectionTool` steps, and opt-in heterogeneous typed 3D adapters.
 
-`3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.1.0-dev.1` is only the current
-repository-local default.
+`3.0.0` is the API baseline. Source, package and CLR assembly version values
+are owned by [Directory.Build.props](../../Directory.Build.props); these are
+distinct identities. Install the exact immutable version from your selected
+package source and keep all OpenVisionLab packages on that version. A local
+development default does not establish that a package has been published.
 
 ```powershell
-$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
 dotnet add package OpenVisionLab.Inspection --version $packageVersion
 ```
 
@@ -88,7 +90,10 @@ receive the same original input for their domain; one result is not fed into the
 next step. Use `VisionPipelineRuntime` for 2D image-layer routing. A missing/null
 Tool, thrown Tool exception, or null Tool result becomes a failed step. An empty
 configuration returns `Success=false`. Exceptions from a user-supplied enumerable
-itself are outside the per-Tool execution boundary; pass stable materialized lists.
+itself propagate outside the per-Tool execution boundary; pass stable materialized
+lists. If enumeration aborts the run, the runner disposes all 2D results it already
+collected before propagating the exception. Previously returned run results retain
+their independent caller-owned lifetimes.
 
 `CombinedInspectionRunResult.Success` is true only when every step passes. Inspect
 `step.VisionResult.ErrorCode/Exception` for 2D evidence. For height maps, inspect

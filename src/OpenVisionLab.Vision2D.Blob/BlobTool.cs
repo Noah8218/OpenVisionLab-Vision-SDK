@@ -29,6 +29,13 @@ namespace OpenVisionLab.Vision2D.Blob
 
         public void SetProperty(IOpenCVPropertyBlob propertyBase) => property = propertyBase;
 
+        public override VisionToolResult Execute(Mat source)
+        {
+            results?.Clear();
+            candidates?.Clear();
+            return base.Execute(source);
+        }
+
         protected override bool TryValidateBeforeRun(out VisionToolErrorCode errorCode, out string message)
         {
             if (!base.TryValidateBeforeRun(out errorCode, out message))

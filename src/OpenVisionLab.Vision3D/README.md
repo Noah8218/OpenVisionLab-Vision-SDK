@@ -1,13 +1,15 @@
 # OpenVisionLab.Vision3D
 
-UI-independent height-map, full-XYZ geometry, surface matching, mesh comparison, and inspection algorithms for OpenVisionLab Vision SDK 3.0.
+UI-independent height-map, full-XYZ geometry, surface matching, mesh comparison, and inspection algorithms for OpenVisionLab Vision SDK.
 
-`3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.1.0-dev.1` is only the current
-repository-local default.
+`3.0.0` is the API baseline. Source, package and CLR assembly version values
+are owned by [Directory.Build.props](../../Directory.Build.props); these are
+distinct identities. Install the exact immutable version from your selected
+package source and keep all OpenVisionLab packages on that version. A local
+development default does not establish that a package has been published.
 
 ```powershell
-$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
 dotnet add package OpenVisionLab.Vision3D --version $packageVersion
 ```
 
@@ -21,6 +23,15 @@ see the [tested scales and execution contracts](../../docs/three-d-inspection.md
 `InvalidOperationException` when a finite input would overflow an intermediate or
 accumulated volume; that calculation failure must not be recorded as an ordinary
 out-of-tolerance measurement.
+
+## Optional local-operation acceleration
+
+CPU remains the default. Median and LocalMedian can borrow a host-owned
+`VisionComputeSession`; the [Compute local-operation guide](../OpenVisionLab.Compute/README.md#local-operations)
+defines eligible execution, negative-zero fallback, old-module compatibility,
+per-result diagnostics and serial lifetime. Normal preparation accepts the
+session for diagnostics and retains public CPU execution with `NoMeasuredBenefit`.
+Construction does not probe or execute. Existing Execute callers remain valid.
 
 ## Manual rigid point-pair alignment quick start
 

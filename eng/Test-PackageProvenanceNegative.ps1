@@ -85,6 +85,22 @@ function Add-ZipBytes {
     }
 }
 
+function Edit-CoreNuspec {
+    param([string] $Directory, [scriptblock] $Edit)
+
+    $path = Get-PackagePath $Directory 'OpenVisionLab.Core'
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($path)
+    try {
+        $entry = $archive.GetEntry('OpenVisionLab.Core.nuspec')
+        $reader = [System.IO.StreamReader]::new($entry.Open())
+        try { [xml] $nuspec = $reader.ReadToEnd() }
+        finally { $reader.Dispose() }
+    }
+    finally { $archive.Dispose() }
+    & $Edit $nuspec
+    Add-ZipBytes -ZipPath $path -EntryPath 'OpenVisionLab.Core.nuspec' -Bytes ([System.Text.Encoding]::UTF8.GetBytes($nuspec.OuterXml)) -ReplaceExisting
+}
+
 function Invoke-NegativeProbe {
     param(
         [Parameter(Mandatory = $true)][string] $Name,
@@ -172,6 +188,51 @@ Invoke-NegativeProbe `
         }
         finally {
             $archive.Dispose()
+        }
+    }
+
+foreach ($dependencyId in @('System.Memory', 'System.Runtime.CompilerServices.Unsafe')) {
+    Invoke-NegativeProbe `
+        -Name "$dependencyId-missing" `
+        -ExpectedDiagnostic "OpenVisionLab.Core must contain one managed dependency on $dependencyId." `
+        -Mutate {
+            param($packages)
+            Edit-CoreNuspec $packages {
+                param($nuspec)
+                $node = $nuspec.SelectSingleNode("//*[local-name()='dependency' and @id='$dependencyId']")
+                $null = $node.ParentNode.RemoveChild($node)
+            }
+        }
+    Invoke-NegativeProbe `
+        -Name "$dependencyId-version" `
+        -ExpectedDiagnostic "OpenVisionLab.Core managed dependency $dependencyId version '0.0.0' does not match Core.csproj declaration" `
+        -Mutate {
+            param($packages)
+            Edit-CoreNuspec $packages {
+                param($nuspec)
+                $nuspec.SelectSingleNode("//*[local-name()='dependency' and @id='$dependencyId']").SetAttribute('version', '0.0.0')
+            }
+        }
+}
+Invoke-NegativeProbe `
+    -Name 'managed-wrong-framework' `
+    -ExpectedDiagnostic 'OpenVisionLab.Core must contain one .NETStandard2.0 dependency group.' `
+    -Mutate {
+        param($packages)
+        Edit-CoreNuspec $packages {
+            param($nuspec)
+            $nuspec.SelectSingleNode("//*[local-name()='dependencies']/*[local-name()='group']").SetAttribute('targetFramework', '.NETFramework4.8')
+        }
+    }
+Invoke-NegativeProbe `
+    -Name 'managed-duplicate' `
+    -ExpectedDiagnostic 'OpenVisionLab.Core must contain one managed dependency on System.Memory.' `
+    -Mutate {
+        param($packages)
+        Edit-CoreNuspec $packages {
+            param($nuspec)
+            $node = $nuspec.SelectSingleNode("//*[local-name()='dependency' and @id='System.Memory']")
+            $null = $node.ParentNode.AppendChild($node.CloneNode($true))
         }
     }
 

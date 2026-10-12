@@ -3,15 +3,14 @@
   "analysisLevel": "latest-recommended",
   "analysisMode": "All",
   "contract": "OpenVisionLab 3.x public API compatibility",
-  "sourceCommit": "811871cc10c25450cd2796a3ba377e4db784fea7",
   "expectedWarningsByCode": {
-    "CA1051": 39,
+    "CA1051": 40,
     "CA1707": 145,
     "CA1716": 2
   },
   "reviewedClassification": {
     "legacyCompatibility": 46,
-    "current3x": 140,
+    "current3x": 141,
     "CA1707Type": 7,
     "CA1707Member": 118,
     "CA1707Parameter": 20
@@ -20,7 +19,7 @@
     {
       "code": "CA1051",
       "decision": "retain-in-3.x",
-      "rationale": "All 39 diagnostics are exact public instance fields. Replacing a field with a property changes the binary and reflection contract."
+      "rationale": "All 40 exact public instance fields are retained for 3.x binary/reflection compatibility, including the existing QrCodeTool.property configuration contract. A field-to-property conversion would break that contract."
     },
     {
       "code": "CA1707",
@@ -963,6 +962,13 @@
       "identity": "CA1716|namespace|OpenVisionLab.Vision2D.Property",
       "contractGroup": "current-3.x",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/AffineTransformToolProperty.cs"
+    },
+    {
+      "identity": "CA1051|field|OpenVisionLab.Vision2D.Tool.QrCodeTool.property",
+      "contractGroup": "current-3.x",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/QrCodeTool.cs"
     }
-  ]
+  ],
+  "initialReviewCommit": "811871cc10c25450cd2796a3ba377e4db784fea7",
+  "reviewedSourceVersion": "3.2.0-rc.2"
 }

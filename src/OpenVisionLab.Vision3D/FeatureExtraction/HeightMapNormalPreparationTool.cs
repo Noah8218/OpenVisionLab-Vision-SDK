@@ -1,3 +1,4 @@
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -163,6 +164,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public double MeanAlignment { get; }
 
         public double MaximumAngularErrorDegrees { get; }
+
+        public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
     }
 
     /// <summary>
@@ -175,6 +178,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     /// </summary>
     public sealed class HeightMapNormalPreparationTool
     {
+        private readonly VisionComputeSession computeSession;
+
+        public HeightMapNormalPreparationTool() : this(null) { }
+
+        /// <summary>Borrows a host-owned session without probing. The caller owns session disposal.</summary>
+        public HeightMapNormalPreparationTool(VisionComputeSession computeSession) { this.computeSession = computeSession; }
         public const string Semantics =
             "height-map-normal-finite-difference-with-explicit-validation-v1";
 
@@ -189,6 +198,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 cancellationToken.ThrowIfCancellationRequested();
 
                 double[] values = source.CopyValues();
+                double[] accelerated = null;
+                ComputeExecutionEvidence computeEvidence = null;
+                if (computeSession?.EvaluateUnqualifiedWorkloads == true)
+                    computeSession.TryNormals3D(values, source.Rows, source.Columns, source.ColumnPitch, source.RowPitch,
+                        cancellationToken, out accelerated, out computeEvidence);
+                else computeEvidence = computeSession?.DescribeCpuExecution(CudaFallbackReason.NoMeasuredBenefit, cancellationToken);
                 List<HeightMapNormalSample> samples =
                     new List<HeightMapNormalSample>();
                 int inputFiniteSampleCount = 0;
@@ -219,26 +234,41 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         double rowDerivative;
                         bool centralColumn;
                         bool centralRow;
-                        bool hasColumnDerivative = TryDerivative(
-                            values,
-                            source.Rows,
-                            source.Columns,
-                            row,
-                            column,
-                            true,
-                            source.ColumnPitch,
-                            out columnDerivative,
-                            out centralColumn);
-                        bool hasRowDerivative = TryDerivative(
-                            values,
-                            source.Rows,
-                            source.Columns,
-                            row,
-                            column,
-                            false,
-                            source.RowPitch,
-                            out rowDerivative,
-                            out centralRow);
+                        bool hasColumnDerivative;
+                        bool hasRowDerivative;
+                        int flags = accelerated == null ? 0 : (int)accelerated[index * 6 + 5];
+                        if (accelerated != null)
+                        {
+                            columnDerivative = accelerated[index * 6];
+                            rowDerivative = accelerated[index * 6 + 1];
+                            hasColumnDerivative = (flags & 1) != 0;
+                            hasRowDerivative = (flags & 2) != 0;
+                            centralColumn = (flags & 4) != 0;
+                            centralRow = (flags & 8) != 0;
+                        }
+                        else
+                        {
+                            hasColumnDerivative = TryDerivative(
+                                values,
+                                source.Rows,
+                                source.Columns,
+                                row,
+                                column,
+                                true,
+                                source.ColumnPitch,
+                                out columnDerivative,
+                                out centralColumn);
+                            hasRowDerivative = TryDerivative(
+                                values,
+                                source.Rows,
+                                source.Columns,
+                                row,
+                                column,
+                                false,
+                                source.RowPitch,
+                                out rowDerivative,
+                                out centralRow);
+                        }
                         if (!hasColumnDerivative)
                         {
                             missingDerivativeCount++;
@@ -273,11 +303,11 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         double normalX = -columnDerivative;
                         double normalY = 1.0;
                         double normalZ = -rowDerivative;
-                        double normalLength = Math.Sqrt(
+                        double normalLength = accelerated != null ? 1.0 : Math.Sqrt(
                             (normalX * normalX)
                             + (normalY * normalY)
                             + (normalZ * normalZ));
-                        if (!IsFinitePositive(normalLength))
+                        if (accelerated != null ? (flags & 16) == 0 : !IsFinitePositive(normalLength))
                         {
                             unavailableNormalCount++;
                             continue;
@@ -291,9 +321,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                                 height,
                                 source.GetY(row)),
                             new ThreeDPoint(
-                                normalX / normalLength,
-                                normalY / normalLength,
-                                normalZ / normalLength),
+                                accelerated == null ? normalX / normalLength : accelerated[index * 6 + 2],
+                                accelerated == null ? normalY / normalLength : accelerated[index * 6 + 3],
+                                accelerated == null ? normalZ / normalLength : accelerated[index * 6 + 4]),
                             centralColumn,
                             centralRow));
                     }
@@ -308,7 +338,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         unavailableNormalCount,
                         centralDerivativeCount,
                         oneSidedDerivativeCount,
-                        missingDerivativeCount);
+                        missingDerivativeCount, computeEvidence);
                 }
                 if (samples.Count == 0)
                 {
@@ -319,7 +349,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         unavailableNormalCount,
                         centralDerivativeCount,
                         oneSidedDerivativeCount,
-                        missingDerivativeCount);
+                        missingDerivativeCount, computeEvidence);
                 }
 
                 HeightMapNormalValidationState validationState =
@@ -384,7 +414,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     reversedNormalCount,
                     minimumAlignment,
                     meanAlignment,
-                    maximumAngularErrorDegrees);
+                    maximumAngularErrorDegrees) { ComputeDiagnostics = computeEvidence };
             }
             catch (OperationCanceledException)
             {
@@ -539,7 +569,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             int unavailableNormalCount,
             int centralDerivativeCount,
             int oneSidedDerivativeCount,
-            int missingDerivativeCount)
+            int missingDerivativeCount,
+            ComputeExecutionEvidence computeEvidence = null)
         {
             return new HeightMapNormalPreparationResult(
                 false,
@@ -559,7 +590,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 0,
                 double.NaN,
                 double.NaN,
-                double.NaN);
+                double.NaN) { ComputeDiagnostics = computeEvidence };
         }
 
         private static bool IsFinite(double value) =>

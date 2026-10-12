@@ -15,8 +15,6 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      PACKAGE_VERSION: 3.1.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -26,6 +24,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.423
+
+      - name: Select unique package version from source version
+        shell: pwsh
+        run: |
+          [xml] $versionProps = Get-Content -LiteralPath Directory.Build.props -Raw
+          $sourceVersion = [string] $versionProps.Project.PropertyGroup.Version
+          $packageVersion = "$($sourceVersion.Split('-')[0])-ci.$env:GITHUB_RUN_NUMBER.$env:GITHUB_RUN_ATTEMPT"
+          "PACKAGE_VERSION=$packageVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Restore quality tools
         run: dotnet tool restore
@@ -39,9 +45,33 @@ jobs:
       - name: Smoke 2D and 3D with coverage gate
         shell: pwsh
         run: |
+          foreach ($name in @('OVL_CUDA_TEST_MODULE', 'OVL_CUDA_EXECUTION_FIXTURES', 'OVL_COMPUTE_TEST_MODULES', 'OVL_COMPUTE_REAL_PROBE')) {
+            [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+          }
           ./eng/Verify-Coverage.ps1 `
             -SmokeAssembly tests/OpenVisionLab.Inspection.Smoke/bin/Release/net8.0/OpenVisionLab.Inspection.Smoke.dll `
-            -OutputPath "$env:RUNNER_TEMP/openvisionlab-coverage.cobertura.xml"
+            -OutputPath "$env:RUNNER_TEMP/openvisionlab-coverage.cobertura.xml" `
+            -SmokeReportPath "$env:RUNNER_TEMP/openvisionlab-smoke.json"
+
+      - name: Exercise coverage fail-closed guards
+        shell: pwsh
+        run: |
+          ./eng/Test-CoverageNegative.ps1 `
+            -SmokeAssembly tests/OpenVisionLab.Inspection.Smoke/bin/Release/net8.0/OpenVisionLab.Inspection.Smoke.dll `
+            -CoveragePath "$env:RUNNER_TEMP/openvisionlab-coverage.cobertura.xml" `
+            -SmokeReportPath "$env:RUNNER_TEMP/openvisionlab-smoke.json" `
+            -OutputDirectory "$env:RUNNER_TEMP/openvisionlab-coverage-negative"
+
+      - name: Preserve managed coverage and smoke execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: managed-coverage-and-smoke
+          path: |
+            ${{ runner.temp }}/openvisionlab-coverage.cobertura.xml
+            ${{ runner.temp }}/openvisionlab-smoke.json
+            ${{ runner.temp }}/openvisionlab-coverage-negative
+          if-no-files-found: error
 
       - name: Verify public API compatibility
         shell: pwsh
@@ -72,8 +102,27 @@ jobs:
             -ExpectedCommit $env:GITHUB_SHA `
             -OutputDirectory "$env:RUNNER_TEMP/openvisionlab-package-provenance-negative-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
 
+      - name: Run package-only .NET Framework 4.8 consumer
+        shell: pwsh
+        run: |
+          ./eng/Test-NetFrameworkPackageConsumer.ps1 `
+            -PackageDirectory artifacts/packages `
+            -ExpectedVersion $env:PACKAGE_VERSION `
+            -DependencySource https://api.nuget.org/v3/index.json `
+            -OutputDirectory "$env:RUNNER_TEMP/openvisionlab-framework-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+
+      - name: Preserve Framework consumer execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: framework-package-consumer
+          path: |
+            ${{ runner.temp }}/openvisionlab-framework-consumer-${{ github.run_id }}-${{ github.run_attempt }}/reports
+            ${{ runner.temp }}/openvisionlab-framework-consumer-${{ github.run_id }}-${{ github.run_attempt }}/consumer/NuGet.Config
+          if-no-files-found: error
+
       - name: Restore package-only consumer
-        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" "-p:RestoreSources=$env:GITHUB_WORKSPACE\artifacts\packages"
+        run: dotnet restore tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --configfile "$env:RUNNER_TEMP/openvisionlab-framework-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT/consumer/NuGet.Config"
 
       - name: Run package-only 2D and 3D consumer
         run: dotnet run --project tests/OpenVisionLab.PackageConsumer.Smoke/OpenVisionLab.PackageConsumer.Smoke.csproj -c Release --no-restore "-p:PackageVersion=$env:PACKAGE_VERSION" "-p:RestorePackagesPath=$env:RUNNER_TEMP\openvisionlab-package-consumer-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"

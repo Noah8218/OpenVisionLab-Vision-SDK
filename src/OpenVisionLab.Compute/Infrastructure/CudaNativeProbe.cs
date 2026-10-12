@@ -77,7 +77,7 @@ namespace OpenVisionLab.Compute.Infrastructure
                     devices.Add(new CudaDeviceInfo(ordinal, Encoding.UTF8.GetString(info.Name, 0, terminator), info.Major, info.Minor, info.TotalMemoryBytes));
                 }
                 cancellationToken.ThrowIfCancellationRequested();
-                return new CudaSupportReport(CudaFallbackReason.KernelNotImplemented, fullPath, driverVersion, devices);
+                return new CudaSupportReport(CudaFallbackReason.None, fullPath, driverVersion, devices);
             }
             finally
             {

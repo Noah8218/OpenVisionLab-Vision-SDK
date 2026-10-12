@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -23,6 +24,7 @@ namespace OpenVisionLab.Inspection.Smoke
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions { WriteIndented = true };
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("SDK quality report identifies executing binaries without claiming a source checkout", TestEvaluationIdentity);
             yield return new SmokeCase("SDK quality workload preserves dense full observations through new option combinations", TestDenseWorkload);
             yield return new SmokeCase("SDK quality workload releases native sources results and alternating learned models", TestNativeLifetime);
         }
@@ -38,12 +40,11 @@ namespace OpenVisionLab.Inspection.Smoke
                           select new { Count = count, Fraction = contamination, Seed = seed,
                               Input = SurfaceQualitySmokeSuite.Contamination(count, seed, contamination) }).ToArray();
             string[] policies = { "fraction-0.8-coupled", "fraction-0.6-coupled", "fraction-0.6-independent-4" };
-            var identities = new[] { typeof(SurfacePoseRefinementOptions).Assembly, typeof(LineGaugeTool).Assembly, typeof(Program).Assembly }
-                .Select(assembly => new { assembly.GetName().Name, Sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(assembly.Location))) }).ToArray();
+            var identity = EvaluationIdentity();
             var plan = new
             {
                 Scope = "Frozen synthetic conditions, not sensor qualification. Zero-noise rigid truth uses translation norm and maximum rotation-coefficient numerical tolerances 1e-8; contaminated original observations are retained.",
-                Source = "6f2ca60 + PL-0036 working changes", Policies = policies, Repeats = 3, Binaries = identities,
+                Source = identity.Source, SourceIdentity = identity.SourceIdentity, Policies = policies, Repeats = 3, Binaries = identity.Binaries,
                 Inputs = inputs.Select(item => new { item.Count, item.Fraction, item.Seed, item.Input.OutlierCount, Hash = InputHash(item.Input),
                     Truth = new[] { item.Input.Truth.TranslationX, item.Input.Truth.TranslationY, item.Input.Truth.TranslationZ },
                     TruthRotation = new[] { item.Input.Truth.M11, item.Input.Truth.M12, item.Input.Truth.M13, item.Input.Truth.M21, item.Input.Truth.M22,
@@ -99,7 +100,7 @@ namespace OpenVisionLab.Inspection.Smoke
             bool inputsStable = inputs.All(item => rows.Where(row => row.CaseId == item.Count + "/" + item.Fraction.ToString(System.Globalization.CultureInfo.InvariantCulture)).All(row => row.InputHash == InputHash(item.Input)));
             var report = new
             {
-                Scope = plan.Scope, plan.Source, Binaries = identities, Runtime = RuntimeInformation.FrameworkDescription,
+                Scope = plan.Scope, plan.Source, plan.SourceIdentity, Binaries = identity.Binaries, Runtime = RuntimeInformation.FrameworkDescription,
                 OperatingSystem = RuntimeInformation.OSDescription, Architecture = RuntimeInformation.ProcessArchitecture.ToString(), Environment.ProcessorCount,
                 Inputs = inputs.Length, Trials = rows.Count, RepeatedResultsConsistent = stable, InputsPreserved = inputsStable,
                 SupportedAnalyticCasesPassed = accuracy,
@@ -113,6 +114,36 @@ namespace OpenVisionLab.Inspection.Smoke
             File.WriteAllText(path, JsonSerializer.Serialize(report, JsonOptions));
             Console.WriteLine("QUALITY | inputs=" + inputs.Length + " trials=" + rows.Count + " stable=" + stable + " supported=" + accuracy + " nativeOwnersAlive=" + alive + " | " + path);
             return stable && accuracy && inputsStable && alive == 0 ? 0 : 1;
+        }
+        private static (string Source, object SourceIdentity, object[] Binaries) EvaluationIdentity()
+        {
+            var binaries = new[] { typeof(SurfacePoseRefinementOptions).Assembly, typeof(LineGaugeTool).Assembly, typeof(Program).Assembly }
+                .Select(assembly => new { assembly.GetName().Name,
+                    InformationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown",
+                    ModuleVersionId = assembly.ManifestModule.ModuleVersionId.ToString("D"),
+                    Sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(assembly.Location))) }).ToArray();
+            var runner = binaries.Last();
+            return ("Executing " + runner.Name + " " + runner.InformationalVersion + "; source checkout unverified.",
+                new { Status = "Unverified", Reason = "Assembly metadata declares a build version; it does not verify a checkout or uncommitted source. No source manifest was supplied.", Runner = runner }, binaries);
+        }
+        private static void TestEvaluationIdentity()
+        {
+            var identity = EvaluationIdentity();
+            using JsonDocument snapshot = JsonDocument.Parse(JsonSerializer.Serialize(new { identity.Source, identity.SourceIdentity, identity.Binaries }));
+            Require(snapshot.RootElement.GetProperty("SourceIdentity").GetProperty("Status").GetString() == "Unverified"
+                && identity.Source.Contains("source checkout unverified", StringComparison.Ordinal), "Unknown source provenance must be explicit.");
+            Assembly[] assemblies = { typeof(SurfacePoseRefinementOptions).Assembly, typeof(LineGaugeTool).Assembly, typeof(Program).Assembly };
+            JsonElement binaries = snapshot.RootElement.GetProperty("Binaries");
+            Require(binaries.GetArrayLength() == assemblies.Length, "All evaluated binary identities must be retained.");
+            for (int i = 0; i < assemblies.Length; i++)
+            {
+                Require(binaries[i].GetProperty("Name").GetString() == assemblies[i].GetName().Name
+                    && binaries[i].GetProperty("ModuleVersionId").GetString() == assemblies[i].ManifestModule.ModuleVersionId.ToString("D")
+                    && binaries[i].GetProperty("InformationalVersion").GetString() == assemblies[i].GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                    && binaries[i].GetProperty("Sha256").GetString() == Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(assemblies[i].Location))),
+                    "Reported identity must match the executing assembly, independent of the working directory.");
+            }
+            Require(snapshot.RootElement.GetProperty("SourceIdentity").GetProperty("Runner").GetRawText() == binaries[2].GetRawText(), "Source declaration must identify the executing runner.");
         }
         private static string InputHash(SurfaceQualitySmokeSuite.ContaminationInput input) => Convert.ToHexString(SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(input.Model.Concat(input.Scene).Select(sample => new[] { sample.Position.X, sample.Position.Y, sample.Position.Z })))));

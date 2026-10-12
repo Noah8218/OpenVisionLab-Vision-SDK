@@ -80,7 +80,11 @@ namespace OpenVisionLab.Vision2D.Tool
         AutoMPointInvalidPatternSize = 1021,
         AutoMPointInvalidParameter = 1022,
         AutoMPointNoCandidate = 1023,
-        AutoMPointRepresentativeImageInvalid = 1024
+        AutoMPointRepresentativeImageInvalid = 1024,
+        QrCodeNotDetected = 1100,
+        QrCodeDecodeFailed = 1101,
+        QrCodeCountMismatch = 1102,
+        QrCodeBackendUnavailable = 1103
     }
 
     public enum VisionToolResultStatus
@@ -122,6 +126,8 @@ namespace OpenVisionLab.Vision2D.Tool
         public EdgeBasedMatchingDiagnosticEvidence EdgeBasedMatchingDiagnostics { get; set; }
         /// <summary>Immutable compute snapshot for a participating Tool; null when execution did not reach compute selection.</summary>
         public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
+        /// <summary>Immutable QR observation, including normal no-code/count/decode failures; null before observation or on exceptions.</summary>
+        public QrCodeReadingEvidence QrCodeReading { get; internal set; }
 
         public static VisionToolResult Passed(
             Mat resultImage,
@@ -249,6 +255,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 case VisionToolErrorCode.ToolExecutionException:
                 case VisionToolErrorCode.OpenCvExecutionFailed:
                 case VisionToolErrorCode.BlobLabelingFailed:
+                case VisionToolErrorCode.QrCodeBackendUnavailable:
                     return VisionToolResultStatus.Exception;
                 default:
                     return VisionToolResultStatus.Failed;

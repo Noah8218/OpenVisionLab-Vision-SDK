@@ -48,4 +48,5 @@ try
     if ($LASTEXITCODE -ne 0) { throw "Native probe build failed with exit code $LASTEXITCODE." }
 }
 finally { $env:PATH = $previousPath }
-Write-Host "CUDA device probe built: $output\OpenVisionLab.Cuda.Native.dll"
+if ($NvrtcLibraryPath) { Write-Host "CUDA execution module built (offline PTX embedded): $output\OpenVisionLab.Cuda.Native.dll" }
+else { Write-Host "CUDA discovery-only module built (no execution kernels): $output\OpenVisionLab.Cuda.Native.dll" }

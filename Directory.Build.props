@@ -4,11 +4,12 @@
     <Company>OpenVisionLab</Company>
     <Copyright>Copyright (c) 2026 최노아(Noah-Choi)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>3.1.0</Version>
-    <!-- Local development default only. CI and release packing override this with an immutable unique version. -->
-    <PackageVersion>3.1.0-dev.1</PackageVersion>
+    <Version>3.2.0-rc.4</Version>
+    <!-- Local source candidate only. CI packing overrides this with a unique immutable version. -->
+    <PackageVersion>$(Version)</PackageVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
     <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.1.0.0</FileVersion>
+    <FileVersion>3.2.0.0</FileVersion>
     <Product>OpenVisionLab Vision SDK</Product>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Noah8218/OpenVisionLab-Vision-SDK</RepositoryUrl>

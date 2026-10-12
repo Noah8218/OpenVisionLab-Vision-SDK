@@ -1,3 +1,4 @@
+using OpenVisionLab.Compute;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         public string Message { get; }
         public IReadOnlyList<double> Values { get; }
         public IReadOnlyList<int> OutlierIndices { get; }
+        public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
 
         internal static DeterministicLocalMedianOutlierFilterResult Completed(
             IReadOnlyList<double> values,
@@ -62,6 +64,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     /// </summary>
     public sealed class DeterministicLocalMedianOutlierFilterTool
     {
+        private readonly VisionComputeSession computeSession;
+
+        public DeterministicLocalMedianOutlierFilterTool() : this(null) { }
+
+        /// <summary>Borrows a host-owned session without probing. The caller owns session disposal.</summary>
+        public DeterministicLocalMedianOutlierFilterTool(VisionComputeSession computeSession) { this.computeSession = computeSession; }
         public const string Semantics =
             "local-median-absolute-deviation-center-excluded-v1";
 
@@ -75,6 +83,21 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             try
             {
                 Validate(rowCount, columnCount, values, options);
+                ComputeExecutionEvidence computeEvidence = null;
+                if (computeSession != null && computeSession.TryMedian3D(rowCount, columnCount, values, options.WindowSize,
+                    true, options.MinimumValidNeighbors, options.MaximumAbsoluteDeviation, cancellationToken,
+                    out double[] accelerated, out computeEvidence))
+                {
+                    var indices = new List<int>();
+                    for (int i = 0; i < accelerated.Length; i++)
+                    {
+                        if ((i & 0x3fff) == 0) cancellationToken.ThrowIfCancellationRequested();
+                        if (IsFinite(values[i]) && double.IsNaN(accelerated[i])) indices.Add(i);
+                    }
+                    var result = DeterministicLocalMedianOutlierFilterResult.Completed(accelerated, indices);
+                    result.ComputeDiagnostics = computeEvidence;
+                    return result;
+                }
                 double[] output = new double[values.Count];
                 for (int index = 0; index < values.Count; index++)
                 {
@@ -154,9 +177,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     }
                 }
 
-                return DeterministicLocalMedianOutlierFilterResult.Completed(
-                    output,
-                    outlierIndices);
+                var completed = DeterministicLocalMedianOutlierFilterResult.Completed(output, outlierIndices);
+                completed.ComputeDiagnostics = computeEvidence;
+                return completed;
             }
             catch (OperationCanceledException)
             {

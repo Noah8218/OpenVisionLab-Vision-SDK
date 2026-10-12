@@ -139,7 +139,17 @@ namespace OpenVisionLab.Vision2D.Property
                     cancellationToken.ThrowIfCancellationRequested();
                     VisionToolResult result = VisionToolResult.Passed(resultImage, stopwatch.Elapsed, metrics, overlays);
                     resultImage = null;
-                    return result;
+                    try
+                    {
+                        AttachResultEvidence(result);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return result;
+                    }
+                    catch
+                    {
+                        result.Dispose();
+                        throw;
+                    }
                 }
                 finally
                 {
@@ -188,6 +198,10 @@ namespace OpenVisionLab.Vision2D.Property
             return true;
         }
 
+        /// <summary>Attaches Tool-specific evidence after a completed run, including ordinary post-run failures.</summary>
+        /// <remarks>The default does nothing. A failed attachment releases the newly assembled result before error propagation.</remarks>
+        protected virtual void AttachResultEvidence(VisionToolResult result) { }
+
         private void AttachExecutionDetails(VisionToolResult result)
         {
             if (result == null)
@@ -202,6 +216,7 @@ namespace OpenVisionLab.Vision2D.Property
             }
 
             result.Overlays.AddRange(CollectOverlays().Where(overlay => overlay != null));
+            AttachResultEvidence(result);
         }
 
         private Mat CreateResultImageSnapshot()

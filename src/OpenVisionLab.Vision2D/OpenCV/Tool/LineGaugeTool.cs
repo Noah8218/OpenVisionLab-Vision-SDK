@@ -23,18 +23,17 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override VisionToolResult Execute(Mat source)
         {
-            if (property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement) resultList?.Clear();
+            resultList?.Clear();
             return base.Execute(source);
         }
 
         public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
         {
-            bool subpixel = property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement;
-            if (subpixel) resultList?.Clear();
+            resultList?.Clear();
             try { return ExecuteWithCancellation(source, cancellationToken); }
             catch
             {
-                if (subpixel) resultList?.Clear();
+                resultList?.Clear();
                 throw;
             }
         }
@@ -223,11 +222,11 @@ namespace OpenVisionLab.Vision2D.Tool
                 : LineFitting.GetFitLine(edgePoints, property.PRJ_DIR);
 
             LineGaugeSubpixelEvidence subpixel = property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement
-                ? MeasureSubpixel(edgeList, roi, applyRoiOffset, settings.SubpixelProfileRadius) : null;
+                ? MeasureSubpixel(edgeList, roi, applyRoiOffset, settings.SubpixelProfileRadius, settings.UseSubpixelPeakMeasurement) : null;
             return new LineGaugeResult(edgeList, fitLine, index, subpixel);
         }
 
-        private LineGaugeSubpixelEvidence MeasureSubpixel(List<LineGaugeEdge> edges, Rect roi, bool applyRoiOffset, int radius)
+        private LineGaugeSubpixelEvidence MeasureSubpixel(List<LineGaugeEdge> edges, Rect roi, bool applyRoiOffset, int radius, bool usePeak)
         {
             Mat gray;
             if (applyRoiOffset)
@@ -260,15 +259,42 @@ namespace OpenVisionLab.Vision2D.Tool
                         if (gradient > strongest) { strongest = gradient; peak = position; }
                     }
                     if (peak < radius || peak + radius >= length - 1) continue;
-                    double sum = 0, weighted = 0;
-                    for (int position = peak - radius; position <= peak + radius; position++)
+                    double measured;
+                    if (usePeak)
                     {
-                        double gradient = ProfileGradient(values, projectsX, x, y, position, scanSign);
-                        sum += gradient;
-                        weighted += (position + 0.5) * gradient;
+                        bool competingPeak = false;
+                        for (int position = peak - radius; position <= peak + radius; position++)
+                        {
+                            // Each rounded 8-bit difference has at most one gray level of quantization error; comparing two differences admits two.
+                            if (Math.Abs(position - peak) > 1 && ProfileGradient(values, projectsX, x, y, position, scanSign) >= strongest - 2)
+                            {
+                                competingPeak = true;
+                                break;
+                            }
+                        }
+                        if (competingPeak) continue;
+                        double left = ProfileGradient(values, projectsX, x, y, peak - 1, scanSign);
+                        double right = ProfileGradient(values, projectsX, x, y, peak + 1, scanSign);
+                        if (!(left > 0) || !(right > 0)) continue;
+                        double logLeft = Math.Log(left / strongest), logRight = Math.Log(right / strongest);
+                        double curvature = logLeft + logRight;
+                        if (!(curvature < 0)) continue;
+                        double displacement = 0.5 * (logLeft - logRight) / curvature;
+                        if (double.IsNaN(displacement) || double.IsInfinity(displacement) || Math.Abs(displacement) > 0.5) continue;
+                        measured = peak + 0.5 + displacement;
                     }
-                    if (!(sum > 0)) continue;
-                    double measured = weighted / sum;
+                    else
+                    {
+                        double sum = 0, weighted = 0;
+                        for (int position = peak - radius; position <= peak + radius; position++)
+                        {
+                            double gradient = ProfileGradient(values, projectsX, x, y, position, scanSign);
+                            sum += gradient;
+                            weighted += (position + 0.5) * gradient;
+                        }
+                        if (!(sum > 0)) continue;
+                        measured = weighted / sum;
+                    }
                     points.Add(projectsX ? new Point2d(measured + offsetX, y + offsetY) : new Point2d(x + offsetX, measured + offsetY));
                 }
                 int rejected = edges.Count - points.Count;
@@ -300,6 +326,7 @@ namespace OpenVisionLab.Vision2D.Tool
             IDictionary<string, double> metrics = base.CollectMetrics();
             if (property is LineGaugeToolProperty settings && settings.UseSubpixelMeasurement)
             {
+                if (settings.UseSubpixelPeakMeasurement && resultList.Any(result => result.SubpixelEvidence != null)) metrics["LineGauge.SubpixelPeakMeasurement"] = 1;
                 metrics["LineGauge.SubpixelSampleCount"] = resultList.Sum(result => result.SubpixelEvidence?.SampleCount ?? 0);
                 metrics["LineGauge.SubpixelRejectedSampleCount"] = resultList.Sum(result => result.SubpixelEvidence?.RejectedPointCount ?? 0);
                 List<LineGaugeSubpixelEvidence> fits = resultList.Select(result => result.SubpixelEvidence).Where(result => result?.HasFit == true).ToList();

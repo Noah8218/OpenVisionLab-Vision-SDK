@@ -32,7 +32,8 @@ Open `OpenVisionLab.VisionSdk.sln`. It contains libraries and console checks; th
 is no application host or repository-defined startup/launch profile. Choose
 `OpenVisionLab.Inspection.Smoke` for executable contract checks.
 `OpenVisionLab.Vision3D.Benchmark` is a separate console benchmark. The package-only
-consumer is outside the solution.
+.NET 8 and .NET Framework 4.8 consumers are outside the solution. The explicit
+configure/restore/inspect example is `samples/OpenVisionLab.FirstInspection/Program.cs`.
 
 Read the root README, the selected package's input/result contract, then the Tool's
 `Execute`/`Run`. Search its name in `tests/OpenVisionLab.Inspection.Smoke/Suites`

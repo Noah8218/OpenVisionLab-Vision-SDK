@@ -16,7 +16,7 @@ namespace OpenVisionLab.Vision2D.Blob
             new ReadOnlyCollection<VisionPipelineToolDescriptor>(
                 VisionPipelineToolFactory.Descriptors.Concat(new[] { BlobDescriptor }).ToArray());
 
-        /// <summary>Gets the immutable descriptors for all 15 non-legacy 2D Tools.</summary>
+        /// <summary>Gets the immutable descriptors from the base Vision2D catalog and BlobTool.</summary>
         public static IReadOnlyList<VisionPipelineToolDescriptor> Descriptors => AllDescriptors;
 
         /// <summary>Finds a base Vision2D or Blob descriptor by canonical Tool type or documented alias.</summary>

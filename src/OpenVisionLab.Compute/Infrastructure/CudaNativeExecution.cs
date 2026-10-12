@@ -16,6 +16,10 @@ namespace OpenVisionLab.Compute.Infrastructure
         private EdgeTileStrided edgeTileStrided;
         private ReleaseEdgeWorkspace releaseEdgeWorkspace;
         private TransformPoints transform;
+        private Median3D median;
+        private Normals3D normals;
+        private Scharr8U scharr;
+        private bool medianQualified, localMedianQualified, normalsQualified, scharrQualified;
 
         private CudaNativeExecution() { }
 
@@ -42,6 +46,9 @@ namespace OpenVisionLab.Compute.Infrastructure
                 value.tileBudget = CudaNativeProbe.GetExport<EdgeTileBudget>(value.module, "ovl_cuda_get_edge_tile_budget");
                 value.edgeTileStrided = CudaNativeProbe.GetExport<EdgeTileStrided>(value.module, "ovl_cuda_edge_tile_strided");
                 value.releaseEdgeWorkspace = CudaNativeProbe.GetExport<ReleaseEdgeWorkspace>(value.module, "ovl_cuda_release_edge_workspace");
+                value.median = CudaNativeProbe.GetExport<Median3D>(value.module, "ovl_cuda_median3d");
+                value.normals = CudaNativeProbe.GetExport<Normals3D>(value.module, "ovl_cuda_normals3d");
+                value.scharr = CudaNativeProbe.GetExport<Scharr8U>(value.module, "ovl_cuda_scharr8u");
                 int status = create(ordinal, out value.handle, out error);
                 token.ThrowIfCancellationRequested();
                 if (status != 0 || value.handle == IntPtr.Zero)
@@ -167,6 +174,92 @@ namespace OpenVisionLab.Compute.Infrastructure
             return status;
         }
 
+
+        internal bool SupportsMedian => median != null;
+        internal bool SupportsNormals => normals != null;
+        internal bool SupportsScharr => scharr != null;
+
+        internal int Median(double[] source, int width, int rows, int kernel, bool local, int minimum, double limit,
+            double[] result, CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            Cancel cancel = () => token.IsCancellationRequested ? 1 : 0;
+            int status = median(handle, source, width, rows, kernel, local ? 1 : 0, minimum, limit, result, cancel, ref timing);
+            GC.KeepAlive(cancel);
+            token.ThrowIfCancellationRequested();
+            return status;
+        }
+
+        internal int Normals(double[] source, int width, int rows, double columnPitch, double rowPitch,
+            double[] result, CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            Cancel cancel = () => token.IsCancellationRequested ? 1 : 0;
+            int status = normals(handle, source, width, rows, columnPitch, rowPitch, result, cancel, ref timing);
+            GC.KeepAlive(cancel);
+            token.ThrowIfCancellationRequested();
+            return status;
+        }
+
+        internal int Scharr(byte[] source, int width, int rows, int channels, int axis,
+            byte[] result, CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            Cancel cancel = () => token.IsCancellationRequested ? 1 : 0;
+            int status = scharr(handle, source, width, rows, channels, axis, result, cancel, ref timing);
+            GC.KeepAlive(cancel);
+            token.ThrowIfCancellationRequested();
+            return status;
+        }
+
+        internal int CheckMedian(bool local, CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            if (local ? localMedianQualified : medianQualified) return 0;
+            double[] source = { 1, 1, 1, 1, 99, 1, 1, 1, 1 }, result = new double[9];
+            int status = Median(source, 3, 3, 3, local, 3, 5, result, token, out timing);
+            if (status != 0) return status;
+            if (!timing.IsValid()) return 13;
+            for (int i = 0; i < result.Length; i++)
+                if (local && i == 4 ? !double.IsNaN(result[i]) : result[i] != 1.0) return 13;
+            if (local) localMedianQualified = true; else medianQualified = true;
+            return 0;
+        }
+
+        internal int CheckNormals(CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            if (normalsQualified) return 0;
+            double[] result = new double[54];
+            int status = Normals(new double[9], 3, 3, 2, 4, result, token, out timing);
+            if (status != 0) return status;
+            if (!timing.IsValid()) return 13;
+            for (int i = 0; i < 9; i++)
+            {
+                int flags = 19 | (i % 3 == 1 ? 4 : 0) | (i / 3 == 1 ? 8 : 0);
+                if (result[i * 6] != 0 || result[i * 6 + 1] != 0 || result[i * 6 + 2] != 0
+                    || result[i * 6 + 3] != 1 || result[i * 6 + 4] != 0 || result[i * 6 + 5] != flags) return 13;
+            }
+            normalsQualified = true;
+            return 0;
+        }
+
+        internal int CheckScharr(CancellationToken token, out NativeTiming timing)
+        {
+            timing = NativeTiming.Create();
+            if (scharrQualified) return 0;
+            byte[] source = { 0, 1, 2, 0, 1, 2, 0, 1, 2 }, result = new byte[9];
+            for (int axis = 0; axis < 2; axis++)
+            {
+                int status = Scharr(source, 3, 3, 1, axis, result, token, out timing);
+                if (status != 0) return status;
+                if (!timing.IsValid()) return 13;
+                for (int i = 0; i < result.Length; i++) if (result[i] != (axis == 0 && i % 3 == 1 ? 32 : 0)) return 13;
+            }
+            scharrQualified = true;
+            return 0;
+        }
+
         public void Dispose()
         {
             try { if (handle != IntPtr.Zero && destroy != null) destroy(handle); }
@@ -188,8 +281,17 @@ namespace OpenVisionLab.Compute.Infrastructure
             public ulong ScratchBytes;
             public int DriverError;
             public int Launches;
+            internal bool IsValid(ulong maximumScratchBytes = ulong.MaxValue) => Size == Marshal.SizeOf<NativeTiming>() && Reserved == 0 && Launches > 0
+                && UploadMs >= 0 && KernelWaitMs >= 0 && DownloadMs >= 0 && ScratchBytes <= maximumScratchBytes
+                && !double.IsNaN(UploadMs + KernelWaitMs + DownloadMs) && !double.IsInfinity(UploadMs + KernelWaitMs + DownloadMs);
             internal static NativeTiming Create() => new NativeTiming { Size = (uint)Marshal.SizeOf<NativeTiming>() };
         }
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Median3D(IntPtr handle, [In] double[] source,
+            int width, int rows, int kernel, int local, int minimum, double limit, [Out] double[] result, Cancel cancel, ref NativeTiming timing);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Normals3D(IntPtr handle, [In] double[] source,
+            int width, int rows, double columnPitch, double rowPitch, [Out] double[] result, Cancel cancel, ref NativeTiming timing);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Scharr8U(IntPtr handle, [In] byte[] source,
+            int width, int rows, int channels, int axis, [Out] byte[] result, Cancel cancel, ref NativeTiming timing);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint GetAbi();
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int CreateExecution(int ordinal, out IntPtr handle, out int error);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void Destroy(IntPtr handle);

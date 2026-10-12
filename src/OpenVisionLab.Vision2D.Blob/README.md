@@ -2,12 +2,14 @@
 
 Blob labeling, area filtering, ROI handling, and ordered `BlobResult` output for OpenVisionLab Vision2D.
 
-`3.0.0` is the API/assembly baseline, not the install version. Use the exact
-immutable version from your package source; `3.1.0-dev.1` is only the current
-repository-local default.
+`3.0.0` is the API baseline. Source, package and CLR assembly version values
+are owned by [Directory.Build.props](../../Directory.Build.props); these are
+distinct identities. Install the exact immutable version from your selected
+package source and keep all OpenVisionLab packages on that version. A local
+development default does not establish that a package has been published.
 
 ```powershell
-$packageVersion = "3.1.0-dev.1" # Replace when pack or your feed uses another version.
+$packageVersion = Read-Host "Exact SDK package version from your selected feed"
 dotnet add package OpenVisionLab.Vision2D.Blob --version $packageVersion
 ```
 
@@ -45,7 +47,10 @@ foreach (BlobResult blob in tool.results)
 `BlobToolProperty` supplies safe defaults for every required field. Applications that need a custom persistence model may still provide their own `IOpenCVPropertyBlob` implementation.
 
 For camera/file input, pass an owned non-empty 8-bit grayscale `Mat` (for example,
-`Cv2.ImRead(path, ImreadModes.Grayscale)`). The working foreground is nonzero after
+`Cv2.ImRead(path, ImreadModes.Grayscale)` when that conversion is intentional).
+To preserve and reject an unsupported original depth/channel layout, use the
+[explicit file-input boundary](../OpenVisionLab.Vision2D/README.md#input-and-option-contracts)
+with `ImreadModes.Unchanged`. The working foreground is nonzero after
 preprocessing. Threshold is enabled at 120 by default; disable it only when the
 supplied foreground already represents the intended object. Ordinary threshold
 takes precedence over adaptive threshold when both are enabled.
@@ -61,9 +66,11 @@ the next execution. Dispose the result snapshot and Tool; the source remains you
 
 ## Pipeline composition
 
-`VisionPipelineBlobToolFactory.Descriptors` exposes the complete immutable catalog
-for all 15 non-legacy 2D Tools: `BlobTool` from this package plus the 14 Tools from
-`OpenVisionLab.Vision2D`. `TryGetDescriptor` resolves canonical IDs and aliases.
+[`VisionPipelineBlobToolFactory.Descriptors`](VisionPipelineBlobToolFactory.cs)
+composes `BlobTool` from this package with the base
+[`VisionPipelineToolFactory.Descriptors`](../OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineToolFactory.cs)
+catalog. Query this composed catalog for supported Tools; `TryGetDescriptor`
+resolves canonical IDs and aliases.
 `Create` constructs Blob directly and delegates the other Tools to
 `VisionPipelineToolFactory`, including its host artifact resolver overload.
 

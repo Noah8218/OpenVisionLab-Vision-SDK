@@ -53,7 +53,7 @@ if ([string]::IsNullOrWhiteSpace($ProvenancePath)) {
     $ProvenancePath = Join-Path $repositoryRoot 'src/OpenVisionLab.Core/ThirdParty/provenance.json'
 }
 $provenanceFile = (Resolve-Path -LiteralPath $ProvenancePath).Path
-$expectedProvenanceSha256 = '138EFE257AF82DECC9548598FA03C537240C1F40DF97E6DE194132D13A3A8C66'
+$expectedProvenanceSha256 = '0AC43DF18F0C201F2E4EE20864FCB9A4007177F1E61DB54A4A462A9666F155C8'
 $actualProvenanceSha256 = Get-Sha256 $provenanceFile
 if (-not [string]::Equals(
         $actualProvenanceSha256,

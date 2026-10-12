@@ -1,5 +1,6 @@
 {
   "OpenVisionLab.Core": 0.20,
+  "OpenVisionLab.Compute": 0.23,
   "OpenVisionLab.Inspection": 0.68,
   "OpenVisionLab.Vision2D": 0.68,
   "OpenVisionLab.Vision2D.Blob": 0.68,

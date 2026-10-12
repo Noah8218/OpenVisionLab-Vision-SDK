@@ -78,13 +78,13 @@ namespace OpenVisionLab.Compute
         public ComputeExecutionEvidence DescribeCpuExecution(CancellationToken cancellationToken = default(CancellationToken))
         {
             CudaSupportReport report = ProbeCuda(cancellationToken);
-            return new ComputeExecutionEvidence(useCuda, report, reason: report.IsAccelerationAvailable ? CudaFallbackReason.KernelNotImplemented : report.Reason);
+            return new ComputeExecutionEvidence(useCuda, report, reason: report.Reason == CudaFallbackReason.None ? CudaFallbackReason.KernelNotImplemented : report.Reason, driverError: report.NativeErrorCode);
         }
 
         internal ComputeExecutionEvidence DescribeCpuExecution(CudaFallbackReason reason, CancellationToken token)
         {
             CudaSupportReport report = ProbeCuda(token);
-            return new ComputeExecutionEvidence(useCuda, report, reason: report.Reason == CudaFallbackReason.None || report.Reason == CudaFallbackReason.KernelNotImplemented ? reason : report.Reason, driverError: report.NativeErrorCode);
+            return new ComputeExecutionEvidence(useCuda, report, reason: report.Reason == CudaFallbackReason.None ? reason : report.Reason, driverError: report.NativeErrorCode);
         }
 
         internal bool TryScoreEdgeGrid(double[] sx, double[] sy, int[] offsets, double[] mx, double[] my, double[] thresholds,
@@ -370,6 +370,125 @@ namespace OpenVisionLab.Compute
             finally { Monitor.Exit(sync); }
         }
 
+
+        internal bool TryMedian3D(int rows, int columns, System.Collections.Generic.IReadOnlyList<double> source,
+            int kernel, bool local, int minimum, double limit, CancellationToken token,
+            out double[] output, out ComputeExecutionEvidence evidence)
+        {
+            output = null;
+            evidence = null;
+            Enter(token);
+            try
+            {
+                ThrowIfDisposed();
+                if (useCuda && !local)
+                    for (int i = 0; i < source.Count; i++)
+                    {
+                        if ((i & 0x3fff) == 0) token.ThrowIfCancellationRequested();
+                        // Array.Sort may permute zero ties; preserve its exact selected sign on CPU.
+                        if (BitConverter.DoubleToInt64Bits(source[i]) == long.MinValue)
+                        { evidence = DescribeCpuExecution(CudaFallbackReason.NumericalRangeUnsupported, token); return false; }
+                    }
+                if (!PrepareKernel(token, out double initializationMs))
+                { evidence = CpuOutcome(executionFailure, initializationMs); return false; }
+                if (!execution.SupportsMedian) { evidence = CpuOutcome(CudaFallbackReason.NativeExportMissing, initializationMs); return false; }
+                if (!TryAllocateResult(source.Count, initializationMs, out double[] input, out evidence)
+                    || !TryAllocateResult(source.Count, initializationMs, out double[] result, out evidence)) return false;
+                for (int i = 0; i < input.Length; i++)
+                { if ((i & 0x3fff) == 0) token.ThrowIfCancellationRequested(); input[i] = source[i]; }
+                Stopwatch qualification = Stopwatch.StartNew();
+                int status = execution.CheckMedian(local, token, out CudaNativeExecution.NativeTiming timing);
+                initializationMs += qualification.Elapsed.TotalMilliseconds;
+                if (status == 0) status = execution.Median(input, columns, rows, kernel, local, minimum, limit, result, token, out timing);
+                if (status == 0)
+                    for (int i = 0; i < result.Length; i++)
+                    {
+                        double before = input[i], after = result[i];
+                        bool valid = local ? (double.IsNaN(after) && !double.IsInfinity(before)) || BitConverter.DoubleToInt64Bits(before) == BitConverter.DoubleToInt64Bits(after)
+                            : double.IsNaN(before) || double.IsInfinity(before) ? double.IsNaN(after) : !double.IsNaN(after) && !double.IsInfinity(after);
+                        if (!valid) { status = 13; break; }
+                    }
+                bool success = FinishBatch(status, Array.Empty<double>(), false, timing, initializationMs, out evidence, maximumScratchBytes: MaximumResultBytes);
+                token.ThrowIfCancellationRequested();
+                if (success) output = result;
+                return success;
+            }
+            finally { Monitor.Exit(sync); }
+        }
+
+        internal bool TryNormals3D(double[] input, int rows, int columns, double columnPitch, double rowPitch,
+            CancellationToken token, out double[] output, out ComputeExecutionEvidence evidence)
+        {
+            output = null;
+            evidence = null;
+            Enter(token);
+            try
+            {
+                ThrowIfDisposed();
+                if (!PrepareKernel(token, out double initializationMs))
+                { evidence = CpuOutcome(executionFailure, initializationMs); return false; }
+                if (!execution.SupportsNormals) { evidence = CpuOutcome(CudaFallbackReason.NativeExportMissing, initializationMs); return false; }
+                if (!TryAllocateResult((long)input.Length * 6, initializationMs, out double[] result, out evidence)) return false;
+                Stopwatch qualification = Stopwatch.StartNew();
+                int status = execution.CheckNormals(token, out CudaNativeExecution.NativeTiming timing);
+                initializationMs += qualification.Elapsed.TotalMilliseconds;
+                if (status == 0) status = execution.Normals(input, columns, rows, columnPitch, rowPitch, result, token, out timing);
+                if (status == 0)
+                    for (int i = 0; i < input.Length; i++)
+                    {
+                        int at = i * 6;
+                        double rawFlags = result[at + 5];
+                        int flags = rawFlags >= 0 && rawFlags <= 31 ? (int)rawFlags : -1;
+                        bool xFinite = !double.IsNaN(result[at]) && !double.IsInfinity(result[at]);
+                        bool yFinite = !double.IsNaN(result[at + 1]) && !double.IsInfinity(result[at + 1]);
+                        bool valid = flags >= 0 && rawFlags == flags && xFinite == ((flags & 1) != 0) && yFinite == ((flags & 2) != 0);
+                        if (double.IsNaN(input[i]) || double.IsInfinity(input[i])) valid &= flags == 0;
+                        if ((flags & 16) != 0) valid &= (flags & 3) == 3;
+                        for (int axis = 2; axis < 5; axis++)
+                            valid &= (flags & 16) != 0 ? !double.IsNaN(result[at + axis]) && !double.IsInfinity(result[at + axis]) : double.IsNaN(result[at + axis]);
+                        if (!valid) { status = 13; break; }
+                    }
+                bool success = FinishBatch(status, Array.Empty<double>(), false, timing, initializationMs, out evidence, maximumScratchBytes: MaximumResultBytes);
+                token.ThrowIfCancellationRequested();
+                if (success) output = result;
+                return success;
+            }
+            finally { Monitor.Exit(sync); }
+        }
+
+        internal bool TryScharr8U(byte[] input, int width, int rows, int channels, int axis, CancellationToken token,
+            out byte[] output, out ComputeExecutionEvidence evidence)
+        {
+            output = null;
+            evidence = null;
+            Enter(token);
+            try
+            {
+                ThrowIfDisposed();
+                if (!PrepareKernel(token, out double initializationMs))
+                { evidence = CpuOutcome(executionFailure, initializationMs); return false; }
+                if (!execution.SupportsScharr) { evidence = CpuOutcome(CudaFallbackReason.NativeExportMissing, initializationMs); return false; }
+                if (input.Length > MaximumResultBytes) { evidence = CpuOutcome(CudaFallbackReason.GpuMemoryUnavailable, initializationMs); return false; }
+                byte[] result;
+                try { result = new byte[input.Length]; }
+                catch (OutOfMemoryException) { evidence = CpuOutcome(CudaFallbackReason.GpuMemoryUnavailable, initializationMs); return false; }
+                Stopwatch qualification = Stopwatch.StartNew();
+                int status = execution.CheckScharr(token, out CudaNativeExecution.NativeTiming timing);
+                initializationMs += qualification.Elapsed.TotalMilliseconds;
+                if (status == 0) status = execution.Scharr(input, width, rows, channels, axis, result, token, out timing);
+                bool success = FinishBatch(status, Array.Empty<double>(), false, timing, initializationMs, out evidence, maximumScratchBytes: MaximumResultBytes);
+                token.ThrowIfCancellationRequested();
+                if (success) output = result;
+                return success;
+            }
+            finally { Monitor.Exit(sync); }
+        }
+
+        private ComputeExecutionEvidence CpuOutcome(CudaFallbackReason? reason, double initializationMs)
+        {
+            return new ComputeExecutionEvidence(useCuda, support, reason: reason, initializationMs: initializationMs, driverError: executionError);
+        }
+
         private bool TryAllocateResult(long count, double initializationMs, out double[] values, out ComputeExecutionEvidence evidence)
         {
             values = null;
@@ -401,7 +520,12 @@ namespace OpenVisionLab.Compute
             execution = CudaNativeExecution.Create(support.ModulePath, support.SelectedDeviceOrdinal.Value, token,
                 out CudaFallbackReason reason, out executionError);
             initializationMs = timer.Elapsed.TotalMilliseconds;
-            if (execution == null) { executionFailure = reason; return false; }
+            if (execution == null)
+            {
+                executionFailure = reason;
+                support = new CudaSupportReport(reason, support.ModulePath, support.DriverApiVersion, support.Devices, support.SelectedDeviceOrdinal, executionError);
+                return false;
+            }
             support = new CudaSupportReport(CudaFallbackReason.None, support.ModulePath, support.DriverApiVersion,
                 support.Devices, support.SelectedDeviceOrdinal, accelerationAvailable: true);
             return true;
@@ -411,11 +535,9 @@ namespace OpenVisionLab.Compute
             double initializationMs, out ComputeExecutionEvidence evidence, int validCount = -1, ulong maximumScratchBytes = ulong.MaxValue)
         {
             CudaFallbackReason reason = status == 0 ? CudaFallbackReason.None
-                : status == 8 ? CudaFallbackReason.GpuMemoryUnavailable : CudaFallbackReason.GpuExecutionFailed;
-            if (status == 0 && (timing.Size != Marshal.SizeOf<CudaNativeExecution.NativeTiming>() || timing.Reserved != 0 || timing.Launches <= 0
-                || timing.UploadMs < 0 || timing.KernelWaitMs < 0 || timing.DownloadMs < 0 || timing.ScratchBytes > maximumScratchBytes
-                || double.IsNaN(timing.UploadMs + timing.KernelWaitMs + timing.DownloadMs)
-                || double.IsInfinity(timing.UploadMs + timing.KernelWaitMs + timing.DownloadMs))) reason = CudaFallbackReason.InvalidKernelResult;
+                : status == 8 ? CudaFallbackReason.GpuMemoryUnavailable
+                : status == 13 ? CudaFallbackReason.InvalidKernelResult : CudaFallbackReason.GpuExecutionFailed;
+            if (status == 0 && !timing.IsValid(maximumScratchBytes)) reason = CudaFallbackReason.InvalidKernelResult;
             if (reason == CudaFallbackReason.None)
             {
                 int count = validCount < 0 ? values.Length : validCount;

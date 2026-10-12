@@ -30,7 +30,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 CreateAutoMPointDescriptor(),
                 CreateSiftDescriptor(),
                 CreateLineGaugeDescriptor(),
-                CreateMeanDescriptor()
+                CreateMeanDescriptor(),
+                CreateQrCodeDescriptor()
             });
 
         private static VisionPipelineToolDescriptor CreateThresholdDescriptor()
@@ -418,6 +419,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Boolean(nameof(value.SHOW_CONTOUR), value.SHOW_CONTOUR),
                     Boolean(nameof(value.SHOW_FITLINE), value.SHOW_FITLINE),
                     Boolean(nameof(value.UseSubpixelMeasurement), value.UseSubpixelMeasurement),
+                    Boolean(nameof(value.UseSubpixelPeakMeasurement), value.UseSubpixelPeakMeasurement),
                     Integer(nameof(value.SubpixelProfileRadius), value.SubpixelProfileRadius)
                 }));
         }
@@ -436,6 +438,18 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Integer(nameof(value.MEAN_MIN), value.MEAN_MIN),
                     Enum(nameof(value.MEAN_TYPES), value.MEAN_TYPES)
                 }));
+        }
+
+        private static VisionPipelineToolDescriptor CreateQrCodeDescriptor()
+        {
+            QrCodeToolProperty value = new QrCodeToolProperty();
+            return Tool("qrcode", typeof(QrCodeTool), typeof(QrCodeToolProperty), new[] { "QrCodeTool" }, new[]
+            {
+                String(nameof(value.NAME), value.NAME),
+                Boolean(nameof(value.USE_ROI), value.USE_ROI),
+                Rectangle(nameof(value.CvROI), FormatRectangle(value.CvROI)),
+                Integer(nameof(value.ExpectedCodeCount), value.ExpectedCodeCount)
+            });
         }
 
         private static VisionPipelineToolDescriptor Tool(

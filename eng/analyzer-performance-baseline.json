@@ -3,27 +3,26 @@
   "analysisLevel": "latest-recommended",
   "analysisMode": "All",
   "contract": "Reviewed performance diagnostics after deterministic allocation cleanup",
-  "reviewedFromCommit": "202758506d99e985e3f1d2b595aff638cb3007c2",
   "expectedWarningsByCode": {
     "CA1805": 69,
-    "CA1822": 68,
+    "CA1822": 65,
     "CA1825": 0,
     "CA1843": 0,
     "CA1859": 3,
-    "CA1861": 82,
-    "CA1869": 1
+    "CA1861": 101,
+    "CA1869": 2
   },
   "reviewedClassification": {
-    "inputTotal": 272,
-    "resolvedDeterministicAllocations": 32,
-    "resolvedSingleTaskWaits": 9,
-    "retainedTotal": 224,
-    "retainedExplicitDefaults": 69,
-    "retainedPublicInstanceContracts": 61,
-    "retainedUnmeasuredPrivateStaticCandidates": 7,
-    "retainedConcreteTypeSuggestions": 5,
-    "retainedOneShotMutableArrays": 82,
-    "retainedOneShotJsonOptions": 1
+    "retainedTotal": 240,
+    "decisionGroups": {
+      "explicit-default": 69,
+      "public-instance-contract": 58,
+      "unmeasured-private-static": 7,
+      "concrete-type-coupling": 3,
+      "one-shot-mutable-array": 100,
+      "one-shot-json-options": 2,
+      "one-shot-catalog-array": 1
+    }
   },
   "ruleDecisions": [
     {
@@ -34,12 +33,12 @@
     {
       "code": "CA1822",
       "decision": "retain",
-      "rationale": "Sixty-one members are public instance contracts whose conversion to static is breaking. Seven are private but lack hot-path evidence for a material static-dispatch benefit."
+      "rationale": "Fifty-eight public instance contracts and seven private candidates are retained. Three stateful 3D Execute methods now read computeSession and are no longer static candidates; their owners and signatures are unchanged."
     },
     {
       "code": "CA1825",
       "decision": "resolved",
-      "rationale": "All 32 zero-length allocations use Array.Empty<T>(), removing a deterministic allocation without changing declared API shape or element mutability."
+      "rationale": "The previous empty-array cleanup is retained. QR absence now uses Array.Empty<QrCodeCandidate>() and still produces an independently owned readonly observation. No zero-length allocation is admitted by this baseline."
     },
     {
       "code": "CA1843",
@@ -49,17 +48,17 @@
     {
       "code": "CA1859",
       "decision": "retain",
-      "rationale": "The four remaining concrete-type suggestions affect collection construction, smoke, or report parsing paths; the ContourTool helper identity disappeared when the characterized Blob/Contour compatibility engine replaced the old conversion chain. No measured dispatch bottleneck justifies tighter local contracts."
+      "rationale": "The three exact collection/report type suggestions have no demonstrated production dispatch cost. Tighter local types would not improve the supported user workflow."
     },
     {
       "code": "CA1861",
       "decision": "retain",
-      "rationale": "All 82 sites are one-shot smoke or benchmark arguments. Hoisting non-empty arrays would add shared mutable state without product runtime benefit."
+      "rationale": "One hundred exact sites allocate independently owned smoke/benchmark inputs or expected values. The QR alias array is constructed once by the static catalog initializer. Sharing test buffers or adding another catalog field provides no production reuse benefit."
     },
     {
       "code": "CA1869",
       "decision": "retain",
-      "rationale": "The sole JsonSerializerOptions instance is created once for final benchmark report output, so caching provides no repeated-use benefit."
+      "rationale": "The two exact options instances belong to final benchmark and smoke report output. Each is used once per report; this is not repeated production serialization."
     }
   ],
   "diagnostics": [
@@ -479,16 +478,6 @@
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicHeightDifferenceEdgeTool.cs"
     },
     {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicLocalMedianOutlierFilterTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicLocalMedianOutlierFilterTool|Execute|public DeterministicLocalMedianOutlierFilterResult Execute(|occurrence=1",
-      "decisionGroup": "public-instance-contract",
-      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicLocalMedianOutlierFilterTool.cs"
-    },
-    {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicMedianFilterTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMedianFilterTool|Execute|public DeterministicMedianFilterResult Execute(|occurrence=1",
-      "decisionGroup": "public-instance-contract",
-      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicMedianFilterTool.cs"
-    },
-    {
       "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/PointCloudBackgroundFilterTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.PointCloudBackgroundFilterTool|Execute|public PointCloudBackgroundFilterResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/PointCloudBackgroundFilterTool.cs"
@@ -622,11 +611,6 @@
       "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/HeightMapDomainMaskTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapDomainMaskTool|Execute|public HeightMapDomainMaskResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/HeightMapDomainMaskTool.cs"
-    },
-    {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/HeightMapNormalPreparationTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapNormalPreparationTool|Execute|public HeightMapNormalPreparationResult Execute(|occurrence=1",
-      "decisionGroup": "public-instance-contract",
-      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/HeightMapNormalPreparationTool.cs"
     },
     {
       "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/HeightMapThresholdBackgroundRemovalTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightMapThresholdBackgroundRemovalTool|Execute|public HeightMapThresholdBackgroundRemovalResult Execute(|occurrence=1",
@@ -1177,6 +1161,120 @@
       "identity": "CA1869|tests/OpenVisionLab.Vision3D.Benchmark/Program.cs|OpenVisionLab.Vision3D.Benchmark.Program|Main|new JsonSerializerOptions|occurrence=1",
       "decisionGroup": "one-shot-json-options",
       "source": "tests/OpenVisionLab.Vision3D.Benchmark/Program.cs"
+    },
+    {
+      "identity": "CA1861|src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineBuiltInDescriptors.cs|OpenVisionLab.Vision2D.Pipeline.VisionPipelineBuiltInDescriptors|CreateQrCodeDescriptor|return Tool(\"qrcode\", typeof(QrCodeTool), typeof(QrCodeToolProperty), new[] { \"QrCodeTool\" }, new[]|occurrence=1",
+      "decisionGroup": "one-shot-catalog-array",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Pipeline/VisionPipelineBuiltInDescriptors.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestExecutionFailures|bool applied = session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5, 1.0 }, new double[5], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestExecutionFailures|bool applied = session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5, 1.0 }, new double[5], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestExecutionFailures|bool applied = session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5, 1.0 }, new double[5], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestFirstUse|bool applied = session.TryScoreEdgeGrid(sourceX, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestFirstUse|bool applied = session.TryScoreEdgeGrid(sourceX, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ComputeAccelerationSmokeSuite|TestFirstUse|bool applied = session.TryScoreEdgeGrid(sourceX, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ComputeAccelerationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.CudaLocalOperationSmokeSuite|OldModules|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1, 0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 }, 4, 0, 0, 4, 1, 1, false, CancellationToken.None, out var scores, out var evidence)|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.CudaLocalOperationSmokeSuite|OldModules|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1, 0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 }, 4, 0, 0, 4, 1, 1, false, CancellationToken.None, out var scores, out var evidence)|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.CudaLocalOperationSmokeSuite|OldModules|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1, 0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 }, 4, 0, 0, 4, 1, 1, false, CancellationToken.None, out var scores, out var evidence)|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.CudaLocalOperationSmokeSuite|Oracles|Require(local.OutlierIndices.SequenceEqual(new[] { 4 }) && double.IsNaN(local.Values[4]) && local.Values.Where((v, i) => i != 4).All(v => v == 1), \"Independent center-excluded local impulse oracle.\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.MetrologyContractSmokeSuite|TestDeclaredUnits|HeightMap3D micrometers = new HeightMap3D(1, 1, 0, 0, 1, 1, new[] { 1000.0 }, \"um\", \"synthetic-fixture\", \"synthetic-um\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.MetrologyContractSmokeSuite|TestDeclaredUnits|HeightMap3D millimeters = new HeightMap3D(1, 1, 0, 0, 1, 1, new[] { 1.0 }, \"mm\", \"synthetic-fixture\", \"synthetic-mm\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/QrCodeSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.QrCodeSmokeSuite|TestSettings|Require(descriptor.Parameters.Select(value => value.Name).SequenceEqual(new[] { \"NAME\", \"USE_ROI\", \"CvROI\", \"ExpectedCodeCount\" }) && descriptor.Artifacts.Count == 0, \"QR metadata exposed unsupported settings or artifacts.\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/QrCodeSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.SdkOperationSmokeSuite|TestSharedNativeCancellation|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.SdkOperationSmokeSuite|TestSharedNativeCancellation|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.SdkOperationSmokeSuite|TestSharedNativeCancellation|Require(session.TryScoreEdgeGrid(new[] { 1.0, -1.0, 0.0, 0.5 }, new double[4], new[] { 0 }, new[] { 1.0 }, new[] { 0.0 }, new[] { -2.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.Vision2DSupportEvaluationSmokeSuite|ExpectedCaseIds|.Concat(new[] { false, true }.SelectMany(subpixel => LineFailures.Select(failure => \"F-line-\" + subpixel + \"-\" + failure))).ToArray();|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.Vision2DSupportEvaluationSmokeSuite|ExpectedCaseIds|private static string[] ExpectedCaseIds() => new[] { \"T01\", \"T02\", \"M09\", \"M10\", \"R01\", \"R02\", \"F-line-radius\", \"F-line-nonfinite\" }|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1869|tests/OpenVisionLab.Inspection.Smoke/SmokeRunner.cs|OpenVisionLab.Inspection.Smoke.SmokeRunner|WriteReport|File.WriteAllText(path, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));|occurrence=1",
+      "decisionGroup": "one-shot-json-options",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/SmokeRunner.cs"
     }
-  ]
+  ],
+  "initialReviewCommit": "202758506d99e985e3f1d2b595aff638cb3007c2",
+  "reviewedSourceVersion": "3.2.0-rc.2",
+  "initialCleanupClassification": {
+    "inputTotal": 272,
+    "resolvedDeterministicAllocations": 32,
+    "resolvedSingleTaskWaits": 9,
+    "retainedTotal": 224,
+    "retainedExplicitDefaults": 69,
+    "retainedPublicInstanceContracts": 61,
+    "retainedUnmeasuredPrivateStaticCandidates": 7,
+    "retainedConcreteTypeSuggestions": 5,
+    "retainedOneShotMutableArrays": 82,
+    "retainedOneShotJsonOptions": 1
+  }
 }

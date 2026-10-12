@@ -27,6 +27,10 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("LineGauge subpixel evidence remains immutable after source result and tool lifetime changes", TestSnapshot);
             yield return new SmokeCase("LineGauge subpixel clears stale and cancelled evidence at execution boundaries with recovery", TestExecutionBoundaries);
             yield return new SmokeCase("LineGauge double fit preserves analytic precision and rejects nonfinite degenerate inputs", TestDoubleFit);
+            yield return new SmokeCase("LineGauge peak measures independent fractional gradients and preserves centroid integer contracts", TestPeakProfiles);
+            yield return new SmokeCase("LineGauge peak isolates a dominant reflected transition through direction polarity ROI and preprocessing", TestPeakReflection);
+            yield return new SmokeCase("LineGauge peak rejects flat competing and truncated profiles with cancellation and snapshot recovery", TestPeakRecovery);
+            yield return new SmokeCase("LineGauge peak restores explicit XML choice without execution and defaults old recipes to centroid", TestPeakRestore);
         }
 
         internal static Mat Profile(int width, int height, bool projectsX, double intercept, double slope = 0.03, double blur = 1.6, bool increasing = true, int seed = 0)
@@ -199,6 +203,168 @@ namespace OpenVisionLab.Inspection.Smoke
             tool.resultList.Single().edgeList.Clear(); source.SetTo(Scalar.All(0)); tool.Dispose();
             Require(evidence.Points[0] == original && evidence.HasFit && evidence.SampleCount > 3, "Evidence depended on mutable integer output/image/tool lifetime.");
         }
+        private static void TestPeakProfiles()
+        {
+            double maximum = 0;
+            int combinations = 0;
+            foreach (PROJECTION_DIR direction in new[] { PROJECTION_DIR.X_LTOR, PROJECTION_DIR.X_RTOL, PROJECTION_DIR.Y_TTOB, PROJECTION_DIR.Y_BTOT })
+            foreach (PROJECTION_POLARITY polarity in new[] { PROJECTION_POLARITY.ALL, PROJECTION_POLARITY.BTOW, PROJECTION_POLARITY.WTOB })
+            foreach (double blur in new[] { 0.8, 1.6, 2.2 })
+            foreach (double intercept in new[] { 23.125, 47.25, 73.875 })
+            {
+                bool increasing = polarity == PROJECTION_POLARITY.ALL || (polarity == PROJECTION_POLARITY.BTOW) == Forward(direction);
+                using Mat source = Profile(149, 121, ProjectsX(direction), intercept, blur: blur, increasing: increasing);
+                var settings = Settings(direction); settings.PRJ_PORALITY = polarity;
+                using var tool = new LineGaugeTool(); tool.SetProperty(settings);
+                Require(!settings.UseSubpixelPeakMeasurement, "Default measurement changed.");
+                using var centroid = tool.Execute(source);
+                Require(centroid.Success && !centroid.Metrics.ContainsKey("LineGauge.SubpixelPeakMeasurement"), "Default centroid metrics changed.");
+                var saved = tool.resultList.Single();
+                var oldPoints = saved.edgeList.ToArray(); var oldLine = saved.FitLine;
+                settings.UseSubpixelPeakMeasurement = true;
+                using var peak = tool.Execute(source);
+                Require(peak.Success, "Peak profile failed: " + direction + "/" + polarity + "/" + blur + ": " + peak.Message);
+                var current = tool.resultList.Single();
+                Check(current.SubpixelEvidence, intercept, 0.03);
+                Require(current.SubpixelEvidence.RejectedPointCount == 0, "A supported profile dropped scan lines: " + direction + "/" + polarity + "/" + blur + "/" + intercept + ": " + current.SubpixelEvidence.RejectedPointCount);
+                Require(current.edgeList.SequenceEqual(oldPoints) && current.FitLine.Start == oldLine.Start && current.FitLine.End == oldLine.End, "Peak mode changed integer evidence.");
+                Require(saved.SubpixelEvidence.HasFit && peak.Metrics["LineGauge.SubpixelPeakMeasurement"] == 1, "Old snapshot or peak diagnostics changed.");
+                maximum = Math.Max(maximum, current.SubpixelEvidence.Points.Max(point => Math.Abs(ProjectsX(direction)
+                    ? point.X - intercept - 0.03 * point.Y : point.Y - intercept - 0.03 * point.X)));
+                settings.UseSubpixelMeasurement = false;
+                using var integer = tool.Execute(source);
+                Require(integer.Success && tool.resultList.Single().SubpixelEvidence == null && tool.resultList.Single().edgeList.SequenceEqual(oldPoints), "Disabling subpixel measurement changed integer results.");
+                combinations++;
+            }
+            Console.WriteLine("Peak analytic profiles: " + combinations + " combinations; maximum point error px=" + maximum.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        private static Mat PeakResponse(bool projectsX, double intercept, string response, bool increasing = true, double slope = 0.03)
+        {
+            Mat image = new Mat(121, 149, MatType.CV_8UC1);
+            for (int y = 0; y < image.Rows; y++)
+            for (int x = 0; x < image.Cols; x++)
+            {
+                double t = (projectsX ? x : y) - intercept - slope * (projectsX ? y : x);
+                double value = response == "ramp" ? 40 + 160 * Math.Max(0, Math.Min(1, (t + 2) / 6))
+                    : response == "competing" ? 120 + 40 * Math.Tanh((t + 1.5) / 0.8) + 40 * Math.Tanh((t - 1.5) / 0.8)
+                    : 120 + 60 * Math.Tanh(t / 0.8) + 20 * Math.Tanh((t - 3) / 0.8);
+                image.Set(y, x, (byte)Math.Round(increasing ? value : 240 - value));
+            }
+            return image;
+        }
+
+        private static void TestPeakReflection()
+        {
+            double maximum = 0;
+            foreach (PROJECTION_DIR direction in new[] { PROJECTION_DIR.X_LTOR, PROJECTION_DIR.X_RTOL, PROJECTION_DIR.Y_TTOB, PROJECTION_DIR.Y_BTOT })
+            foreach (PROJECTION_POLARITY polarity in new[] { PROJECTION_POLARITY.ALL, PROJECTION_POLARITY.BTOW, PROJECTION_POLARITY.WTOB })
+            {
+                bool increasing = polarity == PROJECTION_POLARITY.ALL || (polarity == PROJECTION_POLARITY.BTOW) == Forward(direction);
+                using Mat source = PeakResponse(ProjectsX(direction), 47.25, "reflection", increasing);
+                var settings = Settings(direction); settings.PRJ_PORALITY = polarity;
+                settings.UseSubpixelPeakMeasurement = true;
+                using var tool = new LineGaugeTool(); tool.SetProperty(settings);
+                using var peak = tool.Execute(source);
+                Require(peak.Success, "Reflected peak failed: " + peak.Message);
+                var evidence = tool.resultList.Single().SubpixelEvidence;
+                Check(evidence, 47.25, 0.03);
+                maximum = Math.Max(maximum, evidence.Points.Max(point => Math.Abs(ProjectsX(direction)
+                    ? point.X - 47.25 - 0.03 * point.Y : point.Y - 47.25 - 0.03 * point.X)));
+                settings.UseSubpixelPeakMeasurement = false;
+                using var centroid = tool.Execute(source);
+                Require(centroid.Success, "Default reflected response changed.");
+                RequireApproximately(tool.resultList.Single().SubpixelEvidence.Intercept, 48, 0.125, "The retained gray-centroid response changed.");
+            }
+            using Mat gray = PeakResponse(true, 47.25, "reflection");
+            using Mat color = new Mat(); Cv2.CvtColor(gray, color, ColorConversionCodes.GRAY2BGR);
+            foreach (Mat image in new[] { gray, color })
+            foreach (bool invert in new[] { false, true })
+            {
+                var settings = Settings(); settings.UseSubpixelPeakMeasurement = true;
+                settings.USE_ROI = true; settings.CvROI = new Rect(11, 13, 113, 91);
+                settings.USE_THRESHOLD = true; settings.THRESHOLD = 128; settings.USE_BITWISENOT = invert;
+                using var tool = new LineGaugeTool(); tool.SetProperty(settings);
+                using var result = tool.Execute(image);
+                Require(result.Success, "Reflected ROI/preprocessing failed: " + result.Message);
+                Check(tool.resultList.Single().SubpixelEvidence, 47.25, 0.03);
+            }
+            using Mat padded = gray.SubMat(new Rect(11, 13, 113, 91));
+            var local = Settings(); local.CvROI = new Rect(0, 0, padded.Cols, padded.Rows); local.UseSubpixelPeakMeasurement = true;
+            using var localTool = new LineGaugeTool(); localTool.SetProperty(local);
+            using var localResult = localTool.Execute(padded);
+            Require(localResult.Success, "Padded reflected profile failed.");
+            Check(localTool.resultList.Single().SubpixelEvidence, 47.25 + 0.03 * 13 - 11, 0.03);
+            Console.WriteLine("Peak reflected transition: maximum point error px=" + maximum.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        private static void TestPeakRecovery()
+        {
+            using Mat good = Profile(149, 121, true, 47.25);
+            using var tool = new CancelAtRunLineGauge(); var settings = Settings(); settings.UseSubpixelPeakMeasurement = true; tool.SetProperty(settings);
+            using var first = tool.Execute(good); Require(first.Success, "Peak recovery control failed.");
+            var saved = tool.resultList.Single().SubpixelEvidence; var savedPoint = saved.Points[0];
+            foreach (string response in new[] { "ramp", "competing" })
+            {
+                using Mat source = PeakResponse(true, 47.5, response, slope: 0);
+                using var rejected = tool.Execute(source);
+                var evidence = tool.resultList.Single().SubpixelEvidence;
+                Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.LineGaugeFitFailed && !evidence.HasFit
+                    && evidence.SampleCount == 0 && evidence.RejectedPointCount > 3, "An undefined/competing peak became a measurement: " + response);
+                using var recovered = tool.Execute(good);
+                Require(recovered.Success, "Ambiguous peak recovery failed."); Check(tool.resultList.Single().SubpixelEvidence, 47.25, 0.03);
+            }
+            using Mat border = Profile(149, 121, true, 4, slope: 0);
+            using (var rejected = tool.Execute(border)) Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.LineGaugeFitFailed, "A truncated peak window was admitted.");
+            using Mat sharp = Profile(149, 121, true, 47.25, slope: 0, blur: 0.05);
+            using (var rejected = tool.Execute(sharp)) Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.LineGaugeFitFailed, "Zero-neighbor interpolation was silently admitted.");
+            using (var rejected = tool.Execute(null)) Require(!rejected.Success && tool.resultList.Count == 0, "Peak null input exposed a stale result.");
+            foreach (bool before in new[] { true, false })
+            {
+                using var cancellation = new CancellationTokenSource();
+                tool.Cancellation = cancellation; tool.BeforeRun = before;
+                RequireThrows<OperationCanceledException>(() => tool.Execute(good, cancellation.Token));
+                Require(tool.resultList.Count == 0 && saved.Points[0] == savedPoint && saved.HasFit, "Peak cancellation damaged snapshot or published output.");
+                tool.Cancellation = null;
+                using var recovered = tool.Execute(good, CancellationToken.None);
+                Require(recovered.Success, "Peak cancellation recovery failed.");
+            }
+            settings.SubpixelProfileRadius = 1;
+            using (var rejected = tool.Execute(good)) Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.LineGaugeInvalidSampling && tool.resultList.Count == 0, "Peak invalid settings retained output.");
+            settings.SubpixelProfileRadius = 6;
+            using var final = tool.Execute(good); Require(final.Success && saved.HasFit, "Peak settings recovery failed.");
+        }
+
+        private static void TestPeakRestore()
+        {
+            var step = new VisionPipelineStep { ToolType = "lineGauge" };
+            step.Parameters[nameof(LineGaugeToolProperty.CvROI)] = "0,0,149,121";
+            step.Parameters[nameof(LineGaugeToolProperty.UseSubpixelMeasurement)] = "true";
+            step.Parameters[nameof(LineGaugeToolProperty.UseSubpixelPeakMeasurement)] = "true";
+            step.Parameters[nameof(LineGaugeToolProperty.CONTRAST)] = "4";
+            step.Parameters[nameof(LineGaugeToolProperty.THICKNESS)] = "2";
+            step.Parameters[nameof(LineGaugeToolProperty.SAMPLING_STEP)] = "1";
+            var serializer = new XmlSerializer(typeof(VisionPipelineStep));
+            using var writer = new StringWriter(); serializer.Serialize(writer, step);
+            using var reader = new StringReader(writer.ToString());
+            using var xml = XmlReader.Create(reader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+            var restored = (VisionPipelineStep)serializer.Deserialize(xml);
+            using var tool = (LineGaugeTool)VisionPipelineToolFactory.Create(restored);
+            Require(tool.resultList.Count == 0 && ((LineGaugeToolProperty)tool.property).UseSubpixelPeakMeasurement, "Peak XML restore executed or lost the mode.");
+            using Mat source = PeakResponse(true, 47.25, "reflection");
+            using var result = tool.Execute(source);
+            Require(result.Success && result.Metrics["LineGauge.SubpixelPeakMeasurement"] == 1, "Restored peak mode was not executed.");
+            Check(tool.resultList.Single().SubpixelEvidence, 47.25, 0.03);
+            restored.Parameters.Remove(nameof(LineGaugeToolProperty.UseSubpixelPeakMeasurement));
+            using var old = (LineGaugeTool)VisionPipelineToolFactory.Create(restored);
+            Require(old.resultList.Count == 0 && !((LineGaugeToolProperty)old.property).UseSubpixelPeakMeasurement, "Old XML changed its measurement contract.");
+            using var centroid = old.Execute(source);
+            Require(centroid.Success && !centroid.Metrics.ContainsKey("LineGauge.SubpixelPeakMeasurement"), "Old recipe diagnostics changed.");
+            RequireApproximately(old.resultList.Single().SubpixelEvidence.Intercept, 48, 0.125, "Old recipe centroid response changed.");
+            restored.Parameters[nameof(LineGaugeToolProperty.UseSubpixelPeakMeasurement)] = "maybe";
+            RequireThrows<ArgumentException>(() => VisionPipelineToolFactory.Create(restored));
+        }
+
         private static void TestDoubleFit()
         {
             Point2d[] values = Enumerable.Range(0, 8).Select(i => new Point2d(1000000.0 + i * 0.25, 3.25 * (1000000.0 + i * 0.25) + 0.125)).ToArray();

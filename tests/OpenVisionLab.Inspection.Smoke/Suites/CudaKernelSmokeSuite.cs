@@ -36,28 +36,29 @@ namespace OpenVisionLab.Inspection.Smoke
         internal static IEnumerable<SmokeCase> Cases()
         {
             yield return new SmokeCase("Cuda tile layout bounds large shapes and preserves row-major bands", TestTileLayout);
+            yield return new SmokeCase("Cuda representative texture fixture preserves authored off-grid pose and input ownership", TestRepresentativePose, string.IsNullOrEmpty(ModulePath) ? "cpu" : "cuda-device");
             if (string.IsNullOrEmpty(ModulePath)) yield break;
-            yield return new SmokeCase("Cuda tile actual FP64 scores preserve signed XY negative anchors tails and row order", TestTiles);
-            yield return new SmokeCase("Cuda tile workflow preserves seams suppress refinement ROI pyramid hybrid and pose", TestTileWorkflow);
-            yield return new SmokeCase("Cuda phase timings preserve opt-in results reset recovery and callback ownership", TestPhaseTimings);
-            yield return new SmokeCase("Cuda strided workspace preserves changing source model geometry and input ownership", TestStridedInputs);
-            yield return new SmokeCase("Cuda kernel full edge grids preserve FP64 early exit polarity stride and ties", TestGrids);
-            yield return new SmokeCase("Cuda kernel transforms preserve full FP64 coordinates and overflow fallback", TestTransforms);
-            yield return new SmokeCase("Cuda kernel 2D workflow preserves result threshold ROI cancellation and recovery", TestTwoD);
-            yield return new SmokeCase("Cuda kernel 3D workflow preserves ordered correspondence residuals and pose", TestThreeD);
-            yield return new SmokeCase("Cuda kernel repeated native execution disposes buffers sessions and borrowed tools", TestLifetime);
-            yield return new SmokeCase("Cuda kernel production policy keeps measured slow paths on CPU", TestPolicy);
+            yield return new SmokeCase("Cuda tile actual FP64 scores preserve signed XY negative anchors tails and row order", TestTiles, "cuda-device");
+            yield return new SmokeCase("Cuda tile workflow preserves seams suppress refinement ROI pyramid hybrid and pose", TestTileWorkflow, "cuda-device");
+            yield return new SmokeCase("Cuda phase timings preserve opt-in results reset recovery and callback ownership", TestPhaseTimings, "cuda-device");
+            yield return new SmokeCase("Cuda strided workspace preserves changing source model geometry and input ownership", TestStridedInputs, "cuda-device");
+            yield return new SmokeCase("Cuda kernel full edge grids preserve FP64 early exit polarity stride and ties", TestGrids, "cuda-device");
+            yield return new SmokeCase("Cuda kernel transforms preserve full FP64 coordinates and overflow fallback", TestTransforms, "cuda-device");
+            yield return new SmokeCase("Cuda kernel 2D workflow preserves result threshold ROI cancellation and recovery", TestTwoD, "cuda-device");
+            yield return new SmokeCase("Cuda kernel 3D workflow preserves ordered correspondence residuals and pose", TestThreeD, "cuda-device");
+            yield return new SmokeCase("Cuda kernel repeated native execution disposes buffers sessions and borrowed tools", TestLifetime, "cuda-device");
+            yield return new SmokeCase("Cuda kernel production policy keeps measured slow paths on CPU", TestPolicy, "cuda-device");
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES")))
             {
-                yield return new SmokeCase("Cuda tile late faults discard poisoned candidates and retain legacy recovery", TestTileFaults);
-                yield return new SmokeCase("Cuda tile cancellation stops consumption and waits safely for disposal", TestTileCancellation);
-                yield return new SmokeCase("Cuda kernel faults recover CPU rows and release partial native handles", TestFaults);
-                yield return new SmokeCase("Cuda kernel cancels active work and waiting callers before safe disposal", TestCancellationAndDisposal);
+                yield return new SmokeCase("Cuda tile late faults discard poisoned candidates and retain legacy recovery", TestTileFaults, "native-fixture");
+                yield return new SmokeCase("Cuda tile cancellation stops consumption and waits safely for disposal", TestTileCancellation, "native-fixture");
+                yield return new SmokeCase("Cuda kernel faults recover CPU rows and release partial native handles", TestFaults, "native-fixture");
+                yield return new SmokeCase("Cuda kernel cancels active work and waiting callers before safe disposal", TestCancellationAndDisposal, "native-fixture");
                 if (File.Exists(Path.Combine(Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES"), "execution-16.dll")))
                 {
-                    yield return new SmokeCase("Cuda workspace lifetime releases success cancellation callback faults and incomplete extensions", TestWorkspaceLifetime);
+                    yield return new SmokeCase("Cuda workspace lifetime releases success cancellation callback faults and incomplete extensions", TestWorkspaceLifetime, "native-fixture");
                     yield return new SmokeCase("Cuda workspace active cancellation waits for disposal and recovers public matches",
-                        () => TestTileCancellation(Path.Combine(Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES"), "execution-20.dll")));
+                        () => TestTileCancellation(Path.Combine(Environment.GetEnvironmentVariable("OVL_CUDA_EXECUTION_FIXTURES"), "execution-20.dll")), "native-fixture");
                 }
             }
         }
@@ -914,6 +915,246 @@ namespace OpenVisionLab.Inspection.Smoke
                 Require(truthMatches && stableResult, "Large-image independent position, full output and repeated result must agree.");
             }
             return 0;
+        }
+
+        // These inputs are authored independently of candidate search; no detected result defines their truth.
+        private static Mat RepresentativeTemplate(int index)
+        {
+            if (index == 0) return Template(192);
+            Mat image = new Mat(192, 192, MatType.CV_8UC1, Scalar.All(17));
+            if (index == 1)
+            {
+                Cv2.FillConvexPoly(image, new[] { new Point(34, 159), new Point(161, 141), new Point(105, 24) }, Scalar.All(225));
+                Cv2.Circle(image, new Point(98, 103), 14, Scalar.All(17), -1);
+            }
+            else
+            {
+                Cv2.Circle(image, new Point(96, 96), 64, Scalar.All(225), 9);
+                Cv2.Circle(image, new Point(82, 103), 24, Scalar.All(225), 7);
+            }
+            return image;
+        }
+
+        private static Mat RepresentativeSource(int side, bool dense, out double contrastFraction)
+        {
+            const uint seed = 0x6A09E667;
+            int cell = dense ? 4 : 32;
+            Mat image = new Mat(side, side, MatType.CV_8UC1);
+            byte[] row = new byte[side], previous = new byte[side];
+            long contrasts = 0;
+            for (int y = 0; y < side; y++)
+            {
+                for (int x = 0; x < side; x++)
+                {
+                    uint bits = unchecked((uint)(x / cell * 73856093) ^ (uint)(y / cell * 19349663) ^ seed);
+                    bits ^= bits >> 13;
+                    bits = unchecked(bits * 1274126177);
+                    bits ^= bits >> 16;
+                    row[x] = dense ? (byte)(17 + (bits & 1) * 208) : (byte)(17 + bits % 48 + ((x * 17 + y * 31) >> 3 & 7));
+                    if (x > 0 && Math.Abs(row[x] - row[x - 1]) >= 32) contrasts++;
+                    if (y > 0 && Math.Abs(row[x] - previous[x]) >= 32) contrasts++;
+                }
+                Marshal.Copy(row, 0, image.Ptr(y), row.Length);
+                (row, previous) = (previous, row);
+            }
+            contrastFraction = contrasts / (2.0 * side * (side - 1));
+            return image;
+        }
+
+        private static string RepresentativeOutcome(EdgeBasedTemplateMatchingTool tool, VisionToolResult result, string pixels)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                result.Success, result.ErrorCode, pixels,
+                width = result.ResultImage?.Width, height = result.ResultImage?.Height, pixelType = result.ResultImage?.Type().ToString(),
+                metrics = result.Metrics.Where(pair => !pair.Key.StartsWith("Phase.", StringComparison.Ordinal)).OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .ToDictionary(pair => pair.Key, pair => BitConverter.DoubleToInt64Bits(pair.Value)),
+                matches = tool.results.Select(match => new
+                {
+                    match.Index, match.PolarityReversed,
+                    score = BitConverter.DoubleToInt64Bits(match.Score), edge = BitConverter.DoubleToInt64Bits(match.EdgeScore),
+                    image = BitConverter.DoubleToInt64Bits(match.ImageScore), final = BitConverter.DoubleToInt64Bits(match.FinalScore),
+                    margin = BitConverter.DoubleToInt64Bits(match.ScoreMargin), angle = BitConverter.DoubleToInt64Bits(match.Angle), scale = BitConverter.DoubleToInt64Bits(match.Scale),
+                    x = BitConverter.SingleToInt32Bits(match.Center.X), y = BitConverter.SingleToInt32Bits(match.Center.Y),
+                    left = BitConverter.SingleToInt32Bits(match.Bounding.X), top = BitConverter.SingleToInt32Bits(match.Bounding.Y),
+                    width = BitConverter.SingleToInt32Bits(match.Bounding.Width), height = BitConverter.SingleToInt32Bits(match.Bounding.Height)
+                }).ToArray()
+            });
+        }
+
+        internal static int RepresentativeBenchmark(string outputPath, bool useCuda, int side, string workload)
+        {
+            if (side != 5000 && side != 10000 && side != 15000) throw new ArgumentOutOfRangeException(nameof(side));
+            if (workload != "texture" && workload != "dense" && workload != "absent" && workload != "multi") throw new ArgumentException("Unknown representative workload.", nameof(workload));
+            if (useCuda && string.IsNullOrEmpty(ModulePath)) throw new InvalidOperationException("OVL_CUDA_TEST_MODULE is required for actual CUDA evaluation.");
+            Stopwatch setup = Stopwatch.StartNew();
+            using Mat first = RepresentativeTemplate(0);
+            using Mat second = RepresentativeTemplate(1);
+            using Mat third = RepresentativeTemplate(2);
+            Mat[] templates = { first, second, third };
+            using Mat source = RepresentativeSource(side, workload == "dense" || workload == "absent", out double contrastFraction);
+            Rect near = new Rect(17, 23, 192, 192), far = new Rect(side - 205, side - 207, 192, 192);
+            if (workload != "absent") using (Mat roi = new Mat(source, near)) first.CopyTo(roi);
+            if (workload == "dense" || workload == "multi") using (Mat roi = new Mat(source, far)) (workload == "multi" ? second : first).CopyTo(roi);
+            using VisionComputeSession session = useCuda ? Session(study: false) : null;
+            using EdgeBasedTemplateMatchingTool tool = Tool(first, session, 2);
+            using Process process = Process.GetCurrentProcess();
+            tool.property.SCORE_MIN = 0.9;
+            tool.property.NUM_MATCH = workload == "dense" ? 2 : 1;
+            tool.CollectPhaseTimings = true;
+            setup.Stop();
+            string inputSha256 = PixelDigest(source);
+            string[] templateSha256 = templates.Select(PixelDigest).ToArray();
+            int modelCount = workload == "multi" ? 3 : 1, validated = 0;
+            const int repeats = 3;
+            string[] expected = new string[modelCount];
+            List<object> sequences = new List<object>(), transitions = new List<object>();
+            List<double> warm = new List<double>();
+
+            void WriteReport() => File.WriteAllText(outputPath, JsonSerializer.Serialize(new
+            {
+                scope = "Full Execute; host sequence sums timed SetTemplateImage, Execute and result Dispose. Fixture setup reported separately. Validation, hashing and controlled GC excluded from timings.",
+                input = new { side, pixels = (long)side * side, inputSha256, templateSha256, workload, seed = "0x6A09E667", contrastFraction,
+                    contrastScope = "Background adjacent intensity difference >=32 fraction before target insertion; not a Canny/gradient count", near, far, searchStep = 2,
+                    maximumTemplatePoints = 500, scoreMin = 0.9, greediness = 0.8, modelCount, resize = false, roi = false, angle = 0, scale = 1 },
+                requestedBackend = useCuda ? "CUDA" : "CPU", fixtureSetupMilliseconds = setup.Elapsed.TotalMilliseconds, repeats,
+                firstCall = "Fresh process/session; caller owns initially empty CUDA cache; OS/shared workstation caches uncontrolled",
+                warmPolicy = "Retained tool/session, changing templates; full GC outside measured intervals to bound RAM. Observational samples, not soak/Takt.",
+                warmHostMedianMilliseconds = warm.Count == repeats ? (double?)Median(warm.ToArray()) : null,
+                validated, complete = validated == (repeats + 1) * modelCount, resultFingerprints = expected,
+                processId = process.Id, driverCache = Environment.GetEnvironmentVariable("CUDA_CACHE_PATH"), nativeModule = useCuda ? ModulePath : null,
+                sequences, transitions
+            }, ReportOptions));
+
+            bool Truth(VisionToolResult result, int model)
+            {
+                if (workload == "absent" || model == 2) return !result.Success && result.ErrorCode == VisionToolErrorCode.MatchingNoResult && tool.results.Count == 0;
+                Rect[] locations = workload == "dense" ? new[] { near, far } : new[] { model == 1 ? far : near };
+                return result.Success && tool.results.Count == locations.Length && locations.All(location => tool.results.Count(match =>
+                    Math.Abs(match.Bounding.X - location.X) <= 2 && Math.Abs(match.Bounding.Y - location.Y) <= 2
+                    && match.Bounding.Width == 192 && match.Bounding.Height == 192 && match.Angle == 0 && match.Scale == 1 && match.Score >= 0.9) == 1);
+            }
+
+            for (int run = 0; run <= repeats; run++)
+            {
+                List<object> calls = new List<object>();
+                double hostMilliseconds = 0;
+                for (int model = 0; model < modelCount; model++)
+                {
+                    GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
+                    Stopwatch change = Stopwatch.StartNew();
+                    tool.SetTemplateImage(templates[model]);
+                    change.Stop();
+                    long before = GC.GetTotalAllocatedBytes(true);
+                    TimeSpan cpuBefore = process.TotalProcessorTime;
+                    Console.WriteLine($"BEGIN representative {side} {workload} {(useCuda ? "CUDA" : "CPU")} run={run} model={model}");
+                    Stopwatch timer = Stopwatch.StartNew();
+                    using VisionToolResult result = tool.Execute(source);
+                    timer.Stop();
+                    process.Refresh();
+                    long allocatedBytes = GC.GetTotalAllocatedBytes(true) - before;
+                    double cpuMilliseconds = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds;
+                    long workingSet = process.WorkingSet64, privateBytes = process.PrivateMemorySize64;
+                    long peakWorkingSet = process.PeakWorkingSet64, peakPaged = process.PeakPagedMemorySize64;
+                    var phases = tool.LastPhaseElapsedMs.ToDictionary(pair => pair.Key, pair => pair.Value);
+                    bool fullImage = result.ResultImage?.Width == side && result.ResultImage?.Height == side;
+                    string outputSha256 = fullImage ? PixelDigest(result.ResultImage) : null;
+                    string outcome = RepresentativeOutcome(tool, result, outputSha256);
+                    string fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(outcome)));
+                    bool truth = Truth(result, model) && fullImage;
+                    bool stable = expected[model] == null || expected[model] == fingerprint;
+                    expected[model] ??= fingerprint;
+                    bool applied = result.ComputeDiagnostics?.AccelerationApplied == true;
+                    var matches = tool.results.Select(match => new { match.Index, match.Score, match.Angle, match.Scale, match.Center, match.Bounding }).ToArray();
+                    object call = new { model, templateSetupMilliseconds = change.Elapsed.TotalMilliseconds, executeMilliseconds = timer.Elapsed.TotalMilliseconds,
+                        cpuMilliseconds, allocatedBytes, workingSet, privateBytes, peakWorkingSet, peakPaged,
+                        memoryScope = "Process lifetime high-water includes fixture setup and earlier calls; endpoints before validation",
+                        phases, actualBackend = applied ? "CUDA" : "CPU", compute = result.ComputeDiagnostics, truth, stable,
+                        result.Success, result.ErrorCode, matches, fingerprint, outcome };
+                    Stopwatch release = Stopwatch.StartNew();
+                    result.Dispose();
+                    release.Stop();
+                    hostMilliseconds += change.Elapsed.TotalMilliseconds + timer.Elapsed.TotalMilliseconds + release.Elapsed.TotalMilliseconds;
+                    calls.Add(call);
+                    if (truth && stable && (!useCuda || applied)) validated++;
+                    Console.WriteLine($"END representative run={run} model={model} ms={timer.Elapsed.TotalMilliseconds:F2} truth={truth} applied={applied} peakBytes={peakWorkingSet}");
+                    if (!truth || !stable || useCuda && !applied)
+                    {
+                        sequences.Add(new { run, cold = run == 0, hostMilliseconds, calls });
+                        WriteReport();
+                        throw new InvalidOperationException("Representative truth/stability/actual backend failed; report retains the observation.");
+                    }
+                }
+                sequences.Add(new { run, cold = run == 0, hostMilliseconds, calls });
+                if (run > 0) warm.Add(hostMilliseconds);
+                WriteReport();
+            }
+            if (side == 5000 && workload == "dense")
+            {
+                tool.property.NUM_MATCH = 1;
+                tool.property.USE_UNIQUE_MATCH_VALIDATION = true;
+                using (VisionToolResult rejected = tool.Execute(source))
+                {
+                    bool ambiguous = !rejected.Success && rejected.ErrorCode == VisionToolErrorCode.MatchingAmbiguous && tool.results.Count == 0;
+                    transitions.Add(new { action = "enable uniqueness for two authored copies", ambiguous, outcome = RepresentativeOutcome(tool, rejected, PixelDigest(rejected.ResultImage)) });
+                    WriteReport();
+                    Require(ambiguous, "Two authored targets must reject as spatially ambiguous.");
+                }
+                tool.property.USE_UNIQUE_MATCH_VALIDATION = false;
+                tool.property.NUM_MATCH = 2;
+            }
+            if (side == 5000 && workload == "texture")
+            {
+                using CancellationTokenSource cancellation = new CancellationTokenSource();
+                cancellation.CancelAfter(20);
+                Stopwatch elapsed = Stopwatch.StartNew();
+                OperationCanceledException cancelled = RequireThrows<OperationCanceledException>(() => { using VisionToolResult unused = tool.Execute(source, cancellation.Token); });
+                bool cleared = cancelled.CancellationToken == cancellation.Token && tool.results.Count == 0 && !source.IsDisposed && !first.IsDisposed;
+                transitions.Add(new { action = "CancelAfter20ms during full public Execute; native kernel phase not asserted", elapsedMilliseconds = elapsed.Elapsed.TotalMilliseconds, cleared });
+                WriteReport();
+                Require(cleared, "Active cancellation must clear rows and preserve caller-owned inputs/token.");
+            }
+            if (transitions.Count > 0)
+            {
+                using VisionToolResult recovered = tool.Execute(source);
+                string outcome = RepresentativeOutcome(tool, recovered, PixelDigest(recovered.ResultImage));
+                string fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(outcome)));
+                bool restored = fingerprint == expected[0] && Truth(recovered, 0) && (!useCuda || recovered.ComputeDiagnostics?.AccelerationApplied == true);
+                transitions.Add(new { action = "same-instance valid recovery", restored, fingerprint });
+                WriteReport();
+                Require(restored && inputSha256 == PixelDigest(source), "Settings/cancellation must recover exact result and retain source pixels.");
+            }
+            return 0;
+        }
+
+        private static void TestRepresentativePose()
+        {
+            using Mat template = EdgePoseRefinementSmokeSuite.CreateTemplate();
+            using Mat patch = EdgePoseRefinementSmokeSuite.CreateSource(template, 2.5, 1.025);
+            using Mat source = RepresentativeSource(768, false, out double _);
+            using (Mat roi = new Mat(source, new Rect(211, 307, patch.Width, patch.Height))) patch.CopyTo(roi);
+            string originalPixels = PixelDigest(source);
+            using VisionComputeSession session = string.IsNullOrEmpty(ModulePath) ? null : Session(study: false);
+            using EdgeBasedTemplateMatchingTool cpu = Tool(template, null, 2);
+            using EdgeBasedTemplateMatchingTool gpu = Tool(template, session, 2);
+            foreach (EdgeBasedTemplateMatchingTool tool in new[] { cpu, gpu })
+            {
+                tool.property.SCORE_MIN = 0.6;
+                tool.property.USE_FIND_ANGLE = tool.property.USE_FIND_SCALE = true;
+                tool.property.FIND_ANGLE_MIN = -5; tool.property.FIND_ANGLE_MAX = 5; tool.property.FIND_ANGLE = 5;
+                tool.property.FIND_SCALE_MIN = 0.95; tool.property.FIND_SCALE_MAX = 1.05; tool.property.FIND_SCALE_STEP = 0.05;
+                tool.UsePoseRefinement = true;
+            }
+            using VisionToolResult expected = cpu.Execute(source);
+            using VisionToolResult actual = gpu.Execute(source);
+            Compare2D(cpu, gpu, expected, actual);
+            var match = gpu.results.Single();
+            Point2d truth = EdgePoseRefinementSmokeSuite.ExpectedPoint(new Point2d(32, 32), 2.5, 1.025, 254.25, 336.4);
+            double distance = EdgePoseRefinementSmokeSuite.Distance(new Point2d(match.Center.X, match.Center.Y), truth);
+            Console.WriteLine(FormattableString.Invariant($"Representative pose: center error={distance:R} angle={match.Angle:R} scale={match.Scale:R} applied={actual.ComputeDiagnostics?.AccelerationApplied}"));
+            Require(actual.Success && distance < 0.25 && Math.Abs(match.Angle - 2.5) < 0.15 && Math.Abs(match.Scale - 1.025) < 0.003, "Authored textured off-grid pose must satisfy existing refinement accuracy.");
+            Require(originalPixels == PixelDigest(source), "Evaluation must retain caller source pixels.");
+            if (session != null) Require(actual.ComputeDiagnostics?.AccelerationApplied == true, "Textured pose case must exercise actual CUDA.");
         }
 
         private static string PixelDigest(Mat image)

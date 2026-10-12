@@ -215,7 +215,12 @@ namespace OpenVisionLab.Vision3D.Inspection
                 return false;
             }
 
-            double expectedRawHeight = -((normalX * gridX) + (normalZ * gridY) + planeOffset) / normalY;
+            // Cancel the common plane normalization before multiplying grid coordinates.
+            double expectedRawHeight = -(((normalX / normalY) * gridX) + ((normalZ / normalY) * gridY) + (planeOffset / normalY));
+            if (!ThreeDInspectionMath.IsFinite(expectedRawHeight))
+            {
+                expectedRawHeight = -((normalX * gridX) + (normalZ * gridY) + planeOffset) / normalY;
+            }
             residual = rawHeight - expectedRawHeight;
             return ThreeDInspectionMath.IsFinite(expectedRawHeight) && ThreeDInspectionMath.IsFinite(residual);
         }

@@ -86,6 +86,7 @@ namespace OpenVisionLab.Compute
             IsAccelerationAvailable = accelerationAvailable;
         }
 
+        /// <summary>Current discovery or initialization condition. None alone does not establish kernel availability or application.</summary>
         public CudaFallbackReason Reason { get; }
         public string ModulePath { get; }
         public int? DriverApiVersion { get; }

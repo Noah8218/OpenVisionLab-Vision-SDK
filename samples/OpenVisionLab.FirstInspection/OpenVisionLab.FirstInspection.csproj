@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Capture the explicit input before SDK targets supply PackageVersion defaults. -->
+    <_SelectedSdkPackageVersion>$(PackageVersion)</_SelectedSdkPackageVersion>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenVisionLab.Vision2D.Blob" Version="[$(_SelectedSdkPackageVersion)]" />
+  </ItemGroup>
+  <Target Name="RequireSelectedPackageVersion" BeforeTargets="CollectPackageReferences" Condition="'$(_SelectedSdkPackageVersion)' == ''">
+    <Error Text="Select an exact SDK package version with -p:PackageVersion=... from your chosen feed." />
+  </Target>
+</Project>

@@ -190,6 +190,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override VisionToolResult Execute(Mat source)
         {
+            results.Clear();
             computeEvidence = null;
             ResetCandidateDiagnostics();
             return AttachDiagnosticEvidence(base.Execute(source), CancellationToken.None);
@@ -197,6 +198,7 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
         {
+            results.Clear();
             computeEvidence = null;
             ResetCandidateDiagnostics();
             try
