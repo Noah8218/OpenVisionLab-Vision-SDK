@@ -110,11 +110,11 @@ function Invoke-NegativeProbe {
 
     $probePackages = Copy-PackageSet $Name
     & $Mutate $probePackages
+    $probeArguments = @($verifier, $probePackages, $ExpectedVersion, $ExpectedCommit) |
+        ForEach-Object { "'" + $_.Replace("'", "''") + "'" }
+    $probeCommand = 'try {{ & {0} -PackageDirectory {1} -ExpectedVersion {2} -ExpectedCommit {3} }} catch {{ [Console]::Error.WriteLine($_.Exception.Message); exit 1 }}' -f $probeArguments
     $output = @(
-        & pwsh -NoProfile -File $verifier `
-            -PackageDirectory $probePackages `
-            -ExpectedVersion $ExpectedVersion `
-            -ExpectedCommit $ExpectedCommit 2>&1 |
+        & pwsh -NoProfile -Command $probeCommand 2>&1 |
             ForEach-Object { $_.ToString() })
     $exitCode = $LASTEXITCODE
     $logPath = Join-Path $outputRoot "$Name.log"

@@ -17,7 +17,7 @@ It includes 2D image-processing tools, 3D feature extraction and measurement alg
 
 ## Version
 
-Current source version: `v3.2.0-rc.4` (prerelease).
+Current source version: `v3.2.0-rc.5` (prerelease).
 
 This project is maintained using explicit version numbers. The source version is
 defined in [`Directory.Build.props`](./Directory.Build.props). CLR assembly identity
@@ -25,6 +25,10 @@ remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a N
 package or binary release has been published.
 
 ### Recent version history
+
+#### `v3.2.0-rc.5` (2026-10-12)
+
+- Preserve original package-rejection messages in CI checks without depending on PowerShell error display formatting.
 
 #### `v3.2.0-rc.4` (2026-10-12)
 

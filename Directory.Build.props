@@ -4,8 +4,8 @@
     <Company>OpenVisionLab</Company>
     <Copyright>Copyright (c) 2026 최노아(Noah-Choi)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>3.2.0-rc.4</Version>
-    <!-- Local source candidate only. CI packing overrides this with a unique immutable version. -->
+    <Version>3.2.0-rc.5</Version>
+    <!-- Source candidate version. CI packing uses a unique version for each run. -->
     <PackageVersion>$(Version)</PackageVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
     <AssemblyVersion>3.0.0.0</AssemblyVersion>
