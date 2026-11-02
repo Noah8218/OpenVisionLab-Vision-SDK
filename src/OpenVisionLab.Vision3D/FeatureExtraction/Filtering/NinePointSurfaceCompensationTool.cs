@@ -168,7 +168,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             try
             {
-                LeastSquaresHeightFieldPlaneFitResult plane = new LeastSquaresHeightFieldPlaneFitTool().Execute(samples);
+                LeastSquaresHeightFieldPlaneFitResult plane = new LeastSquaresHeightFieldPlaneFitTool().Execute(samples, cancellationToken);
                 double planeSlopeX = plane.SlopeX / ((source.Columns - 1) * source.ColumnPitch);
                 double planeSlopeY = plane.SlopeZ / ((source.Rows - 1) * source.RowPitch);
                 double planeHeightAtOrigin = originHeight + plane.EvaluateY(0.0, 0.0);

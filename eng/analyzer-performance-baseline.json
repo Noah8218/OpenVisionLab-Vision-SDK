@@ -5,7 +5,7 @@
   "contract": "Reviewed performance diagnostics after deterministic allocation cleanup",
   "expectedWarningsByCode": {
     "CA1805": 69,
-    "CA1822": 65,
+    "CA1822": 67,
     "CA1825": 0,
     "CA1843": 0,
     "CA1859": 3,
@@ -13,10 +13,10 @@
     "CA1869": 2
   },
   "reviewedClassification": {
-    "retainedTotal": 240,
+    "retainedTotal": 242,
     "decisionGroups": {
       "explicit-default": 69,
-      "public-instance-contract": 58,
+      "public-instance-contract": 60,
       "unmeasured-private-static": 7,
       "concrete-type-coupling": 3,
       "one-shot-mutable-array": 100,
@@ -33,7 +33,7 @@
     {
       "code": "CA1822",
       "decision": "retain",
-      "rationale": "Fifty-eight public instance contracts and seven private candidates are retained. Three stateful 3D Execute methods now read computeSession and are no longer static candidates; their owners and signatures are unchanged."
+      "rationale": "Sixty public instance contracts and seven private candidates are retained. The two added typed Tools retain their published instance Execute contract; making them static would break the verified public API. The existing least-squares instance review follows the token overload that now owns the implementation, while its original overload remains a forwarding instance entry point. Three stateful 3D Execute methods continue to read computeSession and are not static candidates."
     },
     {
       "code": "CA1825",
@@ -63,19 +63,14 @@
   ],
   "diagnostics": [
     {
-      "identity": "CA1805|src/OpenVisionLab.Core/Line/CLine.cs|OpenVisionLab.Core.Geometry2D.CLine|m_ptStart|private OpenCvSharp.Point m_ptStart = new OpenCvSharp.Point();|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Core/Line/CLine.cs"
-    },
-    {
       "identity": "CA1805|src/OpenVisionLab.Core/Line/CLine.cs|OpenVisionLab.Core.Geometry2D.CLine|m_ptEnd|private OpenCvSharp.Point m_ptEnd = new OpenCvSharp.Point();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Core/Line/CLine.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Core/Line/LineSegment2D.cs|OpenVisionLab.Core.Geometry2D.LineSegment2D|m_ptStart|private OpenCvSharp.Point m_ptStart = new OpenCvSharp.Point();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Core/Line/CLine.cs|OpenVisionLab.Core.Geometry2D.CLine|m_ptStart|private OpenCvSharp.Point m_ptStart = new OpenCvSharp.Point();|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Core/Line/LineSegment2D.cs"
+      "source": "src/OpenVisionLab.Core/Line/CLine.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Core/Line/LineSegment2D.cs|OpenVisionLab.Core.Geometry2D.LineSegment2D|m_ptEnd|private OpenCvSharp.Point m_ptEnd = new OpenCvSharp.Point();|occurrence=1",
@@ -83,7 +78,12 @@
       "source": "src/OpenVisionLab.Core/Line/LineSegment2D.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Index|public int Index { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Core/Line/LineSegment2D.cs|OpenVisionLab.Core.Geometry2D.LineSegment2D|m_ptStart|private OpenCvSharp.Point m_ptStart = new OpenCvSharp.Point();|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Core/Line/LineSegment2D.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobResult.cs"
     },
@@ -93,7 +93,7 @@
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobResult.cs"
     },
@@ -103,7 +103,7 @@
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobResult.cs|OpenVisionLab.Vision2D.Blob.BlobResult|Index|public int Index { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobResult.cs"
     },
@@ -113,17 +113,17 @@
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs|OpenVisionLab.Vision2D.Blob.BlobToolProperty|MIN_WIDTH|public int MIN_WIDTH { get; set; } = 0;|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs"
-    },
-    {
       "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs|OpenVisionLab.Vision2D.Blob.BlobToolProperty|MIN_HEIGHT|public int MIN_HEIGHT { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Index|public int Index { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs|OpenVisionLab.Vision2D.Blob.BlobToolProperty|MIN_WIDTH|public int MIN_WIDTH { get; set; } = 0;|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D.Blob/BlobToolProperty.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs"
     },
@@ -133,7 +133,7 @@
       "source": "src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs"
     },
@@ -143,17 +143,17 @@
       "source": "src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs|OpenVisionLab.Vision2D.Blob.CResultBlob|Index|public int Index { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D.Blob/CResultBlob.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs|OpenVisionLab.Vision2D.Property.ContourToolProperty|MIN_WIDTH|public int MIN_WIDTH { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs|OpenVisionLab.Vision2D.Property.ContourToolProperty|MIN_HEIGHT|public int MIN_HEIGHT { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs|OpenVisionLab.Vision2D.Property.ContourToolProperty|MIN_HEIGHT|public int MIN_HEIGHT { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs|OpenVisionLab.Vision2D.Property.ContourToolProperty|MIN_WIDTH|public int MIN_WIDTH { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/ContourToolProperty.cs"
     },
@@ -173,17 +173,12 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Property/OpenCvToolPropertyBase.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
-    },
-    {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
     },
@@ -193,14 +188,14 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Index|public int Index { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs|OpenVisionLab.Vision2D.Result.CornerResult|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs|OpenVisionLab.Vision2D.Result.ContourResult|Index|public int Index { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs"
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/ContourResult.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs|OpenVisionLab.Vision2D.Result.CornerResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
@@ -208,7 +203,7 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs|OpenVisionLab.Vision2D.Result.CornerResult|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs|OpenVisionLab.Vision2D.Result.CornerResult|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs"
     },
@@ -218,9 +213,9 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs|OpenVisionLab.Vision2D.Result.CornerResult|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CornerResult.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
@@ -228,7 +223,7 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
     },
@@ -238,9 +233,19 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
     },
     {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Center|public OpenCvSharp.Point2d Center { get; set; } = new OpenCvSharp.Point2d();|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
+    },
+    {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs|OpenVisionLab.Vision2D.Result.CResultContour|Index|public int Index { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultContour.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs|OpenVisionLab.Vision2D.Result.CResultCorner|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs|OpenVisionLab.Vision2D.Result.CResultCorner|Area|public double Area { get; set; } = 0.0D;|occurrence=1",
@@ -248,7 +253,7 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs|OpenVisionLab.Vision2D.Result.CResultCorner|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs|OpenVisionLab.Vision2D.Result.CResultCorner|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs"
     },
@@ -258,9 +263,19 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs|OpenVisionLab.Vision2D.Result.CResultCorner|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultCorner.cs"
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Bounding|public RectangleF Bounding { get; set; } = new RectangleF();|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Center|public OpenCvSharp.Point2f Center { get; set; } = new OpenCvSharp.Point2f();|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Index|public int Index { get; set; } = 0;|occurrence=1",
@@ -273,19 +288,14 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs|OpenVisionLab.Vision2D.Result.CResultMean|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Center|public OpenCvSharp.Point2f Center { get; set; } = new OpenCvSharp.Point2f();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs|OpenVisionLab.Vision2D.Result.CResultMean|Center|public PointF Center { get; set; } = new PointF();|occurrence=1",
       "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs|OpenVisionLab.Vision2D.Result.CResultMatching|Bounding|public RectangleF Bounding { get; set; } = new RectangleF();|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMatching.cs"
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs|OpenVisionLab.Vision2D.Result.CResultMean|index|public int index { get; set; } = 0;|occurrence=1",
@@ -298,22 +308,12 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs|OpenVisionLab.Vision2D.Result.CResultMean|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs|OpenVisionLab.Vision2D.Result.CResultMean|Center|public PointF Center { get; set; } = new PointF();|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CResultMean.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge|NO|public int NO { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge|MeasPos|public OpenCvSharp.Point MeasPos { get; set; } = new OpenCvSharp.Point();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge|MeasPos|public OpenCvSharp.Point MeasPos { get; set; } = new OpenCvSharp.Point();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge|NO|public int NO { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Edge.cs"
     },
@@ -323,12 +323,12 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/CVLineGuage_Resultt.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs|OpenVisionLab.Vision2D.Result.LineGaugeEdge|NO|public int NO { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs|OpenVisionLab.Vision2D.Result.LineGaugeEdge|MeasPos|public OpenCvSharp.Point MeasPos { get; set; } = new OpenCvSharp.Point();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs|OpenVisionLab.Vision2D.Result.LineGaugeEdge|MeasPos|public OpenCvSharp.Point MeasPos { get; set; } = new OpenCvSharp.Point();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs|OpenVisionLab.Vision2D.Result.LineGaugeEdge|NO|public int NO { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeEdge.cs"
     },
@@ -343,12 +343,17 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/LineGaugeResults.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Index|public int Index { get; set; } = 0;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Score|public double Score { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Bounding|public RectangleF Bounding { get; set; } = new RectangleF();|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Center|public OpenCvSharp.Point2f Center { get; set; } = new OpenCvSharp.Point2f();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
     },
@@ -363,29 +368,14 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Angle|public double Angle { get; set; } = 0.0D;|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Index|public int Index { get; set; } = 0;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Center|public OpenCvSharp.Point2f Center { get; set; } = new OpenCvSharp.Point2f();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Score|public double Score { get; set; } = 0.0D;|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs|OpenVisionLab.Vision2D.Result.MatchingResult|Bounding|public RectangleF Bounding { get; set; } = new RectangleF();|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MatchingResult.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs|OpenVisionLab.Vision2D.Result.MeanResult|index|public int index { get; set; } = 0;|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs"
-    },
-    {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs|OpenVisionLab.Vision2D.Result.MeanResult|meanValue|public double meanValue { get; set; } = 0.0D;|occurrence=1",
-      "decisionGroup": "explicit-default",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs"
     },
     {
       "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs|OpenVisionLab.Vision2D.Result.MeanResult|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
@@ -398,12 +388,22 @@
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs|OpenVisionLab.Vision2D.Result.VisionObjectCandidate|Center|public Point2d Center { get; set; } = new Point2d();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs|OpenVisionLab.Vision2D.Result.MeanResult|index|public int index { get; set; } = 0;|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs|OpenVisionLab.Vision2D.Result.MeanResult|meanValue|public double meanValue { get; set; } = 0.0D;|occurrence=1",
+      "decisionGroup": "explicit-default",
+      "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/MeanResult.cs"
+    },
+    {
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs|OpenVisionLab.Vision2D.Result.VisionObjectCandidate|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs"
     },
     {
-      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs|OpenVisionLab.Vision2D.Result.VisionObjectCandidate|Bounding|public Rectangle Bounding { get; set; } = new Rectangle();|occurrence=1",
+      "identity": "CA1805|src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs|OpenVisionLab.Vision2D.Result.VisionObjectCandidate|Center|public Point2d Center { get; set; } = new Point2d();|occurrence=1",
       "decisionGroup": "explicit-default",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Result/VisionObjectCandidate.cs"
     },
@@ -478,6 +478,11 @@
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/DeterministicHeightDifferenceEdgeTool.cs"
     },
     {
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/NinePointSurfaceCompensationTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.NinePointSurfaceCompensationTool|Execute|public NinePointSurfaceCompensationResult Execute(HeightMap3D source, NinePointSurfaceCompensationOptions options,|occurrence=1",
+      "decisionGroup": "public-instance-contract",
+      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/NinePointSurfaceCompensationTool.cs"
+    },
+    {
       "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/PointCloudBackgroundFilterTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.PointCloudBackgroundFilterTool|Execute|public PointCloudBackgroundFilterResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/Filtering/PointCloudBackgroundFilterTool.cs"
@@ -493,7 +498,7 @@
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GeometryConstruction/DeterministicLineFitTool.cs"
     },
     {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GeometryConstruction/LeastSquaresHeightFieldPlaneFitTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.LeastSquaresHeightFieldPlaneFitTool|Execute|public LeastSquaresHeightFieldPlaneFitResult Execute(IReadOnlyList<HeightFieldPlaneFitSample> samples)|occurrence=1",
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GeometryConstruction/LeastSquaresHeightFieldPlaneFitTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.LeastSquaresHeightFieldPlaneFitTool|Execute|public LeastSquaresHeightFieldPlaneFitResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GeometryConstruction/LeastSquaresHeightFieldPlaneFitTool.cs"
     },
@@ -543,22 +548,22 @@
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/ConnectedRegionTool.cs"
     },
     {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.GridDiagnosticsTool|Execute|public GridDiagnosticsResult Execute(int width, int height)|occurrence=1",
-      "decisionGroup": "public-instance-contract",
-      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs"
-    },
-    {
       "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.GridDiagnosticsTool|Execute|public GridDiagnosticsResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs"
     },
     {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightGridSummaryTool|Execute|public HeightGridSummaryResult Execute(|occurrence=1",
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs|OpenVisionLab.Vision3D.FeatureExtraction.GridDiagnosticsTool|Execute|public GridDiagnosticsResult Execute(int width, int height)|occurrence=1",
+      "decisionGroup": "public-instance-contract",
+      "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs"
+    },
+    {
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsTool|Execute|public HeightDistributionStatisticsResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs"
     },
     {
-      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightDistributionStatisticsTool|Execute|public HeightDistributionStatisticsResult Execute(|occurrence=1",
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs|OpenVisionLab.Vision3D.FeatureExtraction.HeightGridSummaryTool|Execute|public HeightGridSummaryResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/FeatureExtraction/GridAndStatistics/HeightGridStatisticsTools.cs"
     },
@@ -728,6 +733,11 @@
       "source": "src/OpenVisionLab.Vision3D/Inspection/GapFlushInspectionTool.cs"
     },
     {
+      "identity": "CA1822|src/OpenVisionLab.Vision3D/Inspection/PhysicalEdgeGapFlushTool.cs|OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushTool|Execute|public PhysicalEdgeGapFlushResult Execute(PhysicalEdgeGapFlushInput input, PhysicalEdgeGapFlushOptions options,|occurrence=1",
+      "decisionGroup": "public-instance-contract",
+      "source": "src/OpenVisionLab.Vision3D/Inspection/PhysicalEdgeGapFlushTool.cs"
+    },
+    {
       "identity": "CA1822|src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool|Execute|public PointPairDimensionsInspectionResult Execute(|occurrence=1",
       "decisionGroup": "public-instance-contract",
       "source": "src/OpenVisionLab.Vision3D/Inspection/PointPairDimensionsInspectionTool.cs"
@@ -745,421 +755,6 @@
     {
       "identity": "CA1859|tests/OpenVisionLab.Vision3D.Benchmark/Program.cs|OpenVisionLab.Vision3D.Benchmark.CommandOptions|Required|IReadOnlyDictionary<string, string> values,|occurrence=1",
       "decisionGroup": "concrete-type-coupling",
-      "source": "tests/OpenVisionLab.Vision3D.Benchmark/Program.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapLegacyUnitCompatibility|HeightMap3D map = new HeightMap3D(1, 1, 0.0, 0.0, 1.0, 1.0, new[] { 2.0 }, \"mm\", \"legacy-frame\", \"legacy-source\");|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapCropGuards|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMask|new[] { true, false, true, false, false, true });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(1, 2, new[] { true, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { true, false }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { false, false, false, false }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { true, false, false, true }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapThresholdBackgroundRemovalGuards|new[] { 1.0, 2.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 2.0, 3.0, 4.0, 5.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=3",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapRejectsInvalidValues|_ = new HeightMap3D(1, 2, double.MaxValue, 0.0, double.MaxValue, 1.0, new[] { 0.0, 0.0 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestThicknessUnitContractMismatch|HeightMap3D map = new HeightMap3D(1, 2, 0.0, 0.0, 1.0, 1.0, new[] { 1000.0, 1100.0 }, \"mm\", \"um\", \"fixture\", \"unit-mismatch\");|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestWarpageToleranceFailure|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestWarpageDegenerateGeometry|new[] { 0.0, 1.0, 2.0 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDatumPlaneMixedUnits|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDeterministicMedianFilterSpike|new[] { 1.0, 1.0, 1.0, 1.0, 100.0, 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDeterministicMedianFilterMissingAndBorder|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/PointCloudVoxelDownsampleSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.PointCloudVoxelDownsampleSmokeSuite|TestReductionAndBounds|Require(result.Representatives.Select(item => item.SourceIndex).SequenceEqual(new[] { 0, 2, 3, 4 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/PointCloudVoxelDownsampleSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { 3, 1, 3 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { \"0,0\", \"0,1\", \"1,1\" }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { 3, 4 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { \"1,4\", \"2,3\", \"3,3\", \"3,4\" }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(1, 1, new[] { true }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(1, 1, new[] { true }),|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetrics|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetrics|new HeightGridMask(2, 2, new[] { true, true, true, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetricsInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetricsInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresence|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresence|new HeightGridMask(1, 2, new[] { false, false }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0, 1.0, 1.0, 1.0 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=3",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeight|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=3",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestHeightMapRegionStatisticsOverflowingBounds|new[] { 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestHeightMapRegionStatisticsOverflowingBounds|new[] { 1.0 },|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspection|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new[] { 10.0, 10.0, 11.0, 11.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new HeightGridMask(2, 2, new[] { false, false, false, false }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new[] { 10.0, 10.0, 11.0, 11.0 },|occurrence=2",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new HeightGridMask(1, 2, new[] { true, true }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityValid|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityReversed|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityPartialAndInvalidTopology|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityPartialAndInvalidTopology|new[] { 0, 4, 5 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatistics|new RepeatabilityStatisticsTool().Execute(new[] { 10.0, 12.0, 14.0, 16.0 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsZeroSpread|new RepeatabilityStatisticsTool().Execute(new[] { 4.25, 4.25, 4.25 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsInvalidInput|RepeatabilityStatisticsResult insufficient = tool.Execute(new[] { 1.0 });|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsInvalidInput|new[] { 1.0, 2.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestThresholdCandidateAnalysis|.SequenceEqual(new[] { 0, 1, 2, 3 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicHeightDifferenceEdge|new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicHeightDifferenceEdgeMissingAndSupport|new[] { 0.0, 10.0, 0.0, 1.0 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDisabled|new[] { 0, 1, 2, 3 })|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 1 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 2 }|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 0, 3 })|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExactDuplicate|new[] { 0, 1, 2 })|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 2, 1 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 1, 2 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 1, 2 })|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitInternalSourceTriangleIndices = new[] { 1 },|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitUnobservableSourceTriangleIndices = new[] { 1 }|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitInternalSourceTriangleIndices = new[] { 4 }|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|new[] { 0, 1, 2, 3 }|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicModelKeyPointExtraction|.SequenceEqual(new[] { 0, 3, 2 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicModelKeyPointExtractionSeparation|.SequenceEqual(new[] { 0, 3 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestAcquisitionDirectionOrientationOrderAndBoundary|.SequenceEqual(new[] { 2, 4 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/VisionObjectCandidateSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.VisionObjectCandidateSmokeSuite|AssertMultiRoiCandidates|Require(candidates.Select(candidate => candidate.RegionIndex).Distinct().OrderBy(index => index).SequenceEqual(new[] { 0, 1 }),|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/VisionObjectCandidateSmokeSuite.cs"
-    },
-    {
-      "identity": "CA1861|tests/OpenVisionLab.Vision3D.Benchmark/PairedBaselineComparer.cs|OpenVisionLab.Vision3D.Benchmark.PairedBaselineComparer|RunSelfTest|WallMedianRatios = new[]|occurrence=1",
-      "decisionGroup": "one-shot-mutable-array",
-      "source": "tests/OpenVisionLab.Vision3D.Benchmark/PairedBaselineComparer.cs"
-    },
-    {
-      "identity": "CA1869|tests/OpenVisionLab.Vision3D.Benchmark/Program.cs|OpenVisionLab.Vision3D.Benchmark.Program|Main|new JsonSerializerOptions|occurrence=1",
-      "decisionGroup": "one-shot-json-options",
       "source": "tests/OpenVisionLab.Vision3D.Benchmark/Program.cs"
     },
     {
@@ -1218,6 +813,106 @@
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/CudaLocalOperationSmokeSuite.cs"
     },
     {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDatumPlaneMixedUnits|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDeterministicMedianFilterMissingAndBorder|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestDeterministicMedianFilterSpike|new[] { 1.0, 1.0, 1.0, 1.0, 100.0, 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapBackgroundSubtractionGuards|new[] { 2.0, 3.0, 4.0, 5.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapCropGuards|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMask|new[] { true, false, true, false, false, true });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(1, 2, new[] { true, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { false, false, false, false }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { true, false }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new HeightGridMask(2, 2, new[] { true, false, false, true }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapDomainMaskGuards|new[] { 1.0, 2.0, 3.0, 4.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapLegacyUnitCompatibility|HeightMap3D map = new HeightMap3D(1, 1, 0.0, 0.0, 1.0, 1.0, new[] { 2.0 }, \"mm\", \"legacy-frame\", \"legacy-source\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapRejectsInvalidValues|_ = new HeightMap3D(1, 2, double.MaxValue, 0.0, double.MaxValue, 1.0, new[] { 0.0, 0.0 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestHeightMapThresholdBackgroundRemovalGuards|new[] { 1.0, 2.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestThicknessUnitContractMismatch|HeightMap3D map = new HeightMap3D(1, 2, 0.0, 0.0, 1.0, 1.0, new[] { 1000.0, 1100.0 }, \"mm\", \"um\", \"fixture\", \"unit-mismatch\");|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestWarpageDegenerateGeometry|new[] { 0.0, 1.0, 2.0 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.HeightMapAndGeometrySmokeSuite|TestWarpageToleranceFailure|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/HeightMapAndGeometrySmokeSuite.cs"
+    },
+    {
       "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.MetrologyContractSmokeSuite|TestDeclaredUnits|HeightMap3D micrometers = new HeightMap3D(1, 1, 0, 0, 1, 1, new[] { 1000.0 }, \"um\", \"synthetic-fixture\", \"synthetic-um\");|occurrence=1",
       "decisionGroup": "one-shot-mutable-array",
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs"
@@ -1226,6 +921,11 @@
       "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.MetrologyContractSmokeSuite|TestDeclaredUnits|HeightMap3D millimeters = new HeightMap3D(1, 1, 0, 0, 1, 1, new[] { 1.0 }, \"mm\", \"synthetic-fixture\", \"synthetic-mm\");|occurrence=1",
       "decisionGroup": "one-shot-mutable-array",
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/MetrologyContractSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/PointCloudVoxelDownsampleSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.PointCloudVoxelDownsampleSmokeSuite|TestReductionAndBounds|Require(result.Representatives.Select(item => item.SourceIndex).SequenceEqual(new[] { 0, 2, 3, 4 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/PointCloudVoxelDownsampleSmokeSuite.cs"
     },
     {
       "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/QrCodeSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.QrCodeSmokeSuite|TestSettings|Require(descriptor.Parameters.Select(value => value.Name).SequenceEqual(new[] { \"NAME\", \"USE_ROI\", \"CvROI\", \"ExpectedCodeCount\" }) && descriptor.Artifacts.Count == 0, \"QR metadata exposed unsupported settings or artifacts.\");|occurrence=1",
@@ -1248,6 +948,301 @@
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/SdkOperationSmokeSuite.cs"
     },
     {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeight|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionFillHeightInvalidInput|new[] { 1.0, 1.0, 1.0, 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetrics|new HeightGridMask(2, 2, new[] { true, true, true, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetrics|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetricsInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionMetricsInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresence|new HeightGridMask(1, 2, new[] { false, false }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresence|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new HeightGridMask(1, 1, new[] { true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0 },|occurrence=3",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionPresenceInvalidInput|new[] { 1.0, 1.0, 1.0, 1.0 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { \"0,0\", \"0,1\", \"1,1\" }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { \"1,4\", \"2,3\", \"3,3\", \"3,4\" }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { 3, 1, 3 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegions|.SequenceEqual(new[] { 3, 4 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(1, 1, new[] { true }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(1, 1, new[] { true }),|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestConnectedRegionsInvalidInput|new HeightGridMask(2, 2, new[] { true, false, true }));|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityPartialAndInvalidTopology|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityPartialAndInvalidTopology|new[] { 0, 4, 5 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityReversed|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestDeclaredMeshNormalQualityValid|new[] { 0, 1, 2, 0, 2, 3 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestHeightMapRegionStatisticsOverflowingBounds|new[] { 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestHeightMapRegionStatisticsOverflowingBounds|new[] { 1.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspection|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new HeightGridMask(1, 2, new[] { true, true }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new HeightGridMask(2, 2, new[] { false, false, false, false }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new[] { 10.0, 10.0, 11.0, 11.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestMaskAwareCompletenessGridInspectionInvalidInput|new[] { 10.0, 10.0, 11.0, 11.0 },|occurrence=2",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatistics|new RepeatabilityStatisticsTool().Execute(new[] { 10.0, 12.0, 14.0, 16.0 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsInvalidInput|new[] { 1.0, 2.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsInvalidInput|RepeatabilityStatisticsResult insufficient = tool.Execute(new[] { 1.0 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestRepeatabilityStatisticsZeroSpread|new RepeatabilityStatisticsTool().Execute(new[] { 4.25, 4.25, 4.25 });|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDStatisticsAndEvidenceSmokeSuite|TestThresholdCandidateAnalysis|.SequenceEqual(new[] { 0, 1, 2, 3 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDStatisticsAndEvidenceSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestAcquisitionDirectionOrientationOrderAndBoundary|.SequenceEqual(new[] { 2, 4 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicHeightDifferenceEdge|new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicHeightDifferenceEdgeMissingAndSupport|new[] { 0.0, 10.0, 0.0, 1.0 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicModelKeyPointExtraction|.SequenceEqual(new[] { 0, 3, 2 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestDeterministicModelKeyPointExtractionSeparation|.SequenceEqual(new[] { 0, 3 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 1, 2 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 1, 2 })|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDeterministic|new[] { 2, 1 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionDisabled|new[] { 0, 1, 2, 3 })|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExactDuplicate|new[] { 0, 1, 2 })|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 0, 3 })|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 1 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionExplicit|new[] { 2 }|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitInternalSourceTriangleIndices = new[] { 1 },|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitInternalSourceTriangleIndices = new[] { 4 }|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|ExplicitUnobservableSourceTriangleIndices = new[] { 1 }|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs|OpenVisionLab.Inspection.Smoke.ThreeDSurfaceAndMetrologySmokeSuite|TestModelSurfaceSelectionInvalid|new[] { 0, 1, 2, 3 }|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/ThreeDSurfaceAndMetrologySmokeSuite.cs"
+    },
+    {
       "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.Vision2DSupportEvaluationSmokeSuite|ExpectedCaseIds|.Concat(new[] { false, true }.SelectMany(subpixel => LineFailures.Select(failure => \"F-line-\" + subpixel + \"-\" + failure))).ToArray();|occurrence=1",
       "decisionGroup": "one-shot-mutable-array",
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs"
@@ -1258,13 +1253,28 @@
       "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/Vision2DSupportEvaluationSmokeSuite.cs"
     },
     {
+      "identity": "CA1861|tests/OpenVisionLab.Inspection.Smoke/Suites/VisionObjectCandidateSmokeSuite.cs|OpenVisionLab.Inspection.Smoke.VisionObjectCandidateSmokeSuite|AssertMultiRoiCandidates|Require(candidates.Select(candidate => candidate.RegionIndex).Distinct().OrderBy(index => index).SequenceEqual(new[] { 0, 1 }),|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Inspection.Smoke/Suites/VisionObjectCandidateSmokeSuite.cs"
+    },
+    {
+      "identity": "CA1861|tests/OpenVisionLab.Vision3D.Benchmark/PairedBaselineComparer.cs|OpenVisionLab.Vision3D.Benchmark.PairedBaselineComparer|RunSelfTest|WallMedianRatios = new[]|occurrence=1",
+      "decisionGroup": "one-shot-mutable-array",
+      "source": "tests/OpenVisionLab.Vision3D.Benchmark/PairedBaselineComparer.cs"
+    },
+    {
       "identity": "CA1869|tests/OpenVisionLab.Inspection.Smoke/SmokeRunner.cs|OpenVisionLab.Inspection.Smoke.SmokeRunner|WriteReport|File.WriteAllText(path, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));|occurrence=1",
       "decisionGroup": "one-shot-json-options",
       "source": "tests/OpenVisionLab.Inspection.Smoke/SmokeRunner.cs"
+    },
+    {
+      "identity": "CA1869|tests/OpenVisionLab.Vision3D.Benchmark/Program.cs|OpenVisionLab.Vision3D.Benchmark.Program|Main|new JsonSerializerOptions|occurrence=1",
+      "decisionGroup": "one-shot-json-options",
+      "source": "tests/OpenVisionLab.Vision3D.Benchmark/Program.cs"
     }
   ],
   "initialReviewCommit": "202758506d99e985e3f1d2b595aff638cb3007c2",
-  "reviewedSourceVersion": "3.2.0-rc.2",
+  "reviewedSourceVersion": "3.3.0-rc.1",
   "initialCleanupClassification": {
     "inputTotal": 272,
     "resolvedDeterministicAllocations": 32,

@@ -12,6 +12,7 @@ namespace OpenVisionLab.Inspection.Smoke
 {
     internal static class NinePointSurfaceCompensationSmokeSuite
     {
+        private static readonly int[] ModelReferenceIndices = { 0, 8, 16 };
         internal static IEnumerable<SmokeCase> Cases()
         {
             yield return new SmokeCase("Nine-point compensation removes tilted quadratic warp and preserves local height measurement", TestLocalHeight);
@@ -293,12 +294,12 @@ namespace OpenVisionLab.Inspection.Smoke
         private static void TestModelBoundary()
         {
             HeightMap3D bare = Map(17, 17, (row, column) => Background(row, column, 17, 17));
-            LevelSurfaceRegion[] references = (from row in new[] { 0, 8, 16 } from column in new[] { 0, 8, 16 }
+            LevelSurfaceRegion[] references = (from row in ModelReferenceIndices from column in ModelReferenceIndices
                 select new LevelSurfaceRegion(row, column, 1, 1)).ToArray();
             LevelSurfaceResult planeOnly = new LevelSurfaceTool().Execute(17, 17, bare.CopyValues(), references,
                 new LevelSurfaceOptions { MinimumValidSampleCount = 9 });
             Require(planeOnly.Success, "Existing explicit plane-leveling call must remain usable.");
-            double[] referenceResidual = (from row in new[] { 0, 8, 16 } from column in new[] { 0, 8, 16 }
+            double[] referenceResidual = (from row in ModelReferenceIndices from column in ModelReferenceIndices
                 select planeOnly.Values[row * 17 + column]).ToArray();
             RequireApproximately(referenceResidual.Max() - referenceResidual.Min(), 6.0, 1e-11,
                 "Plane leveling must not be described as removing curved substrate warp.");
