@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 
 namespace OpenVisionLab.Vision3D.Geometry
@@ -49,7 +50,22 @@ namespace OpenVisionLab.Vision3D.Geometry
             string heightUnit,
             string frameId,
             string sourceId)
+        : this(rows, columns, originX, originY, columnPitch, rowPitch, values, planarUnit, heightUnit, frameId, sourceId, CancellationToken.None) { }
+
+        public HeightMap3D(
+            int rows,
+            int columns,
+            double originX,
+            double originY,
+            double columnPitch,
+            double rowPitch,
+            double[] values,
+            string planarUnit,
+            string heightUnit,
+            string frameId,
+            string sourceId, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (rows <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(rows), "Rows must be positive.");
@@ -100,6 +116,7 @@ namespace OpenVisionLab.Vision3D.Geometry
 
             for (int index = 0; index < values.Length; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (double.IsInfinity(values[index]))
                 {
                     throw new ArgumentException("Height-map values cannot contain infinity.", nameof(values));
@@ -132,8 +149,9 @@ namespace OpenVisionLab.Vision3D.Geometry
             Unit = HeightUnit;
             FrameId = frameId.Trim();
             SourceId = sourceId ?? string.Empty;
-            _values = (double[])values.Clone();
-        }
+            _values = CopySnapshot(values, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+}
 
         /// <summary>
         /// Creates a height map from a rectangular array whose first dimension is row and second
@@ -239,6 +257,19 @@ namespace OpenVisionLab.Vision3D.Geometry
             return (double[])_values.Clone();
         }
 
+        private static double[] CopySnapshot(double[] values, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!cancellationToken.CanBeCanceled) return (double[])values.Clone();
+            var result = new double[values.Length];
+            for (int index = 0; index < result.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                result[index] = values[index];
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
+        }
         private void ValidateIndex(int row, int column)
         {
             if (row < 0 || row >= Rows)

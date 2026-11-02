@@ -316,10 +316,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
         private static List<Pair> CreatePairs(string inputHash, IReadOnlyList<DeterministicLineFitPoint> points, CancellationToken cancellationToken)
         {
-            int pairCount = points.Count * (points.Count - 1) / 2;
+            long pairCount = (long)points.Count * (points.Count - 1) / 2;
             if (pairCount <= DeterministicLineFitOptions.MaximumHypotheses)
             {
-                List<Pair> all = new List<Pair>(pairCount);
+                List<Pair> all = new List<Pair>((int)pairCount);
                 for (int first = 0; first < points.Count - 1; first++)
                 {
                     for (int second = first + 1; second < points.Count; second++)
@@ -333,7 +333,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
 
             List<Pair> pairs = new List<Pair>(DeterministicLineFitOptions.MaximumHypotheses);
             HashSet<Pair> unique = new HashSet<Pair>();
-            for (int attempt = 0; pairs.Count < DeterministicLineFitOptions.MaximumHypotheses && attempt < points.Count * points.Count * 32; attempt++)
+            // Bound repeated or degenerate draws by the hypothesis budget, not input size.
+            int maximumAttempts = DeterministicLineFitOptions.MaximumHypotheses * 32;
+            for (int attempt = 0; pairs.Count < DeterministicLineFitOptions.MaximumHypotheses && attempt < maximumAttempts; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 byte[] bytes;
@@ -352,6 +354,20 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
                 Pair pair = new Pair(first, second);
                 if (unique.Add(pair) && !IsDegeneratePair(points[first], points[second])) pairs.Add(pair);
+            }
+
+            if (pairs.Count == 0)
+            {
+                // Recover sparse distinct coordinates without enumerating all pairs.
+                for (int second = 1; second < points.Count; second++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!IsDegeneratePair(points[0], points[second]))
+                    {
+                        pairs.Add(new Pair(0, second));
+                        break;
+                    }
+                }
             }
             return pairs;
         }

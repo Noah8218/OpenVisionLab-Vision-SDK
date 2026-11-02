@@ -174,12 +174,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Validate(
                     rowCount,
                     columnCount,
                     values,
                     referenceRegions,
-                    options);
+                    options,
+                    cancellationToken);
 
                 bool[] selected = new bool[values.Count];
                 List<HeightFieldPlaneFitSample> samples =
@@ -201,10 +203,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                              column++)
                         {
                             int index = checked(row * columnCount + column);
-                            if ((index & 0x3fff) == 0)
-                            {
-                                cancellationToken.ThrowIfCancellationRequested();
-                            }
+                            cancellationToken.ThrowIfCancellationRequested();
 
                             double value = values[index];
                             if (!IsFinite(value))
@@ -231,6 +230,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         validInRegion);
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 if (samples.Count < options.MinimumValidSampleCount)
                 {
                     return LevelSurfaceResult.Failed(
@@ -248,15 +248,19 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 {
                     referenceIndices = new int[samples.Count];
                     for (int index = 0; index < samples.Count; index++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
                         referenceIndices[index] = checked((int)samples[index].Position.Z * columnCount + (int)samples[index].Position.X);
+                    }
                     datum = new DeterministicDatumPlaneFitTool().Execute(samples, options.DatumPlaneFitOptions, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!datum.Success)
                         return LevelSurfaceResult.Failed("Reference datum was rejected: " + datum.FailureReason + ". " + datum.Message, datum, referenceIndices);
                     if (datum.InlierSampleCount < options.MinimumValidSampleCount)
                         return LevelSurfaceResult.Failed("Selected datum has fewer samples than Level Surface MinimumValidSampleCount.", datum, referenceIndices);
                     fitSamples = datum.InlierSamples;
                 }
-                LeastSquaresHeightFieldPlaneFitResult fit = datum == null ? planeFitTool.Execute(samples) : datum.Plane;
+                LeastSquaresHeightFieldPlaneFitResult fit = datum == null ? planeFitTool.Execute(samples, cancellationToken) : datum.Plane;
                 double squaredResidualSum = 0.0;
                 double minimumResidual = double.PositiveInfinity;
                 double maximumResidual = double.NegativeInfinity;
@@ -265,6 +269,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                      sampleIndex < fitSamples.Count;
                      sampleIndex++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     HeightFieldPlaneFitSample sample = fitSamples[sampleIndex];
                     double residual = datum == null
                         ? sample.RawHeight - fit.EvaluateY(sample.Position.X, sample.Position.Z)
@@ -287,10 +292,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double[] output = new double[values.Count];
                 for (int index = 0; index < values.Count; index++)
                 {
-                    if ((index & 0x3fff) == 0)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     double value = values[index];
                     output[index] = IsFinite(value)
@@ -301,12 +303,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         : double.NaN;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 HeightFieldPlaneFitSample[] outputSamples =
                     new HeightFieldPlaneFitSample[fitSamples.Count];
                 for (int sampleIndex = 0;
                      sampleIndex < fitSamples.Count;
                      sampleIndex++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     int row = (int)fitSamples[sampleIndex].Position.Z;
                     int column = (int)fitSamples[sampleIndex].Position.X;
                     double height = output[checked(row * columnCount + column)];
@@ -316,8 +320,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
 
                 LeastSquaresHeightFieldPlaneFitResult outputFit =
-                    planeFitTool.Execute(outputSamples);
-                return LevelSurfaceResult.Completed(
+                    planeFitTool.Execute(outputSamples, cancellationToken);
+                var result = LevelSurfaceResult.Completed(
                     output,
                     fit,
                     targetHeight,
@@ -328,6 +332,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     evidence,
                     datum,
                     referenceIndices);
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
             }
             catch (OperationCanceledException)
             {
@@ -335,14 +341,17 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             }
             catch (ArgumentException exception)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return LevelSurfaceResult.Failed(exception.Message);
             }
             catch (InvalidDataException exception)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return LevelSurfaceResult.Failed(exception.Message);
             }
             catch (OverflowException exception)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return LevelSurfaceResult.Failed(exception.Message);
             }
         }
@@ -352,8 +361,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             int columnCount,
             IReadOnlyList<double> values,
             IReadOnlyList<LevelSurfaceRegion> referenceRegions,
-            LevelSurfaceOptions options)
+            LevelSurfaceOptions options,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (rowCount <= 0 || columnCount <= 0)
             {
                 throw new InvalidDataException(
@@ -383,6 +394,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                  regionIndex < referenceRegions.Count;
                  regionIndex++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 LevelSurfaceRegion region = referenceRegions[regionIndex];
                 if (region == null
                     || region.Row < 0
@@ -396,6 +408,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         "Level Surface reference regions must be valid source-grid rectangles.");
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         private static bool IsFinite(double value)

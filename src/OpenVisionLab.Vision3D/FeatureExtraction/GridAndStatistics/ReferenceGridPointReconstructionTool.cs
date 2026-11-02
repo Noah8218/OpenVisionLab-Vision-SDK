@@ -109,6 +109,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 HeightMapRegionStatisticsTool.Validate(
                     rowCount,
                     columnCount,
@@ -126,10 +127,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                          column++)
                     {
                         int index = checked(row * columnCount + column);
-                        if ((index & 0x3fff) == 0)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                        }
+                        // A narrow, offset ROI may never visit a flat-index checkpoint.
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         double height = values[index];
                         if (!HeightMapRegionStatisticsTool.IsFinite(height))
@@ -177,16 +176,19 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     }
                 }
 
-                return new ReferenceGridPointReconstructionResult(
+                var result = new ReferenceGridPointReconstructionResult(
                     true,
                     "Completed deterministic reference-grid point reconstruction.",
                     Array.AsReadOnly(samples.ToArray()));
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
             }
             catch (Exception exception) when (
                 exception is ArgumentException
                 || exception is InvalidDataException
                 || exception is OverflowException)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return new ReferenceGridPointReconstructionResult(
                     false,
                     exception.Message,

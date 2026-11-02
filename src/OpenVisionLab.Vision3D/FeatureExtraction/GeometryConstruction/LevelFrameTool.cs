@@ -155,6 +155,12 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 double originY = (plane.SlopeX * plane.OriginX)
                     + (plane.SlopeZ * plane.OriginZ)
                     + plane.Intercept;
+                if (!IsFinite(originY))
+                {
+                    return LevelFrameResult.Failed(
+                        "Level-frame origin exceeds the finite calculation range.");
+                }
+
                 Vector origin = new Vector(plane.OriginX, originY, plane.OriginZ);
                 double[] values =
                 {
@@ -162,6 +168,15 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     v.X, v.Y, v.Z, -Dot(v, origin),
                     h.X, h.Y, h.Z, -Dot(h, origin)
                 };
+                foreach (double value in values)
+                {
+                    if (!IsFinite(value))
+                    {
+                        return LevelFrameResult.Failed(
+                            "Level-frame source-to-frame values exceed the finite calculation range.");
+                    }
+                }
+
                 double determinant = Dot(Cross(u, v), h);
                 if (!IsFinite(determinant) || Math.Abs(determinant - 1.0) > 1e-10)
                 {

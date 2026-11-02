@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 
@@ -74,66 +75,92 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double minimumThickness,
             double maximumThickness,
             int minimumValidSamples)
+            => Execute(referenceSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, CancellationToken.None);
+
+        public DualSurfaceThicknessInspectionResult Execute(
+            IReadOnlyList<HeightFieldPlaneFitSample> referenceSamples,
+            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
+            double minimumThickness,
+            double maximumThickness,
+            int minimumValidSamples, CancellationToken cancellationToken)
         {
-            return ExecuteCore(referenceSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, null);
+            return ExecuteCore(referenceSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, null, cancellationToken);
         }
 
         public static DualSurfaceThicknessInspectionResult ExecuteWithDatum(
             DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
             double minimumThickness, double maximumThickness, int minimumValidSamples)
+            => ExecuteWithDatum(referenceDatum, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, CancellationToken.None);
+
+        public static DualSurfaceThicknessInspectionResult ExecuteWithDatum(
+            DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
+            double minimumThickness, double maximumThickness, int minimumValidSamples, CancellationToken cancellationToken)
         {
-            if (referenceDatum == null) return Error("A completed reference datum is required.", 0, measurementSamples == null ? 0 : measurementSamples.Count);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (referenceDatum == null) return Complete(Error("A completed reference datum is required.", 0, measurementSamples == null ? 0 : measurementSamples.Count), cancellationToken);
             if (!referenceDatum.Success)
-                return Error("Reference datum was rejected: " + referenceDatum.FailureReason + ". " + referenceDatum.Message,
-                    referenceDatum.InputSampleCount, measurementSamples == null ? 0 : measurementSamples.Count, referenceDatum);
-            return ExecuteCore(referenceDatum.InlierSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, referenceDatum);
+                return Complete(Error("Reference datum was rejected: " + referenceDatum.FailureReason + ". " + referenceDatum.Message,
+                    referenceDatum.InputSampleCount, measurementSamples == null ? 0 : measurementSamples.Count, referenceDatum), cancellationToken);
+            return ExecuteCore(referenceDatum.InlierSamples, measurementSamples, minimumThickness, maximumThickness, minimumValidSamples, referenceDatum, cancellationToken);
+        }
+
+        private static DualSurfaceThicknessInspectionResult Complete(DualSurfaceThicknessInspectionResult result, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         private static DualSurfaceThicknessInspectionResult ExecuteCore(
             IReadOnlyList<HeightFieldPlaneFitSample> referenceSamples, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
-            double minimumThickness, double maximumThickness, int minimumValidSamples, DatumPlaneFitResult referenceDatum)
+            double minimumThickness, double maximumThickness, int minimumValidSamples, DatumPlaneFitResult referenceDatum, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             int referenceCount = referenceSamples == null ? 0 : referenceSamples.Count;
             int measurementCount = measurementSamples == null ? 0 : measurementSamples.Count;
             if (!IsFinite(minimumThickness)
                 || !IsFinite(maximumThickness)
                 || minimumThickness > maximumThickness)
             {
-                return Error("Thickness limits must be finite and ordered minimum to maximum.", referenceCount, measurementCount, referenceDatum);
+                return Complete(Error("Thickness limits must be finite and ordered minimum to maximum.", referenceCount, measurementCount, referenceDatum), cancellationToken);
             }
 
             if (minimumValidSamples < 1)
             {
-                return Error("Minimum valid measurement samples must be at least one.", referenceCount, measurementCount, referenceDatum);
+                return Complete(Error("Minimum valid measurement samples must be at least one.", referenceCount, measurementCount, referenceDatum), cancellationToken);
             }
 
             if (referenceSamples == null || referenceSamples.Count < 3)
             {
-                return Error("Reference ROI requires at least three finite height samples.", referenceCount, measurementCount, referenceDatum);
+                return Complete(Error("Reference ROI requires at least three finite height samples.", referenceCount, measurementCount, referenceDatum), cancellationToken);
             }
 
             if (measurementSamples == null || measurementSamples.Count < minimumValidSamples)
             {
-                return Error(
+                return Complete(Error(
                     "Measurement ROI requires at least " + minimumValidSamples + " finite height sample(s).",
                     referenceCount,
                     measurementCount,
-                    referenceDatum);
+                    referenceDatum), cancellationToken);
             }
 
             LeastSquaresHeightFieldPlaneFitResult plane;
             try
             {
-                plane = referenceDatum == null ? new LeastSquaresHeightFieldPlaneFitTool().Execute(referenceSamples) : referenceDatum.Plane;
+                plane = referenceDatum == null ? new LeastSquaresHeightFieldPlaneFitTool().Execute(referenceSamples, cancellationToken) : referenceDatum.Plane;
             }
             catch (ArgumentException exception)
             {
-                return Error("Reference surface fit failed: " + exception.Message, referenceCount, measurementCount, referenceDatum);
+                return Complete(Error("Reference surface fit failed: " + exception.Message, referenceCount, measurementCount, referenceDatum), cancellationToken);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Complete(Error("Reference surface fit failed: " + exception.Message, referenceCount, measurementCount, referenceDatum), cancellationToken);
             }
 
             List<double> values = new List<double>(measurementSamples.Count);
             foreach (HeightFieldPlaneFitSample sample in measurementSamples)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (sample == null || sample.Position == null)
                 {
                     continue;
@@ -146,14 +173,15 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             if (values.Count < minimumValidSamples)
             {
-                return Error(
+                return Complete(Error(
                     "Measurement ROI contains " + values.Count + " usable height-axis sample(s); "
                     + minimumValidSamples + " required.",
                     referenceCount,
                     values.Count,
-                    referenceDatum);
+                    referenceDatum), cancellationToken);
             }
 
             double sum = 0.0;
@@ -163,6 +191,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             int above = 0;
             foreach (double value in values)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 sum += value;
                 if (value < minimum) minimum = value;
                 if (value > maximum) maximum = value;
@@ -170,25 +199,39 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 if (value > maximumThickness) above++;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             double mean = sum / values.Count;
             double squaredSpreadSum = 0.0;
             foreach (double value in values)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 double difference = value - mean;
                 squaredSpreadSum += difference * difference;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             double referenceSquaredResidualSum = 0.0;
             foreach (HeightFieldPlaneFitSample sample in referenceSamples)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 double residual = sample.RawHeight - plane.EvaluateY(sample.Position.X, sample.Position.Z);
                 referenceSquaredResidualSum += residual * residual;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            double range = maximum - minimum;
+            double rootMeanSquareSpread = Math.Sqrt(squaredSpreadSum / values.Count);
+            double referenceFitHeightRootMeanSquare = Math.Sqrt(referenceSquaredResidualSum / referenceSamples.Count);
+            if (!IsFinite(sum) || !IsFinite(mean) || !IsFinite(minimum) || !IsFinite(maximum)
+                || !IsFinite(range) || !IsFinite(rootMeanSquareSpread) || !IsFinite(referenceFitHeightRootMeanSquare))
+            {
+                return Complete(Error("Thickness aggregation exceeds the finite calculation range.", referenceCount, values.Count, referenceDatum), cancellationToken);
             }
 
             DualSurfaceThicknessDecision decision = below == 0 && above == 0
                 ? DualSurfaceThicknessDecision.Pass
                 : DualSurfaceThicknessDecision.Fail;
-            return new DualSurfaceThicknessInspectionResult(
+            return Complete(new DualSurfaceThicknessInspectionResult(
                 decision,
                 decision == DualSurfaceThicknessDecision.Pass
                     ? "All measured H-axis separations from the fitted reference surface are within limits."
@@ -197,14 +240,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 mean,
                 minimum,
                 maximum,
-                maximum - minimum,
-                Math.Sqrt(squaredSpreadSum / values.Count),
-                Math.Sqrt(referenceSquaredResidualSum / referenceSamples.Count),
+                range,
+                rootMeanSquareSpread,
+                referenceFitHeightRootMeanSquare,
                 referenceSamples.Count,
                 values.Count,
                 below,
                 above,
-                referenceDatum);
+                referenceDatum), cancellationToken);
         }
 
         private static DualSurfaceThicknessInspectionResult Error(string message, int referenceSampleCount, int measurementSampleCount, DatumPlaneFitResult datumEvidence = null)

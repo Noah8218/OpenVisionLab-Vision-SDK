@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using OpenVisionLab.Vision3D.Geometry;
 
@@ -45,8 +46,10 @@ namespace OpenVisionLab.Vision3D.Inspection
             bool requireMatchingPlanarAndHeightUnits,
             out HeightMapSampleSummary summary,
             out ThreeDInspectionErrorCode errorCode,
-            out string message)
+            out string message, CancellationToken cancellationToken = default(CancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool Complete(bool value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
             summary = default(HeightMapSampleSummary);
             errorCode = ThreeDInspectionErrorCode.None;
             message = string.Empty;
@@ -55,7 +58,7 @@ namespace OpenVisionLab.Vision3D.Inspection
             {
                 errorCode = ThreeDInspectionErrorCode.InputHeightMapInvalid;
                 message = "A height map is required.";
-                return false;
+                return Complete(false);
             }
 
             if (requirements != null
@@ -77,7 +80,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     + "', and frame '"
                     + source.FrameId
                     + "'.";
-                return false;
+                return Complete(false);
             }
 
             if (requireMatchingPlanarAndHeightUnits
@@ -89,7 +92,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     + "' and height unit is '"
                     + source.HeightUnit
                     + "'.";
-                return false;
+                return Complete(false);
             }
 
             HeightMapRoi roi = ResolveRoi(source, configuredRoi);
@@ -97,7 +100,7 @@ namespace OpenVisionLab.Vision3D.Inspection
             {
                 errorCode = ThreeDInspectionErrorCode.InvalidRoi;
                 message = "The inspection ROI is outside the height map.";
-                return false;
+                return Complete(false);
             }
 
             long totalSampleCount = (long)roi.RowCount * roi.ColumnCount;
@@ -105,8 +108,10 @@ namespace OpenVisionLab.Vision3D.Inspection
             long missingSampleCount = 0;
             for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     double value = source.GetHeight(row, column);
                     if (double.IsNaN(value))
                     {
@@ -116,7 +121,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     {
                         errorCode = ThreeDInspectionErrorCode.InputHeightMapInvalid;
                         message = "The height map contains an infinite sample.";
-                        return false;
+                        return Complete(false);
                     }
                     else
                     {
@@ -130,17 +135,17 @@ namespace OpenVisionLab.Vision3D.Inspection
             {
                 errorCode = ThreeDInspectionErrorCode.InsufficientValidSamples;
                 message = "The inspection ROI does not contain enough finite samples.";
-                return false;
+                return Complete(false);
             }
 
             if (summary.ValidCoverageRatio < minimumValidCoverageRatio)
             {
                 errorCode = ThreeDInspectionErrorCode.InsufficientValidCoverage;
                 message = "The inspection ROI does not meet the minimum valid coverage ratio.";
-                return false;
+                return Complete(false);
             }
 
-            return true;
+            return Complete(true);
         }
 
         public static void ApplySampleSummary(

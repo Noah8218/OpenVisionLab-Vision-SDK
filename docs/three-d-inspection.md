@@ -412,6 +412,52 @@ Execute/Dispose를 겹쳐 호출하는 계약은 추가하지 않았다.
 읽을 수 있다. Vision3D는 netstandard2.0과 Compute에 의존하며 application Host, UI,
 파일 또는 network adapter를 요구하지 않는다.
 
+## Nine-point surface compensation
+
+`NinePointSurfaceCompensationTool.Execute` models a tensor biquadratic background
+through nine caller-selected substrate cells, subtracts it vertically, and adds
+`TargetHeight` into a separate `HeightMap3D`. Select three ordered reference rows
+and columns spanning the full input grid; each middle index must lie within
+25–75% of its span. All nine reference heights must be finite.
+
+`OutputSourceId` must differ from the input identity. XY geometry, row/column
+ordering and declared units are retained; the explicit output frame may retain
+the input frame because XY is unchanged. Invalid input or numerical failure
+returns a typed failure without output. Cancellation propagates
+`OperationCanceledException` without exposing a partial output.
+
+The tool performs no automatic reference selection, extrapolation, resampling
+or texture processing. A feature on a reference cell influences the modeled
+background. Reference residuals and corrected control points are interpolation
+evidence rather than an independent accuracy measurement.
+
+## Physical-edge gap and flush
+
+`PhysicalEdgeGapFlushTool.Execute` uses two caller-selected fitted-edge
+coordinates and surface-height dictionaries keyed by scanline. `SignedGap` is
+the second coordinate minus the first. Only scanline keys present in both
+dictionaries with two finite heights contribute to the support means;
+`SignedFlush` is the second support mean minus the first.
+
+`ValidPairCount` and `CoverageRatio` retain the paired support evidence. With no
+finite pairs, support means and flush are NaN and coverage is zero. Tolerance
+flags require finite values and nonnegative finite tolerances; a returned
+result is not by itself a final inspection disposition. Identity, compatible
+units, reference selection, ambiguity acceptance and final disposition remain
+the caller's responsibility. Dictionaries are borrowed until synchronous
+execution completes and must not be mutated during the call.
+
+## Cooperative cancellation in 3D calls
+
+Use the overload that explicitly accepts `CancellationToken` when cancellation
+is required. Existing entry points remain available. The affected numerical
+paths observe cancellation at their implemented entry, loop and return
+boundaries and propagate `OperationCanceledException` where declared. This
+does not promise an absolute response time or interruption within an individual
+hash, native call or other indivisible operation. Keep borrowed inputs alive
+until the call completes, discard a canceled operation's result, and use a new
+token or `CancellationToken.None` for the next normal call.
+
 ## Execution, failure and lifetime boundaries
 
 | Call family | Failure / normal result | Recovery and lifetime |

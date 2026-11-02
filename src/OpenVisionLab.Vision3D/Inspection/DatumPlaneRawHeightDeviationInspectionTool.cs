@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.Vision3D.Geometry;
 using System;
 using System.Diagnostics;
@@ -26,32 +27,37 @@ namespace OpenVisionLab.Vision3D.Inspection
         public DatumPlaneRawHeightDeviationInspectionOptions Options { get; }
 
         public ThreeDInspectionResult Execute(HeightMap3D source)
+        { return Execute(source, CancellationToken.None); }
+
+        public ThreeDInspectionResult Execute(HeightMap3D source, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            ThreeDInspectionResult Complete(ThreeDInspectionResult value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
             Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
                 if (source == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch));
                 }
 
                 if (Options == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, "Datum-plane options are required.", stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, "Datum-plane options are required.", stopwatch, source));
                 }
 
                 if (!TryNormalizePlane(out double normalX, out double normalY, out double normalZ, out double offset, out string planeError))
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, planeError, stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, planeError, stopwatch, source));
                 }
 
                 if (Math.Abs(normalY) < Options.MinimumAbsoluteNormalY)
                 {
-                    return Failure(
+                    return Complete(Failure(
                         ThreeDInspectionErrorCode.DegenerateGeometry,
                         "Datum plane cannot be represented as raw height over the grid because its normalized Y component is below the configured minimum.",
                         stopwatch,
-                        source);
+                        source));
                 }
 
                 if (!ThreeDInspectionMath.TryPrepareHeightMap(
@@ -63,7 +69,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     true,
                     out HeightMapSampleSummary summary,
                     out ThreeDInspectionErrorCode inputErrorCode,
-                    out string inputErrorMessage))
+                    out string inputErrorMessage, cancellationToken))
                 {
                     HeightMapRoi? failureRoi = summary.TotalSampleCount > 0 ? summary.Roi : Options.Roi;
                     ThreeDInspectionResult failure = Failure(inputErrorCode, inputErrorMessage, stopwatch, source, failureRoi);
@@ -72,7 +78,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                         ThreeDInspectionMath.ApplySampleSummary(failure, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
                     }
 
-                    return failure;
+                    return Complete(failure);
                 }
 
                 HeightMapRoi roi = summary.Roi;
@@ -88,8 +94,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                     {
+                cancellationToken.ThrowIfCancellationRequested();
                         double rawHeight = source.GetHeight(row, column);
                         if (double.IsNaN(rawHeight))
                         {
@@ -102,7 +110,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                             || !ThreeDInspectionMath.IsFinite(gridY)
                             || !ThreeDInspectionMath.IsFinite(rawHeight))
                         {
-                            return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite coordinate or sample.", stopwatch, source, roi);
+                            return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite coordinate or sample.", stopwatch, source, roi));
                         }
 
                         if (!TryCalculateRawHeightResidual(
@@ -115,7 +123,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                             rawHeight,
                             out double residual))
                         {
-                            return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The datum-plane raw-height residual cannot be represented as a finite value.", stopwatch, source, roi);
+                            return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The datum-plane raw-height residual cannot be represented as a finite value.", stopwatch, source, roi));
                         }
 
                         validSampleCount++;
@@ -139,7 +147,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 double rms = rmsScale == 0.0 ? 0.0 : rmsScale * Math.Sqrt(rmsSum / validSampleCount);
                 if (!ThreeDInspectionMath.IsFinite(peakToValley) || !ThreeDInspectionMath.IsFinite(rms))
                 {
-                    return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The datum-plane raw-height metrics cannot be represented as finite values.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The datum-plane raw-height metrics cannot be represented as finite values.", stopwatch, source, roi));
                 }
 
                 stopwatch.Stop();
@@ -179,11 +187,12 @@ namespace OpenVisionLab.Vision3D.Inspection
                 result.Message = passed
                     ? "Datum-plane raw-height residuals are within the local limit."
                     : "Datum-plane raw-height residuals exceed the local limit.";
-                return result;
+                return Complete(result);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception exception)
             {
-                return Failure(ThreeDInspectionErrorCode.ToolExecutionException, "Datum-plane raw-height deviation failed with an unexpected exception.", stopwatch, source, null, exception);
+                return Complete(Failure(ThreeDInspectionErrorCode.ToolExecutionException, "Datum-plane raw-height deviation failed with an unexpected exception.", stopwatch, source, null, exception));
             }
         }
 

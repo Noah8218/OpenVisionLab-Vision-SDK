@@ -2,7 +2,7 @@
 
 Use 2D inspection tools and height-map / full-XYZ 3D algorithms in your own C# application.
 
-[![Source v3.2.0-rc.5](https://img.shields.io/badge/source-v3.2.0--rc.5-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.1](https://img.shields.io/badge/source-v3.3.0--rc.1-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 **English** · [한국어](README.ko.md)
 
@@ -46,7 +46,7 @@ The caller owns `source`; the result owns its output image. Dispose both and the
    [3D quick start](docs/sdk-reference.md#3d-quick-start). Check errors, metrics,
    units and ownership before connecting the result to your application's judgment.
 
-This checkout's source version is **`3.2.0-rc.5`**, a prerelease defined in
+This checkout's source version is **`3.3.0-rc.1`**, a prerelease defined in
 [Directory.Build.props](Directory.Build.props); CLR assembly identity remains
 `3.0.0.0`. A source version does not establish a published NuGet package or binary
 release. Read the [version history](docs/sdk-reference.md#version) and

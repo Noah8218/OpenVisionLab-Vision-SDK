@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.Vision3D.Geometry;
 using System;
 using System.Diagnostics;
@@ -25,19 +26,24 @@ namespace OpenVisionLab.Vision3D.Inspection
         public ThicknessInspectionOptions Options { get; }
 
         public ThreeDInspectionResult Execute(HeightMap3D source)
+        { return Execute(source, CancellationToken.None); }
+
+        public ThreeDInspectionResult Execute(HeightMap3D source, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            ThreeDInspectionResult Complete(ThreeDInspectionResult value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             try
             {
                 if (source == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch));
                 }
 
                 if (Options == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, "Thickness options are required.", stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, "Thickness options are required.", stopwatch, source));
                 }
 
                 if (!ThreeDInspectionMath.IsFinite(Options.MinimumThickness)
@@ -48,7 +54,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     || Options.MinimumValidCoverageRatio < 0.0
                     || Options.MinimumValidCoverageRatio > 1.0)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, "Thickness limits or valid-sample policy are invalid.", stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, "Thickness limits or valid-sample policy are invalid.", stopwatch, source));
                 }
 
                 if (!ThreeDInspectionMath.TryPrepareHeightMap(
@@ -60,7 +66,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     false,
                     out HeightMapSampleSummary summary,
                     out ThreeDInspectionErrorCode inputErrorCode,
-                    out string inputErrorMessage))
+                    out string inputErrorMessage, cancellationToken))
                 {
                     HeightMapRoi? failureRoi = summary.TotalSampleCount > 0 ? summary.Roi : Options.Roi;
                     ThreeDInspectionResult failure = Failure(inputErrorCode, inputErrorMessage, stopwatch, source, failureRoi);
@@ -69,7 +75,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                         ThreeDInspectionMath.ApplySampleSummary(failure, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
                     }
 
-                    return failure;
+                    return Complete(failure);
                 }
 
                 HeightMapRoi roi = summary.Roi;
@@ -82,8 +88,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                     {
+                cancellationToken.ThrowIfCancellationRequested();
                         double value = source.GetHeight(row, column);
                         if (double.IsNaN(value))
                         {
@@ -92,7 +100,7 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                         if (!ThreeDInspectionMath.IsFinite(value))
                         {
-                            return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite sample.", stopwatch, source, roi);
+                            return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite sample.", stopwatch, source, roi));
                         }
 
                         validSampleCount++;
@@ -117,7 +125,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 {
                     ThreeDInspectionResult failure = Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The thickness metrics cannot be represented as finite values.", stopwatch, source, roi);
                     ThreeDInspectionMath.ApplySampleSummary(failure, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
-                    return failure;
+                    return Complete(failure);
                 }
 
                 stopwatch.Stop();
@@ -153,17 +161,18 @@ namespace OpenVisionLab.Vision3D.Inspection
                     result.Message = "One or more valid thickness samples are outside tolerance.";
                 }
 
-                return result;
+                return Complete(result);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception exception)
             {
-                return Failure(
+                return Complete(Failure(
                     ThreeDInspectionErrorCode.ToolExecutionException,
                     "Thickness inspection failed with an unexpected exception.",
                     stopwatch,
                     source,
                     null,
-                    exception);
+                    exception));
             }
         }
 

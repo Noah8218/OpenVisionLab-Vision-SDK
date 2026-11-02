@@ -117,6 +117,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Validate(rowCount, columnCount, values, region);
                 if (requireMask && mask == null)
                 {
@@ -142,10 +143,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                          column++)
                     {
                         int index = checked(row * columnCount + column);
-                        if ((index & 0x3fff) == 0)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                        }
+                        // Masked/missing cells and offset ROIs still need checkpoints.
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         if (mask != null && !mask.Foreground[index])
                         {
@@ -174,6 +173,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     }
                 }
 
+                if (finiteCount > 0
+                    && (!IsFinite(sum) || !IsFinite(sum / finiteCount)))
+                {
+                    throw new InvalidDataException(
+                        "Height-map region statistics overflowed the finite numeric range.");
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
                 return new HeightMapRegionStatisticsResult(
                     true,
                     "Completed deterministic height-map region statistics.",
@@ -188,6 +195,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 || exception is InvalidDataException
                 || exception is OverflowException)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return new HeightMapRegionStatisticsResult(
                     false,
                     exception.Message,

@@ -23,7 +23,7 @@ It includes 2D image-processing tools, 3D feature extraction and measurement alg
 
 ## Version
 
-Current source version: `v3.2.0-rc.5` (prerelease).
+Current source version: `v3.3.0-rc.1` (prerelease).
 
 This project is maintained using explicit version numbers. The source version is
 defined in [`Directory.Build.props`](../Directory.Build.props). CLR assembly identity
@@ -31,6 +31,13 @@ remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a N
 package or binary release has been published.
 
 ### Recent version history
+
+#### `v3.3.0-rc.1` (2026-11-02)
+
+- Add nine-point background compensation with a separate output map and explicit reference-grid constraints.
+- Add signed physical-edge gap/flush results from caller-selected edge coordinates and paired scanlines.
+- Add cooperative cancellation overloads and checks in the affected 3D fitting, grid, thickness, flatness, volume, cross-section, warpage and raw-height-deviation paths while retaining existing entry points.
+- Preserve declared units, input ownership and normal numerical result contracts. Synthetic numerical checks do not establish sensor accuracy or a maximum cancellation latency.
 
 #### `v3.2.0-rc.5` (2026-10-12)
 

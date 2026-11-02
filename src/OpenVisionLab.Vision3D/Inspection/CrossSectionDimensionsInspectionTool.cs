@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace OpenVisionLab.Vision3D.Inspection
 {
@@ -65,6 +66,15 @@ namespace OpenVisionLab.Vision3D.Inspection
             IReadOnlyList<CrossSectionDimensionsSample> samples,
             CrossSectionDimensionsInspectionOptions options)
         {
+            return Execute(samples, options, default(CancellationToken));
+        }
+
+        public CrossSectionDimensionsInspectionResult Execute(
+            IReadOnlyList<CrossSectionDimensionsSample> samples,
+            CrossSectionDimensionsInspectionOptions options,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             if (samples == null || samples.Count < 2)
             {
                 throw new ArgumentException("Cross-section requires at least two valid samples.", nameof(samples));
@@ -77,6 +87,7 @@ namespace OpenVisionLab.Vision3D.Inspection
             double maximumHeight = double.NegativeInfinity;
             foreach (CrossSectionDimensionsSample sample in samples)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (sample == null || sample.Index < 0 || !IsFinite(sample.AxisPosition) || !IsFinite(sample.ScalarHeight))
                 {
                     throw new ArgumentException("Cross-section samples require non-negative indices and finite position/height values.", nameof(samples));
@@ -87,13 +98,14 @@ namespace OpenVisionLab.Vision3D.Inspection
                 maximumHeight = Math.Max(maximumHeight, sample.ScalarHeight);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             double width = maximumPosition - minimumPosition;
             double heightRange = maximumHeight - minimumHeight;
             if (!IsFinite(width) || !IsFinite(heightRange))
             {
                 throw new InvalidOperationException("Cross-section dimensions cannot be represented as finite values.");
             }
-            return new CrossSectionDimensionsInspectionResult(
+            var result = new CrossSectionDimensionsInspectionResult(
                 width,
                 heightRange,
                 minimumHeight,
@@ -101,6 +113,8 @@ namespace OpenVisionLab.Vision3D.Inspection
                 samples.Count,
                 Math.Abs(width - options.ExpectedWidth) <= options.WidthTolerance,
                 Math.Abs(heightRange - options.ExpectedHeightRange) <= options.HeightTolerance);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         private static void Validate(CrossSectionDimensionsInspectionOptions options)

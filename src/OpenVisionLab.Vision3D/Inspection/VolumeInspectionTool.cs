@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using OpenVisionLab.Vision3D.FeatureExtraction;
@@ -70,7 +71,14 @@ namespace OpenVisionLab.Vision3D.Inspection
             IReadOnlyList<HeightFieldPlaneFitSample> referenceSamples,
             IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
             VolumeInspectionOptions options)
+            => Execute(referenceSamples, measurementSamples, options, CancellationToken.None);
+
+        public VolumeInspectionResult Execute(
+            IReadOnlyList<HeightFieldPlaneFitSample> referenceSamples,
+            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples,
+            VolumeInspectionOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (referenceSamples == null || referenceSamples.Count < 3)
             {
                 throw new ArgumentException("Reference ROI requires at least three samples.", nameof(referenceSamples));
@@ -81,29 +89,42 @@ namespace OpenVisionLab.Vision3D.Inspection
             }
             Validate(options);
 
-            LeastSquaresHeightFieldPlaneFitResult referencePlane = planeFit.Execute(referenceSamples);
-            return Measure(referencePlane, referenceSamples.Count, measurementSamples, options, null);
+            LeastSquaresHeightFieldPlaneFitResult referencePlane = planeFit.Execute(referenceSamples, cancellationToken);
+            return Measure(referencePlane, referenceSamples.Count, measurementSamples, options, null, cancellationToken);
         }
 
         public static VolumeInspectionResult ExecuteWithDatum(
             DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options)
+            => ExecuteWithDatum(referenceDatum, measurementSamples, options, CancellationToken.None);
+
+        public static VolumeInspectionResult ExecuteWithDatum(
+            DatumPlaneFitResult referenceDatum, IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (referenceDatum == null) throw new ArgumentNullException(nameof(referenceDatum));
             if (!referenceDatum.Success) throw new InvalidOperationException("Reference datum was rejected: " + referenceDatum.FailureReason + ". " + referenceDatum.Message);
             if (measurementSamples == null || measurementSamples.Count < 1)
                 throw new ArgumentException("Measurement ROI requires at least one sample.", nameof(measurementSamples));
             Validate(options);
-            return Measure(referenceDatum.Plane, referenceDatum.InlierSampleCount, measurementSamples, options, referenceDatum);
+            return Measure(referenceDatum.Plane, referenceDatum.InlierSampleCount, measurementSamples, options, referenceDatum, cancellationToken);
+        }
+
+        private static VolumeInspectionResult Complete(VolumeInspectionResult result, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         private static VolumeInspectionResult Measure(
             LeastSquaresHeightFieldPlaneFitResult referencePlane, int referenceSampleCount,
-            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options, DatumPlaneFitResult datumEvidence)
+            IReadOnlyList<HeightFieldPlaneFitSample> measurementSamples, VolumeInspectionOptions options, DatumPlaneFitResult datumEvidence, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             double aboveVolume = 0.0;
             double belowVolume = 0.0;
             foreach (HeightFieldPlaneFitSample sample in measurementSamples)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (sample == null || sample.Position == null || !sample.Position.IsFinite || !IsFinite(sample.RawHeight))
                 {
                     throw new ArgumentException("Measurement ROI samples must contain finite coordinates and heights.", nameof(measurementSamples));
@@ -131,6 +152,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             double netVolume = aboveVolume - belowVolume;
             if (!IsFinite(netVolume))
             {
@@ -143,7 +165,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 throw new InvalidOperationException("Volume calculation produced a non-finite acceptance difference.");
             }
 
-            return new VolumeInspectionResult(
+            return Complete(new VolumeInspectionResult(
                 referencePlane,
                 referenceSampleCount,
                 measurementSamples.Count,
@@ -153,7 +175,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                 options.ExpectedNetVolume,
                 options.Tolerance,
                 Math.Abs(acceptanceDifference) <= options.Tolerance,
-                datumEvidence);
+                datumEvidence), cancellationToken);
         }
 
         private static void Validate(VolumeInspectionOptions options)

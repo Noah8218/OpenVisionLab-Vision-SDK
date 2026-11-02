@@ -1,3 +1,4 @@
+using System.Threading;
 using OpenVisionLab.Vision3D.Geometry;
 using System;
 using System.Diagnostics;
@@ -25,19 +26,24 @@ namespace OpenVisionLab.Vision3D.Inspection
         public WarpageInspectionOptions Options { get; }
 
         public ThreeDInspectionResult Execute(HeightMap3D source)
+        { return Execute(source, CancellationToken.None); }
+
+        public ThreeDInspectionResult Execute(HeightMap3D source, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            ThreeDInspectionResult Complete(ThreeDInspectionResult value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             try
             {
                 if (source == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "A height map is required.", stopwatch));
                 }
 
                 if (Options == null)
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, "Warpage options are required.", stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, "Warpage options are required.", stopwatch, source));
                 }
 
                 if (!ThreeDInspectionMath.IsFinite(Options.MaximumPeakToValley)
@@ -49,7 +55,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     || (Options.MaximumRms.HasValue
                         && (!ThreeDInspectionMath.IsFinite(Options.MaximumRms.Value) || Options.MaximumRms.Value < 0.0)))
                 {
-                    return Failure(ThreeDInspectionErrorCode.InvalidParameter, "Warpage limits or valid-sample policy are invalid.", stopwatch, source);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InvalidParameter, "Warpage limits or valid-sample policy are invalid.", stopwatch, source));
                 }
 
                 if (!ThreeDInspectionMath.TryPrepareHeightMap(
@@ -61,7 +67,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     false,
                     out HeightMapSampleSummary summary,
                     out ThreeDInspectionErrorCode inputErrorCode,
-                    out string inputErrorMessage))
+                    out string inputErrorMessage, cancellationToken))
                 {
                     HeightMapRoi? failureRoi = summary.TotalSampleCount > 0 ? summary.Roi : Options.Roi;
                     ThreeDInspectionResult failure = Failure(inputErrorCode, inputErrorMessage, stopwatch, source, failureRoi);
@@ -70,7 +76,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                         ThreeDInspectionMath.ApplySampleSummary(failure, summary, Options.MinimumValidSamples, Options.MinimumValidCoverageRatio);
                     }
 
-                    return failure;
+                    return Complete(failure);
                 }
 
                 HeightMapRoi roi = summary.Roi;
@@ -81,8 +87,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                     {
+                cancellationToken.ThrowIfCancellationRequested();
                         double z = source.GetHeight(row, column);
                         if (double.IsNaN(z))
                         {
@@ -93,7 +101,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                         double y = source.GetY(row);
                         if (!ThreeDInspectionMath.IsFinite(x) || !ThreeDInspectionMath.IsFinite(y) || !ThreeDInspectionMath.IsFinite(z))
                         {
-                            return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite coordinate or sample.", stopwatch, source, roi);
+                            return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height map contains a non-finite coordinate or sample.", stopwatch, source, roi));
                         }
 
                         validSampleCount++;
@@ -111,8 +119,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                     {
+                cancellationToken.ThrowIfCancellationRequested();
                         double z = source.GetHeight(row, column);
                         if (double.IsNaN(z))
                         {
@@ -136,13 +146,13 @@ namespace OpenVisionLab.Vision3D.Inspection
                     || !ThreeDInspectionMath.IsFinite(sumXZ)
                     || !ThreeDInspectionMath.IsFinite(sumYZ))
                 {
-                    return Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height-map scale cannot be represented by the plane fit.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.InputHeightMapInvalid, "The height-map scale cannot be represented by the plane fit.", stopwatch, source, roi));
                 }
 
                 double normalScale = Math.Max(sumXX, sumYY);
                 if (normalScale <= 0.0)
                 {
-                    return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage ROI does not span two independent map directions.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage ROI does not span two independent map directions.", stopwatch, source, roi));
                 }
 
                 double normalizedXX = sumXX / normalScale;
@@ -154,7 +164,7 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 if (!ThreeDInspectionMath.IsFinite(determinant) || Math.Abs(determinant) <= 1e-12)
                 {
-                    return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage ROI does not support a stable plane fit.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage ROI does not support a stable plane fit.", stopwatch, source, roi));
                 }
 
                 double slopeX = ((normalizedXZ * normalizedYY) - (normalizedYZ * normalizedXY)) / determinant;
@@ -164,7 +174,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     || !ThreeDInspectionMath.IsFinite(slopeY)
                     || !ThreeDInspectionMath.IsFinite(intercept))
                 {
-                    return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage plane fit is non-finite.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage plane fit is non-finite.", stopwatch, source, roi));
                 }
 
                 double minimumResidual = double.PositiveInfinity;
@@ -174,8 +184,10 @@ namespace OpenVisionLab.Vision3D.Inspection
 
                 for (int row = roi.Row; row < roi.Row + roi.RowCount; row++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     for (int column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
                     {
+                cancellationToken.ThrowIfCancellationRequested();
                         double z = source.GetHeight(row, column);
                         if (double.IsNaN(z))
                         {
@@ -186,7 +198,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                         double residual = z - predicted;
                         if (!ThreeDInspectionMath.IsFinite(predicted) || !ThreeDInspectionMath.IsFinite(residual))
                         {
-                            return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage residual cannot be represented as a finite value.", stopwatch, source, roi);
+                            return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage residual cannot be represented as a finite value.", stopwatch, source, roi));
                         }
 
                         minimumResidual = Math.Min(minimumResidual, residual);
@@ -201,7 +213,7 @@ namespace OpenVisionLab.Vision3D.Inspection
                     : rmsScale * Math.Sqrt(rmsSum / validSampleCount);
                 if (!ThreeDInspectionMath.IsFinite(peakToValley) || !ThreeDInspectionMath.IsFinite(rms))
                 {
-                    return Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage metrics cannot be represented as finite values.", stopwatch, source, roi);
+                    return Complete(Failure(ThreeDInspectionErrorCode.DegenerateGeometry, "The warpage metrics cannot be represented as finite values.", stopwatch, source, roi));
                 }
 
                 stopwatch.Stop();
@@ -241,17 +253,18 @@ namespace OpenVisionLab.Vision3D.Inspection
                 result.Message = passed
                     ? "Warpage residuals are within tolerance."
                     : "Warpage residuals are outside tolerance.";
-                return result;
+                return Complete(result);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception exception)
             {
-                return Failure(
+                return Complete(Failure(
                     ThreeDInspectionErrorCode.ToolExecutionException,
                     "Warpage inspection failed with an unexpected exception.",
                     stopwatch,
                     source,
                     null,
-                    exception);
+                    exception));
             }
         }
 

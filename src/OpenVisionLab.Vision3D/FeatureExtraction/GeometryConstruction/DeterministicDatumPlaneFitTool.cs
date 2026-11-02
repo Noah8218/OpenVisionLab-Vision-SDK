@@ -91,6 +91,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             IReadOnlyList<HeightFieldPlaneFitSample> samples, DatumPlaneFitOptions options,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Validate(samples, options, cancellationToken);
             int poolCount = Math.Min(MaximumHypothesisSampleCount, samples.Count);
             int[] hypothesisIndices = new int[poolCount];
@@ -117,7 +118,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                             candidate = planeFit.Execute(new[]
                             {
                                 samples[hypothesisIndices[first]], samples[hypothesisIndices[second]], samples[hypothesisIndices[third]]
-                            });
+                            }, cancellationToken);
                         }
                         catch (ArgumentException) { continue; }
                         catch (InvalidOperationException) { hadNumericalFailure = true; continue; }
@@ -132,7 +133,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                             best = inliers;
                             ambiguous = false;
                         }
-                        else if (inliers.Length == best.Length && !SameIndices(inliers, best))
+                        else if (inliers.Length == best.Length && !SameIndices(inliers, best, cancellationToken))
                         {
                             ambiguous = true;
                         }
@@ -140,34 +141,39 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             if (!hadGeometry)
                 return Failed(hadNumericalFailure ? DatumPlaneFitFailureReason.NumericalFailure : DatumPlaneFitFailureReason.DegenerateGeometry,
-                    "No representable non-degenerate datum hypothesis was available.", samples.Count, hypothesisIndices, evaluated, options);
+                    "No representable non-degenerate datum hypothesis was available.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken);
             if (!HasSupport(best.Length, samples.Count, options))
-                return Failed(DatumPlaneFitFailureReason.InsufficientSupport, "No datum membership meets the declared count and majority ratio.", samples.Count, hypothesisIndices, evaluated, options);
+                return Failed(DatumPlaneFitFailureReason.InsufficientSupport, "No datum membership meets the declared count and majority ratio.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken);
             if (ambiguous)
-                return Failed(DatumPlaneFitFailureReason.AmbiguousSupport, "Distinct datum memberships share the maximum support count.", samples.Count, hypothesisIndices, evaluated, options);
+                return Failed(DatumPlaneFitFailureReason.AmbiguousSupport, "Distinct datum memberships share the maximum support count.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken);
 
             for (int iteration = 1; iteration <= MaximumRefitIterations; iteration++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 HeightFieldPlaneFitSample[] selected = new HeightFieldPlaneFitSample[best.Length];
-                for (int index = 0; index < best.Length; index++) selected[index] = samples[best[index]];
+                for (int index = 0; index < best.Length; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    selected[index] = samples[best[index]];
+                }
                 LeastSquaresHeightFieldPlaneFitResult fitted;
-                try { fitted = planeFit.Execute(selected); }
+                try { fitted = planeFit.Execute(selected, cancellationToken); }
                 catch (ArgumentException)
                 {
-                    return Failed(DatumPlaneFitFailureReason.DegenerateGeometry, "The selected datum does not span both horizontal axes.", samples.Count, hypothesisIndices, evaluated, options, iteration);
+                    return Failed(DatumPlaneFitFailureReason.DegenerateGeometry, "The selected datum does not span both horizontal axes.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken, iteration);
                 }
                 catch (InvalidOperationException)
                 {
-                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "The selected datum cannot be fitted in the finite calculation range.", samples.Count, hypothesisIndices, evaluated, options, iteration);
+                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "The selected datum cannot be fitted in the finite calculation range.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken, iteration);
                 }
                 if (!TryClassify(samples, fitted, options.MaximumAbsoluteHeightResidual, cancellationToken, out int[] refined, out double[] residuals))
-                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "Datum height residuals cannot be represented as finite values.", samples.Count, hypothesisIndices, evaluated, options, iteration);
+                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "Datum height residuals cannot be represented as finite values.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken, iteration);
                 if (!HasSupport(refined.Length, samples.Count, options))
-                    return Failed(DatumPlaneFitFailureReason.InsufficientSupport, "Refitting lost the declared datum support.", samples.Count, hypothesisIndices, evaluated, options, iteration);
-                if (!SameIndices(best, refined))
+                    return Failed(DatumPlaneFitFailureReason.InsufficientSupport, "Refitting lost the declared datum support.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken, iteration);
+                if (!SameIndices(best, refined, cancellationToken))
                 {
                     best = refined;
                     continue;
@@ -201,22 +207,26 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     }
                     else rejected.Add(index);
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 double meanRaw = rawOrigin + rawDeltaSum / selected.Length;
                 if (!IsFinite(rawDeltaSum) || !IsFinite(meanRaw))
-                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "The datum raw-height mean exceeds the finite range.", samples.Count, hypothesisIndices, evaluated, options, iteration);
+                    return Failed(DatumPlaneFitFailureReason.NumericalFailure, "The datum raw-height mean exceeds the finite range.", samples.Count, hypothesisIndices, evaluated, options, cancellationToken, iteration);
                 double rms = rmsScale == 0.0 ? 0.0 : rmsScale * Math.Min(1.0, Math.Sqrt(scaledSquaredSum / selected.Length));
-                return new DatumPlaneFitResult(DatumPlaneFitFailureReason.None, "Completed bounded datum consensus and stable least-squares refit.",
+                var result = new DatumPlaneFitResult(DatumPlaneFitFailureReason.None, "Completed bounded datum consensus and stable least-squares refit.",
                     samples.Count, fitted, selected, best, rejected.ToArray(), hypothesisIndices, residuals,
                     options, rms, meanRaw, evaluated, iteration);
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
             }
             return Failed(DatumPlaneFitFailureReason.RefitDidNotConverge, "Datum membership did not stabilize within the declared refit limit.",
-                samples.Count, hypothesisIndices, evaluated, options, MaximumRefitIterations);
+                samples.Count, hypothesisIndices, evaluated, options, cancellationToken, MaximumRefitIterations);
         }
 
         private static bool TryClassify(
             IReadOnlyList<HeightFieldPlaneFitSample> samples, LeastSquaresHeightFieldPlaneFitResult plane, double threshold,
             CancellationToken cancellationToken, out int[] indices, out double[] residuals)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             List<int> inliers = new List<int>();
             residuals = new double[samples.Count];
             for (int index = 0; index < samples.Count; index++)
@@ -224,11 +234,13 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 if ((index & 0x3ff) == 0) cancellationToken.ThrowIfCancellationRequested();
                 // Convert centered orthogonal distance to Y residual without subtracting rounded global heights.
                 double residual = plane.SignedDistance(samples[index].Position) / plane.Normal.Y;
-                if (!IsFinite(residual)) { indices = Array.Empty<int>(); return false; }
+                if (!IsFinite(residual)) { cancellationToken.ThrowIfCancellationRequested(); indices = Array.Empty<int>(); return false; }
                 residuals[index] = residual;
                 if (Math.Abs(residual) <= threshold) inliers.Add(index);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             indices = inliers.ToArray();
+            cancellationToken.ThrowIfCancellationRequested();
             return true;
         }
 
@@ -237,19 +249,27 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             return count >= options.MinimumInlierCount && count / (double)total >= options.MinimumInlierRatio;
         }
 
-        private static bool SameIndices(int[] first, int[] second)
+        private static bool SameIndices(int[] first, int[] second, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (first.Length != second.Length) return false;
             for (int index = 0; index < first.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (first[index] != second[index]) return false;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             return true;
         }
 
         private static DatumPlaneFitResult Failed(
-            DatumPlaneFitFailureReason reason, string message, int count, int[] hypothesisIndices, int evaluated, DatumPlaneFitOptions options, int iterations = 0)
+            DatumPlaneFitFailureReason reason, string message, int count, int[] hypothesisIndices, int evaluated, DatumPlaneFitOptions options, CancellationToken cancellationToken, int iterations = 0)
         {
-            return new DatumPlaneFitResult(reason, message, count, null, Array.Empty<HeightFieldPlaneFitSample>(),
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = new DatumPlaneFitResult(reason, message, count, null, Array.Empty<HeightFieldPlaneFitSample>(),
                 Array.Empty<int>(), Array.Empty<int>(), hypothesisIndices, Array.Empty<double>(), options, double.NaN, double.NaN, evaluated, iterations);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         private static void Validate(IReadOnlyList<HeightFieldPlaneFitSample> samples, DatumPlaneFitOptions options, CancellationToken cancellationToken)

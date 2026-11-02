@@ -131,16 +131,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             {
                 Validate(referencePose, candidatePose, options);
 
-                double translationX =
-                    candidatePose.TranslationX - referencePose.TranslationX;
-                double translationY =
-                    candidatePose.TranslationY - referencePose.TranslationY;
-                double translationZ =
-                    candidatePose.TranslationZ - referencePose.TranslationZ;
-                double translationDifference = Math.Sqrt(
-                    translationX * translationX
-                    + translationY * translationY
-                    + translationZ * translationZ);
+                double translationDifference = SurfaceSceneIndex.Distance(
+                    new ThreeDPoint(referencePose.TranslationX, referencePose.TranslationY, referencePose.TranslationZ),
+                    new ThreeDPoint(candidatePose.TranslationX, candidatePose.TranslationY, candidatePose.TranslationZ));
 
                 RelativeRotation relative = Relative(
                     referencePose,
@@ -164,6 +157,15 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                         : cosine;
                 double rotationDifferenceDegrees =
                     Math.Acos(cosine) * 180.0 / Math.PI;
+                if (!SurfaceMatchingContractValidation.IsFinite(translationDifference)
+                    || !SurfaceMatchingContractValidation.IsFinite(operationAngleDegrees)
+                    || !SurfaceMatchingContractValidation.IsFinite(trace)
+                    || !SurfaceMatchingContractValidation.IsFinite(rotationDifferenceDegrees))
+                {
+                    return RigidPoseSymmetryEquivalenceResult.Failed(
+                        "Rigid pose symmetry equivalence produced non-finite comparison evidence.");
+                }
+
                 bool equivalent =
                     translationDifference
                         <= options.MaximumTranslationDifference

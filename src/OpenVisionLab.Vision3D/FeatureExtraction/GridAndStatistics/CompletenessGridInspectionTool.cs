@@ -197,6 +197,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             CompletenessPresencePolicy policy,
             CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            CompletenessGridInspectionResult Complete(CompletenessGridInspectionResult value) { cancellationToken.ThrowIfCancellationRequested(); return value; }
             try
             {
                 Validate(
@@ -208,7 +210,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     inspectionMask,
                     requireMask,
                     profile,
-                    policy);
+                    policy, cancellationToken);
                 HeightMapRegionStatisticsResult reference =
                     regionStatisticsTool.Execute(
                         rowCount,
@@ -228,6 +230,11 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 }
 
                 double referenceMean = reference.Mean;
+                if (!IsFinite(referenceMean))
+                {
+                    throw new InvalidDataException(
+                        "Completeness Grid reference mean must be finite.");
+                }
                 List<CompletenessGridCellResult> cells =
                     new List<CompletenessGridCellResult>(
                         checked(profile.Rows * profile.Columns));
@@ -267,9 +274,19 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                             throw new InvalidDataException(statistics.Message);
                         }
 
-                        double? relative = statistics.HasFiniteSamples
-                            ? (double?)(statistics.Mean - referenceMean)
-                            : null;
+                        double? relative = null;
+                        if (statistics.HasFiniteSamples)
+                        {
+                            double mean = statistics.Mean;
+                            double difference = mean - referenceMean;
+                            if (!IsFinite(mean) || !IsFinite(difference))
+                            {
+                                throw new InvalidDataException(
+                                    "Completeness Grid inspection mean and reference-relative mean must be finite.");
+                            }
+
+                            relative = difference;
+                        }
                         CompletenessCellDecision decision =
                             CompletenessCellDecision.NotEvaluated;
                         CompletenessCoverageDisposition coverageDisposition =
@@ -325,7 +342,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     : failedCellCount == 0
                         ? CompletenessCellDecision.Pass
                         : CompletenessCellDecision.Fail;
-                return new CompletenessGridInspectionResult(
+                return Complete(new CompletenessGridInspectionResult(
                     true,
                     "Completed deterministic completeness-grid inspection.",
                     reference.FiniteCellCount,
@@ -333,14 +350,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     Array.AsReadOnly(cells.ToArray()),
                     passedCellCount,
                     failedCellCount,
-                    aggregateDecision);
+                    aggregateDecision));
             }
             catch (Exception exception) when (
                 exception is ArgumentException
                 || exception is InvalidDataException
                 || exception is OverflowException)
             {
-                return new CompletenessGridInspectionResult(
+                return Complete(new CompletenessGridInspectionResult(
                     false,
                     exception.Message,
                     0,
@@ -348,7 +365,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     Array.Empty<CompletenessGridCellResult>(),
                     0,
                     0,
-                    CompletenessCellDecision.NotEvaluated);
+                    CompletenessCellDecision.NotEvaluated));
             }
         }
 
@@ -361,8 +378,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             HeightGridMask inspectionMask,
             bool requireMask,
             CompletenessGridProfile profile,
-            CompletenessPresencePolicy policy)
+            CompletenessPresencePolicy policy, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             HeightMapRegionStatisticsTool.Validate(
                 rowCount,
                 columnCount,
@@ -384,7 +402,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     rowCount,
                     columnCount,
                     inspectionRegion,
-                    inspectionMask);
+                    inspectionMask, cancellationToken);
             }
 
             if (profile == null)
@@ -436,14 +454,16 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 throw new InvalidDataException(
                     "Completeness Grid presence policy requires finite ordered bounds and coverage within [0, 1].");
             }
-        }
+                    cancellationToken.ThrowIfCancellationRequested();
+}
 
         private static void ValidateInspectionMask(
             int rowCount,
             int columnCount,
             HeightGridRegion inspectionRegion,
-            HeightGridMask inspectionMask)
+            HeightGridMask inspectionMask, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             HeightMapRegionStatisticsTool.ValidateMask(
                 rowCount,
                 columnCount,
@@ -452,8 +472,10 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             int selectedCellCount = 0;
             for (int row = 0; row < rowCount; row++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (int column = 0; column < columnCount; column++)
                 {
+                cancellationToken.ThrowIfCancellationRequested();
                     int index = checked(row * columnCount + column);
                     if (!inspectionMask.Foreground[index])
                     {
@@ -478,7 +500,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 throw new InvalidDataException(
                     "Completeness Grid inspection mask requires at least one selected cell inside the authored Inspection Grid ROI.");
             }
-        }
+                    cancellationToken.ThrowIfCancellationRequested();
+}
 
         private static bool IsFinite(double value)
         {

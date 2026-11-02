@@ -2,7 +2,7 @@
 
 C# 애플리케이션에 2D 검사 도구와 높이 맵 / 전체 XYZ 3D 알고리즘을 연결하세요.
 
-[![Source v3.2.0-rc.5](https://img.shields.io/badge/source-v3.2.0--rc.5-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.1](https://img.shields.io/badge/source-v3.3.0--rc.1-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 [English](README.md) · **한국어**
 
@@ -46,7 +46,7 @@ Console.WriteLine($"{result.ResultImage.Width}x{result.ResultImage.Height}");
    [3D 시작 예제](docs/sdk-reference.md#3d-quick-start)를 따라갑니다.
    오류·지표·단위·소유권을 확인한 뒤 애플리케이션의 판정과 연결합니다.
 
-이 체크아웃의 소스 버전은 **`3.2.0-rc.5`**이며 [Directory.Build.props](Directory.Build.props)에
+이 체크아웃의 소스 버전은 **`3.3.0-rc.1`**이며 [Directory.Build.props](Directory.Build.props)에
 정의된 사전 버전입니다. CLR 어셈블리 식별 버전은 `3.0.0.0`을 유지합니다.
 소스 버전이 해당 NuGet 패키지나 바이너리 릴리스의 게시를 뜻하지는 않습니다.
 기존 애플리케이션을 업데이트하기 전에 [버전 이력](docs/sdk-reference.md#version)과
