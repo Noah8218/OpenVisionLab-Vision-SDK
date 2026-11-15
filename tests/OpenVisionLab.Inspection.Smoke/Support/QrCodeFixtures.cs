@@ -2,6 +2,7 @@ using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 
 namespace OpenVisionLab.Inspection.Smoke
 {
@@ -23,6 +24,34 @@ namespace OpenVisionLab.Inspection.Smoke
         internal static string Text(string key) => Fixtures[key].Text;
         internal static Mat Scene(params string[] keys) => Render(false, keys);
         internal static Mat Partial() => Render(true, "a", "b");
+
+        internal static void Export(string directory)
+        {
+            string root = Path.GetFullPath(directory);
+            SmokeAssert.Require(root.StartsWith(@"D:\", StringComparison.OrdinalIgnoreCase) && !Directory.Exists(root), "Choose a new D: QR fixture directory.");
+            Directory.CreateDirectory(root);
+            foreach (string key in Fixtures.Keys)
+            {
+                using Mat image = Scene(key);
+                Cv2.ImWrite(Path.Combine(root, key + ".pgm"), image);
+            }
+            using (Mat blank = Scene()) Cv2.ImWrite(Path.Combine(root, "blank.pgm"), blank);
+            using (Mat two = Scene("a", "b")) Cv2.ImWrite(Path.Combine(root, "two.pgm"), two);
+            using (Mat partial = Partial()) Cv2.ImWrite(Path.Combine(root, "partial-trial-7.pgm"), partial);
+            using Mat codeScene = Scene("a");
+            using Mat code = new Mat(codeScene, new Rect(48, 48, 232, 232));
+            using Mat template = EdgePoseRefinementSmokeSuite.CreateTemplate();
+            foreach (string name in new[] { "reference", "translated", "absent", "border" })
+            {
+                int dx = name == "translated" ? 18 : name == "border" ? 488 : 0;
+                int dy = name == "translated" ? 11 : 0;
+                using Mat image = new Mat(480, 640, MatType.CV_8UC1, Scalar.All(17));
+                if (name != "absent") { using Mat target = new Mat(image, new Rect(80 + dx, 60 + dy, 64, 64)); template.CopyTo(target); }
+                if (name != "border") { using Mat target = new Mat(image, new Rect(180 + dx, 50 + dy, 232, 232)); code.CopyTo(target); }
+                Cv2.ImWrite(Path.Combine(root, "located-" + name + ".png"), image);
+            }
+            File.WriteAllText(Path.Combine(root, "oracle.txt"), "Fixed independent qrcode8.2 modules; PART-A/PART-B and original UTF8/whitespace; damage pattern retained from Partial(). Located datum center (112,92)+(dx,dy); QR quiet-zone rectangle (180,50,232,232)+(dx,dy). No executed decode output was used as an oracle.");
+        }
 
         private static Mat Render(bool damageSecond, params string[] keys)
         {

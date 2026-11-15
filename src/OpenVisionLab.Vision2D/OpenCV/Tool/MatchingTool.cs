@@ -1315,16 +1315,9 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private void WaitForSearchTasks(Task firstTask, Task plusTask, Task minusTask)
         {
-            if (!cancellationToken.CanBeCanceled)
-            {
-                plusTask?.Wait();
-                minusTask?.Wait();
-                firstTask.Wait();
-                return;
-            }
-
             try
             {
+                // Join without a token: shared images cannot be released while a reader remains.
                 Task.WaitAll(new[] { firstTask, plusTask, minusTask }.Where(task => task != null).ToArray());
             }
             catch (AggregateException) when (cancellationToken.IsCancellationRequested)

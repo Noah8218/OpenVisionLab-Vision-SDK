@@ -53,6 +53,7 @@ C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.MorphologyToolProperty|
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.QrCodeToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|()
+C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.ThresholdToolProperty|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.AutoMPointCandidateResult|()
@@ -103,6 +104,7 @@ C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|()
+C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.ThresholdTool|()
 C|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|()
@@ -389,6 +391,12 @@ F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.FilterToolType|BoxFilter|OpenVis
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.FilterToolType|GaussianBlur|OpenVisionLab.Vision2D.FilterToolType|static,const|value=3
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.FilterToolType|MedianBlur|OpenVisionLab.Vision2D.FilterToolType|static,const|value=2
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.FilterToolType|value__|System.Int32||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|Bgra|OpenVisionLab.Vision2D.ImageChannelOrder|static,const|value=4
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|Bgr|OpenVisionLab.Vision2D.ImageChannelOrder|static,const|value=2
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|Gray|OpenVisionLab.Vision2D.ImageChannelOrder|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|Rgba|OpenVisionLab.Vision2D.ImageChannelOrder|static,const|value=3
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|Rgb|OpenVisionLab.Vision2D.ImageChannelOrder|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|value__|System.Int32||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.MeanType|MeanStdDev|OpenVisionLab.Vision2D.MeanType|static,const|value=1
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.MeanType|Mean|OpenVisionLab.Vision2D.MeanType|static,const|value=0
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.MeanType|value__|System.Int32||
@@ -410,7 +418,29 @@ F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AutoMPointCandidateMode
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AutoMPointCandidateMode|WholeAnalysisRoi|OpenVisionLab.Vision2D.Property.AutoMPointCandidateMode|static,const|value=1
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AutoMPointCandidateMode|value__|System.Int32||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.COpenCVAlgorithmBase|swTaktTimems|System.Diagnostics.Stopwatch||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperPolarity|Either|OpenVisionLab.Vision2D.Property.CaliperPolarity|static,const|value=2
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperPolarity|Falling|OpenVisionLab.Vision2D.Property.CaliperPolarity|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperPolarity|Rising|OpenVisionLab.Vision2D.Property.CaliperPolarity|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperPolarity|value__|System.Int32||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperSelection|First|OpenVisionLab.Vision2D.Property.CaliperSelection|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperSelection|Last|OpenVisionLab.Vision2D.Property.CaliperSelection|static,const|value=2
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperSelection|Strongest|OpenVisionLab.Vision2D.Property.CaliperSelection|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperSelection|value__|System.Int32||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperShape|Circle|OpenVisionLab.Vision2D.Property.CaliperShape|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperShape|Line|OpenVisionLab.Vision2D.Property.CaliperShape|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperShape|value__|System.Int32||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|swTaktTimems|System.Diagnostics.Stopwatch||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperAcceptance|Accepted|OpenVisionLab.Vision2D.Result.CaliperAcceptance|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperAcceptance|NotEvaluated|OpenVisionLab.Vision2D.Result.CaliperAcceptance|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperAcceptance|Rejected|OpenVisionLab.Vision2D.Result.CaliperAcceptance|static,const|value=2
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperAcceptance|value__|System.Int32||
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|Ambiguous|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=3
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|EdgeFound|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=0
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|FlatPeak|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=5
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|InsufficientCoverage|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=1
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|NoEdge|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=2
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|UnsupportedPeak|OpenVisionLab.Vision2D.Result.CaliperStationStatus|static,const|value=4
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|value__|System.Int32||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateCoordinateFrame|SourceImage|OpenVisionLab.Vision2D.Result.VisionObjectCandidateCoordinateFrame|static,const|value=0
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateCoordinateFrame|value__|System.Int32||
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.VisionObjectCandidateGenerationStage|BlobLabeling|OpenVisionLab.Vision2D.Result.VisionObjectCandidateGenerationStage|static,const|value=0
@@ -486,6 +516,8 @@ F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|BlobInv
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|BlobLabelingFailed|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=502
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|BlobNoResult|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=504
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|BlobRoiInvalid|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=501
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|CaliperGeometryDegenerate|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1201
+F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|CaliperNoEdge|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=1200
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|ContourInvalidAdaptiveBlockSize|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=402
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|ContourInvalidAreaRange|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=400
 F|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|ContourNoResult|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|static,const|value=403
@@ -964,6 +996,7 @@ M|OpenVisionLab.Core|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator|GetVer
 M|OpenVisionLab.Core|OpenVisionLab.Core.Geometry2D.VerticalLineCalculator|GetVerticalLines|System.Collections.Generic.List<OpenVisionLab.Core.Geometry2D.LineSegment2D>|(System.Collections.Generic.List<OpenCvSharp.Point> Edge,System.Int32 ImageW,System.Int32 ImageH,System.Int32 POINT_RANGE,OpenVisionLab.Core.FormulaUtil+PROJECTION_DIR VER_PRJ_DIR)|static
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunResult|Dispose|System.Void|()|
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunner|Run|OpenVisionLab.Inspection.CombinedInspectionRunResult|(OpenVisionLab.Inspection.CombinedInspectionInput input,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision2D.Tool.IVisionTool> twoDTools,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool> threeDTools)|
+M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.CombinedInspectionRunner|Run|OpenVisionLab.Inspection.CombinedInspectionRunResult|(OpenVisionLab.Inspection.CombinedInspectionInput input,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision2D.Tool.IVisionTool> twoDTools,System.Collections.Generic.IEnumerable<OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool> threeDTools,System.Threading.CancellationToken cancellationToken)|
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.IThreeDToolAdapter|Execute|OpenVisionLab.Inspection.ThreeDToolExecutionResult|(System.Threading.CancellationToken cancellationToken)|abstract
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolAdapter<TResult>|Execute|OpenVisionLab.Inspection.ThreeDToolExecutionResult<TResult>|(System.Threading.CancellationToken cancellationToken optional=<null>)|
 M|OpenVisionLab.Inspection|OpenVisionLab.Inspection.ThreeDToolExecutionRunner|Run|OpenVisionLab.Inspection.ThreeDToolExecutionReport|(System.Collections.Generic.IEnumerable<OpenVisionLab.Inspection.IThreeDToolAdapter> adapters)|static
@@ -983,6 +1016,7 @@ M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.COpenCVHelper|SetImageChannel1|S
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.COpenCVHelper|SetImageChannel3ToMat|OpenCvSharp.Mat|(OpenCvSharp.Mat image)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.COpenCVHelper|SetImageChannel3|System.Boolean|(OpenCvSharp.Mat image)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.COpenCVHelper|SetImageChannel4|System.Boolean|(OpenCvSharp.Mat image)|static
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.OpenCvHelper|CreateGray8|OpenCvSharp.Mat|(OpenCvSharp.Mat source,OpenVisionLab.Vision2D.ImageChannelOrder order)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.OpenCvHelper|IsImageEmpty|System.Boolean|(OpenCvSharp.Mat image)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.OpenCvHelper|IsMatEmpty|System.Boolean|(OpenCvSharp.Mat MatSource)|static
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.OpenCvHelper|IsRectEmpty|System.Boolean|(OpenCvSharp.Rect rt)|static
@@ -1105,6 +1139,10 @@ M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|SetProperty|Syst
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|Run|System.Void|()|virtual
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.IOpenCVPropertyRotateScale property)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|Transform|OpenCvSharp.Mat|(OpenCvSharp.Mat source,System.Double angle,System.Double scaleXPercent,System.Double scaleYPercent,OpenCvSharp.InterpolationFlags interpolation,OpenCvSharp.BorderTypes borderType)|static
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source)|virtual
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source,System.Threading.CancellationToken cancellationToken)|
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|Run|System.Void|()|virtual
+M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|SetProperty|System.Void|(OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty value)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|ConvertPoint2fToPoint2d|OpenCvSharp.Point2d[]|(OpenCvSharp.Point2f[] points)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|ConvertPoint2fToPoint2d|OpenCvSharp.Point2d|(OpenCvSharp.Point2f point)|
 M|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|Execute|OpenVisionLab.Vision2D.Tool.VisionToolResult|(OpenCvSharp.Mat source,System.Threading.CancellationToken cancellationToken)|
@@ -1207,6 +1245,7 @@ M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDe
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionTool|Execute|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult|(OpenVisionLab.Vision3D.Geometry.HeightMap3D source,System.Threading.CancellationToken cancellationToken)|
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionTool|TryCalculateRawHeightResidual|System.Boolean|(System.Double normalX,System.Double normalY,System.Double normalZ,System.Double planeOffset,System.Double gridX,System.Double gridY,System.Double rawHeight,out System.Double residual)|static
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.GapFlushInspectionTool|Execute|OpenVisionLab.Vision3D.Inspection.GapFlushInspectionResult|(System.Double firstMinimumU,System.Double firstMaximumU,System.Double secondMinimumU,System.Double secondMaximumU,OpenVisionLab.Vision3D.Inspection.GapFlushRegionStatistics first,OpenVisionLab.Vision3D.Inspection.GapFlushRegionStatistics second,OpenVisionLab.Vision3D.Inspection.GapFlushInspectionOptions options)|
+M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ICancellableThreeDInspectionTool|Execute|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult|(OpenVisionLab.Vision3D.Geometry.HeightMap3D source,System.Threading.CancellationToken cancellationToken)|abstract
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|Execute|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult|(OpenVisionLab.Vision3D.Geometry.HeightMap3D source)|abstract
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushTool|Execute|OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushResult|(OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushInput input,OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushOptions options,System.Threading.CancellationToken cancellationToken optional=<null>)|
 M|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PlaneFlatnessInspectionTool|ExecuteWithDatum|OpenVisionLab.Vision3D.Inspection.PlaneFlatnessInspectionResult|(OpenVisionLab.Vision3D.FeatureExtraction.DatumPlaneFitResult referenceDatum,System.Collections.Generic.IReadOnlyList<OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample> measurementSamples,System.Double tolerance)|static
@@ -1832,6 +1871,35 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|Interpolation|OpenCvSharp.InterpolationFlags|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|ScaleXPercent|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|ScaleYPercent|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|AngleDegrees|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|AngularPitchDegrees|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|CenterX|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|CenterY|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|ConditioningEpsilon|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MaximumCircleGapDegrees|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MaximumOutlierIterations|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MaximumResidual|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MaximumRmsResidual|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MinimumCircleCoverageDegrees|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MinimumContrast|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MinimumPointCount|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MinimumProfileCoverage|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|MinimumTangentCoverage|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|OutlierRemovalEnabled|System.Boolean|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|OutlierResidualCutoff|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|Polarity|OpenVisionLab.Vision2D.Property.CaliperPolarity|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|QualityGateEnabled|System.Boolean|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|Radius|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|ScanLength|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|ScanSampleCount|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|Selection|OpenVisionLab.Vision2D.Property.CaliperSelection|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|Shape|OpenVisionLab.Vision2D.Property.CaliperShape|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|StartAngleDegrees|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|StationCount|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|StationPitch|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|TangentSampleCount|System.Int32|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|TangentWidth|System.Double|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|TieEpsilon|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|PATTERN_PATH|System.String|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|RANSAC_REPROJ_THRESHOLD|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|SCORE_MIN|System.Double|index=|get,set|
@@ -1927,6 +1995,40 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_Result|edgeLi
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_VerticalLines|cLines|System.Collections.Generic.List<OpenVisionLab.Core.Geometry2D.CLine>|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_VerticalLines|index|System.Int32|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_VerticalLines|intersectionLengths|System.Collections.Generic.List<System.Double>|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperCircleGeometry|CenterX|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperCircleGeometry|CenterY|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperCircleGeometry|Radius|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|CenterX|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|CenterY|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|NormalX|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|NormalY|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|SignedDistance|System.Double|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Acceptance|OpenVisionLab.Vision2D.Result.CaliperAcceptance|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|CircleCoverageDegrees|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Circle|OpenVisionLab.Vision2D.Result.CaliperCircleGeometry|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|ExcludedPointIds|System.Collections.Generic.IReadOnlyList<System.Int32>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|InputImageSize|OpenCvSharp.Size|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Line|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|MaxResidual|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|MaximumCircleGapDegrees|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|MeasurementEstablished|System.Boolean|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|OriginalPointIds|System.Collections.Generic.IReadOnlyList<System.Int32>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Reason|System.String|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|RmsResidual|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Shape|OpenVisionLab.Vision2D.Property.CaliperShape|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|Stations|System.Collections.Generic.IReadOnlyList<OpenVisionLab.Vision2D.Result.CaliperStationEvidence>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|UsedPointIds|System.Collections.Generic.IReadOnlyList<System.Int32>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|Contrast|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|EdgePoint|System.Nullable<OpenCvSharp.Point2d>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|ExpectedSamples|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|RawPeakPosition|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|ScanNormal|OpenCvSharp.Point2d|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|StationCenter|OpenCvSharp.Point2d|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|StationId|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|Status|OpenVisionLab.Vision2D.Result.CaliperStationStatus|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|SubpixelOffset|System.Nullable<System.Double>|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|ValidProfileBins|System.Int32|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|ValidSamples|System.Int32|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.ContourResult|Angle|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.ContourResult|Area|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.ContourResult|Bounding|System.Drawing.Rectangle|index=|get,set|
@@ -2058,6 +2160,8 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.IVisionTool|Name|System.Str
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|property|OpenVisionLab.Vision2D.Property.IOpenCvPropertyLineGauge|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.LineGaugeTool|resultList|System.Collections.Generic.List<OpenVisionLab.Vision2D.Result.LineGaugeResult>|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|LatestReading|OpenVisionLab.Vision2D.Result.QrCodeReadingEvidence|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|LatestMeasurement|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|index=|get|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|property|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Angle|System.Double|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Bounds|System.Drawing.RectangleF|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Center|System.Drawing.PointF|index=|get,set|
@@ -2066,6 +2170,7 @@ P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Kind|Open
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Label|System.String|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Points|System.Collections.Generic.List<System.Drawing.PointF>|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolOverlay|Start|System.Drawing.PointF|index=|get,set|
+P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|CaliperMeasurement|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|ComputeDiagnostics|OpenVisionLab.Compute.ComputeExecutionEvidence|index=|get|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|EdgeBasedMatchingDiagnostics|OpenVisionLab.Vision2D.Result.EdgeBasedMatchingDiagnosticEvidence|index=|get,set|
 P|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolResult|Elapsed|System.TimeSpan|index=|get,set|
@@ -3427,6 +3532,7 @@ T|OpenVisionLab.Vision2D.Blob|OpenVisionLab.Vision2D.Blob.VisionPipelineBlobTool
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.COpenCVHelper|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.EdgeDetectionToolType|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.FilterToolType|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.ImageChannelOrder|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.MeanType|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.OpenCvHelper|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Pipeline.VisionPipelineAcceptanceEvaluator|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
@@ -3449,6 +3555,9 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AffineTransformToolProp
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AutoMPointCandidateMode|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.AutoMPointToolProperty|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IAutoMPointToolProperty|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.COpenCVAlgorithmBase|class|abstract|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperPolarity|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperSelection|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.CaliperShape|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.ContourToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase,OpenVisionLab.Vision2D.Property.IOpenCVPropertyContour,OpenVisionLab.Vision2D.Property.IVisionObjectFilterProperty|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.EdgeBasedTemplateMatchingToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase,OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeBasedTemplateMatching|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.EdgeDetectionToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyEdgeDetection|underlying=-
@@ -3477,6 +3586,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|cla
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|class|abstract|base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.QrCodeToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotateScaleToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyRotateScale|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.RotatedCaliperToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.SiftToolProperty|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvToolPropertyBase|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyBase,OpenVisionLab.Vision2D.Property.IOpenCVPropertyFeatureSIFT|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Property.ThresholdToolProperty|class||base=System.Object|interfaces=OpenVisionLab.Vision2D.Property.IOpenCVPropertyThreshold|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.AutoMPointCandidateResult|class|sealed|base=System.Object|interfaces=|underlying=-
@@ -3488,6 +3598,12 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CResultMean|class||base=S
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_Edge|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_Result|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CVLineGuage_VerticalLines|class||base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperAcceptance|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperCircleGeometry|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperLineGeometry|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperMeasurementEvidence|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationEvidence|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CaliperStationStatus|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.ContourResult|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.CornerResult|class||base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Result.EdgeBasedMatchingCandidateDiagnostic|class|sealed|base=System.Object|interfaces=|underlying=-
@@ -3533,6 +3649,7 @@ T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MeanTool|class||base=OpenVi
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.MorphologyTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.QrCodeTool|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotateScaleTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
+T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.RotatedCaliperTool|class|sealed|base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.SiftTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.ICancellableVisionTool,OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.ThresholdTool|class||base=OpenVisionLab.Vision2D.Property.OpenCvAlgorithmBase|interfaces=OpenVisionLab.Vision2D.Tool.IVisionTool,System.IDisposable|underlying=-
 T|OpenVisionLab.Vision2D|OpenVisionLab.Vision2D.Tool.VisionToolErrorCode|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
@@ -3818,12 +3935,13 @@ T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.CrossSectionDimension
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsInspectionTool|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsSample|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionOptions|class|sealed|base=System.Object|interfaces=|underlying=-
-T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
+T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.ICancellableThreeDInspectionTool,OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.GapFlushInspectionOptions|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.GapFlushInspectionResult|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.GapFlushInspectionTool|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.GapFlushRegionStatistics|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.HeightMapInputRequirements|class|sealed|base=System.Object|interfaces=|underlying=-
+T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ICancellableThreeDInspectionTool|interface|abstract|base=-|interfaces=OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|interface|abstract|base=-|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushInput|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PhysicalEdgeGapFlushOptions|class|sealed|base=System.Object|interfaces=|underlying=-
@@ -3835,7 +3953,7 @@ T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsIn
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionResult|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThicknessInspectionOptions|class|sealed|base=System.Object|interfaces=|underlying=-
-T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThicknessInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
+T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThicknessInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.ICancellableThreeDInspectionTool,OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionErrorCode|enum|sealed|base=System.Enum|interfaces=System.IComparable,System.IConvertible,System.IFormattable,System.ISpanFormattable|underlying=System.Int32
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionMetricNames+DatumPlaneRawHeightDeviation|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.ThreeDInspectionMetricNames+Quality|class|abstract,sealed|base=System.Object|interfaces=|underlying=-
@@ -3850,4 +3968,4 @@ T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.VolumeInspectionOptio
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.VolumeInspectionResult|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.VolumeInspectionTool|class|sealed|base=System.Object|interfaces=|underlying=-
 T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.WarpageInspectionOptions|class|sealed|base=System.Object|interfaces=|underlying=-
-T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.WarpageInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-
+T|OpenVisionLab.Vision3D|OpenVisionLab.Vision3D.Inspection.WarpageInspectionTool|class|sealed|base=System.Object|interfaces=OpenVisionLab.Vision3D.Inspection.ICancellableThreeDInspectionTool,OpenVisionLab.Vision3D.Inspection.IThreeDInspectionTool|underlying=-

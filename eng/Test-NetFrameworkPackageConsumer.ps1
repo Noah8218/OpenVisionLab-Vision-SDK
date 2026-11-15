@@ -35,7 +35,7 @@ New-Item -ItemType Directory -Force -Path $consumer, $reports, $temp, $cache | O
 $commands = [Collections.Generic.List[object]]::new()
 $dotnet = (Get-Command dotnet).Source
 $source = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests/OpenVisionLab.PackageConsumer.NetFrameworkSmoke'
-foreach ($name in @('Program.cs', 'OpenVisionLab.PackageConsumer.NetFrameworkSmoke.csproj')) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $consumer }
+foreach ($name in @('Program.cs', 'HardeningChecks.cs', 'OpenVisionLab.PackageConsumer.NetFrameworkSmoke.csproj')) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $consumer }
 # Keep the isolated consumer on the SDK selected by the repository and CI.
 Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'global.json') -Destination $consumer
 $project = Join-Path $consumer 'OpenVisionLab.PackageConsumer.NetFrameworkSmoke.csproj'

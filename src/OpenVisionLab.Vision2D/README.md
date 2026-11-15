@@ -282,6 +282,55 @@ invalid artifact metadata, duplicate parameters, and DTD input fail closed.
 Deserialization is inert: it never calls a resolver or executes a Tool. The host
 owns file/database persistence and maps stable artifact IDs to its storage.
 
+## Rotated caliper: line and circle
+
+`RotatedCaliperTool` samples bilinear normal profiles and fits a line or circle in
+source pixels. It requires `CV_8UC1`; the host chooses and converts its channel
+order explicitly. Existing `LineGaugeTool` behavior is unchanged.
+
+```csharp
+using System;
+using OpenVisionLab.Vision2D;
+using OpenVisionLab.Vision2D.Property;
+using OpenVisionLab.Vision2D.Tool;
+
+// gray is a caller-owned CV_8UC1 Mat; configure the expected edge region.
+using RotatedCaliperTool tool = new RotatedCaliperTool();
+tool.SetProperty(new RotatedCaliperToolProperty
+{
+    Shape = CaliperShape.Line, CenterX = 48, CenterY = 48,
+    AngleDegrees = 0, StationCount = 9, StationPitch = 3,
+    ScanLength = 20, ScanSampleCount = 21,
+    Polarity = CaliperPolarity.Rising, QualityGateEnabled = false
+});
+using VisionToolResult result = tool.Execute(gray);
+if (result.CaliperMeasurement != null)
+{
+    Console.WriteLine($"Measured={result.CaliperMeasurement.MeasurementEstablished}; Quality={result.CaliperMeasurement.Acceptance}");
+}
+```
+
+Coordinates use x-right/y-down pixels and clockwise-positive angles. For lines,
+the angle is the tangent; the scan normal is `(-sin(angle), cos(angle))`. Circle
+mode uses `Shape=CaliperShape.Circle`, an initial `Radius`, `StartAngleDegrees`
+and `AngularPitchDegrees`; stations scan outward. Do not duplicate the 360-degree
+endpoint. Each bilinear sample requires four valid source neighbors.
+
+`MinimumProfileCoverage` defaults to1, separately from tangent-bin coverage.
+Clipped scans need an explicit lower value; invalid gaps are never bridged.
+Polarity, strongest/first/last selection and ties are explicit. Optional outlier
+removal is bounded and deterministic. Inspect retained station IDs, accepted and
+rejected points and pixel residuals in `CaliperMeasurement`.
+
+`Success` establishes geometry, not product acceptance. With the default disabled
+quality gate, `Acceptance` is `NotEvaluated`. Enable and configure point-count,
+residual and circle-coverage limits before using `Accepted`/`Rejected`. Returned
+evidence and result images are independent snapshots. The Tool supports
+cooperative cancellation; serialize configuration, execution and disposal.
+Pipeline uses `rotatedCaliper` (alias `RotatedCaliperTool`) with the same schema
+and property contract. Physical-unit conversion and equipment judgment belong to
+the host. See the [device-free Host workflow](../../docs/sdk-reference.md#device-free-frame-host).
+
 ## Results, errors and recovery
 
 | Observation | Meaning and caller action |
@@ -341,7 +390,7 @@ reported. To retain an output after disposing a result, make an owned `Clone()`.
 Use one Tool per sequential worker. Concurrent execution, property changes,
 template changes, input mutation and disposal on the same instance are unsupported.
 All 2D calls remain synchronous. `MatchingTool`,
-`EdgeBasedTemplateMatchingTool`, `EdgeDetectionTool`, `AutoMPointTool`, `SiftTool`, and `LineGaugeTool` implement
+`EdgeBasedTemplateMatchingTool`, `EdgeDetectionTool`, `AutoMPointTool`, `SiftTool`, `LineGaugeTool`, and `RotatedCaliperTool` implement
 `ICancellableVisionTool.Execute(Mat, CancellationToken)`. Their managed ROI,
 candidate, angle, scale and feature loops observe the token, and native OpenCV calls
 are checked before and after returning. A native call already in progress cannot be
@@ -353,7 +402,11 @@ The token overloads of `VisionPipelineRuntime.Run` and
 call. If such a non-cooperative Tool returns after cancellation, the runtime disposes
 its returned result and does not publish its output layer. Pipeline
 `MaxElapsedMilliseconds` still checks elapsed time **after** execution and does not
-abort work. `CombinedInspectionRunner.Run` retains its existing tokenless contract.
+abort work. `CombinedInspectionRunner.Run` retains its tokenless overload and
+adds a cooperative cancellation overload; 3D forwarding uses the additive
+`ICancellableThreeDInspectionTool` contract. A canceled combined run releases its
+partial results and rethrows `OperationCanceledException`. A normally returned
+combined result owns its snapshots and releases reference-shared results once.
 
 ```csharp
 using System;

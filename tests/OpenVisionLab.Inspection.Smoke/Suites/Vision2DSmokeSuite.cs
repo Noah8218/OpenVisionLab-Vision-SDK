@@ -28,6 +28,7 @@ namespace OpenVisionLab.Inspection.Smoke
     {
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("Pixel hardening explicit gray conversion preserves color order stride depth and ownership", TestExplicitGrayInput);
             yield return new SmokeCase("Smoke numerical assertions reject non-finite comparisons", TestNumericalAssertionBoundary);
             yield return new SmokeCase("Edge learning cache preserves exact settings and fresh-instance equivalence", TestEdgeLearningCachePrecision);
             yield return new SmokeCase("SIFT diagnostics survive success failure and repeated ROI execution", TestSiftExecutionDiagnostics);
@@ -93,6 +94,54 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Pipeline rejects configurations without an executable step", TestVisionPipelineRejectsNoExecutableSteps);
             yield return new SmokeCase("Pipeline acceptance supports only a terminal expected failure", TestVisionPipelineExpectedFailureAcceptance);
             yield return new SmokeCase("Pipeline acceptance checks finite inclusive metric and elapsed boundaries", TestAcceptanceBoundaries);
+        }
+
+        private static void TestExplicitGrayInput()
+        {
+            foreach (ImageChannelOrder order in Enum.GetValues<ImageChannelOrder>())
+            {
+                int channels = order == ImageChannelOrder.Gray ? 1 : order == ImageChannelOrder.Rgb || order == ImageChannelOrder.Bgr ? 3 : 4;
+                using Mat parent = new Mat(4, 6, MatType.CV_8UC(channels), Scalar.All(0));
+                using Mat roi = new Mat(parent, new Rect(1, 1, 3, 2));
+                Require(!roi.IsContinuous(), "Fixture must exercise actual row stride.");
+                if (channels == 1) roi.SetTo(Scalar.All(73));
+                else
+                {
+                    bool rgb = order == ImageChannelOrder.Rgb || order == ImageChannelOrder.Rgba;
+                    using Mat red = roi.Col(0);
+                    using Mat green = roi.Col(1);
+                    using Mat blue = roi.Col(2);
+                    red.SetTo(rgb ? new Scalar(255, 0, 0, 0) : new Scalar(0, 0, 255, 0));
+                    green.SetTo(new Scalar(0, 255, 0, 127));
+                    blue.SetTo(rgb ? new Scalar(0, 0, 255, 255) : new Scalar(255, 0, 0, 255));
+                }
+                using Mat before = parent.Clone();
+                using Mat contiguous = roi.Clone();
+                using (Mat gray = OpenCvHelper.CreateGray8(roi, order))
+                using (Mat other = OpenCvHelper.CreateGray8(contiguous, order))
+                {
+                    Require(Cv2.Norm(gray, other, NormTypes.INF) == 0 && Cv2.Norm(parent, before, NormTypes.INF) == 0, "Conversion must honor stride and preserve caller pixels.");
+                    byte[] expected = channels == 1 ? new byte[] { 73, 73, 73 } : new byte[] { 76, 150, 29 };
+                    for (int x = 0; x < 3; x++) Require(gray.At<byte>(0, x) == expected[x], "Independent gray weights or alpha policy changed.");
+                    gray.Set(0, 0, (byte)0);
+                    Require(Cv2.Norm(parent, before, NormTypes.INF) == 0, "Gray snapshot must not share input pixels.");
+                }
+                Require(!parent.IsDisposed, "Disposing conversion must preserve source.");
+            }
+            using Mat rgbInput = new Mat(1, 1, MatType.CV_8UC3, new Scalar(255, 0, 0));
+            using Mat legacy = rgbInput.Clone();
+            OpenCvHelper.SetImageChannel1(legacy);
+            Require(legacy.At<byte>(0, 0) == 76, "Legacy RGB weighting changed.");
+            foreach (MatType type in new[] { MatType.CV_16UC1, MatType.CV_32FC1, MatType.CV_8UC2 })
+            {
+                using Mat invalid = new Mat(2, 2, type);
+                RequireThrows<ArgumentException>(() => OpenCvHelper.CreateGray8(invalid, ImageChannelOrder.Gray));
+            }
+            RequireThrows<ArgumentException>(() => OpenCvHelper.CreateGray8(null, ImageChannelOrder.Gray));
+            using Mat empty = new Mat();
+            RequireThrows<ArgumentException>(() => OpenCvHelper.CreateGray8(empty, ImageChannelOrder.Gray));
+            empty.Dispose();
+            RequireThrows<ArgumentException>(() => OpenCvHelper.CreateGray8(empty, ImageChannelOrder.Gray));
         }
 
         private static void TestNumericalAssertionBoundary()
@@ -2950,12 +2999,13 @@ namespace OpenVisionLab.Inspection.Smoke
                 "lineGauge",
                 "mean",
                 "qrcode",
+                "rotatedCaliper",
                 "blob"
             };
-            Require(VisionPipelineToolFactory.Descriptors.Count == 15,
-                "The base Vision2D descriptor catalog must contain its 15 owned Tools.");
+            Require(VisionPipelineToolFactory.Descriptors.Count == 16,
+                "The base Vision2D descriptor catalog must contain its 16 owned Tools.");
             Require(VisionPipelineBlobToolFactory.Descriptors.Select(item => item.ToolType).SequenceEqual(expectedToolTypes),
-                "The Blob composite descriptor catalog does not contain the exact 16-Tool contract.");
+                "The Blob composite descriptor catalog does not contain the exact 17-Tool contract.");
 
             foreach (VisionPipelineToolDescriptor descriptor in VisionPipelineBlobToolFactory.Descriptors)
             {
@@ -2986,6 +3036,12 @@ namespace OpenVisionLab.Inspection.Smoke
                     // QR intentionally exposes only its supported subset of the inherited common property model.
                     string[] supported = { "NAME", "USE_ROI", "CvROI", "ExpectedCodeCount" };
                     writableProperties = writableProperties.Where(item => supported.Contains(item.Key)).ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+                }
+                if (descriptor.ToolTypeName == typeof(RotatedCaliperTool).FullName)
+                {
+                    // Caliper sampling owns its ROI/format contract; inherited preprocessing is unsupported.
+                    writableProperties = writableProperties.Where(item => item.Value.DeclaringType == typeof(RotatedCaliperToolProperty) || item.Key == "NAME")
+                        .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
                 }
                 if (descriptor.ToolTypeName == typeof(EdgeBasedTemplateMatchingTool).FullName)
                 {

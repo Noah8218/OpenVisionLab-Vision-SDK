@@ -6,6 +6,9 @@ using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using static OpenVisionLab.Inspection.Smoke.SmokeAssert;
 
 namespace OpenVisionLab.Inspection.Smoke
@@ -14,6 +17,7 @@ namespace OpenVisionLab.Inspection.Smoke
     {
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("Matching hardening drains faulted and canceled workers before releasing shared images", TestWorkerDrain);
             yield return new SmokeCase("Matching single ROI publishes global coordinates", TestSingleRoiCoordinates);
             yield return new SmokeCase("Matching multi ROI preserves ROI and result order", TestMultiRoiOrder);
             yield return new SmokeCase("Matching normalized modes retain the same exact location", TestNormalizedMatchModes);
@@ -21,6 +25,57 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Matching pyramid proposal retains the exhaustive result", TestPyramidProposalParity);
             yield return new SmokeCase("Matching scale search publishes the taught scale", TestScaleSearch);
             yield return new SmokeCase("Matching template replacement invalidates cached content deterministically", TestTemplateReplacementAndDeterminism);
+        }
+
+        private static void TestWorkerDrain()
+        {
+            foreach (bool cancellable in new[] { false, true })
+            foreach (bool faultPlus in new[] { false, true })
+            {
+                using MatchingTool tool = new MatchingTool();
+                using CancellationTokenSource cancellation = new CancellationTokenSource();
+                if (cancellable)
+                    typeof(OpenCvAlgorithmBase).GetField("executionCancellationToken", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(tool, cancellation.Token);
+                object engine = typeof(MatchingTool).GetField("searchEngine", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tool);
+                MethodInfo join = engine.GetType().GetMethod("WaitForSearchTasks", BindingFlags.Instance | BindingFlags.NonPublic);
+                using CountdownEvent entered = new CountdownEvent(2);
+                using ManualResetEventSlim release = new ManualResetEventSlim();
+                using ManualResetEventSlim joining = new ManualResetEventSlim();
+                using ManualResetEventSlim returned = new ManualResetEventSlim();
+                using Mat shared = new Mat(1, 1, MatType.CV_8UC1, Scalar.All(42));
+                Action reader = () => { entered.Signal(); release.Wait(); Require(!shared.IsDisposed, "A reader outlived the shared image lease."); };
+                Task first = Task.Run(reader);
+                Task remaining = Task.Run(reader);
+                Task fault = Task.FromException(new InvalidOperationException("authored worker fault"));
+                Exception observed = null;
+                Task waiter = null;
+                try
+                {
+                    Require(entered.Wait(5000), "Controlled readers did not enter.");
+                    waiter = Task.Run(() =>
+                    {
+                        joining.Set();
+                        try { join.Invoke(engine, new object[] { first, faultPlus ? fault : remaining, faultPlus ? remaining : fault }); }
+                        catch (TargetInvocationException exception) { observed = exception.InnerException; }
+                        finally { shared.Dispose(); returned.Set(); }
+                    });
+                    Require(joining.Wait(5000), "Join did not start.");
+                    if (cancellable) cancellation.Cancel();
+                    Require(!returned.Wait(150), "Join returned on a fault/cancel while controlled readers still held the shared image.");
+                }
+                finally
+                {
+                    release.Set();
+                    Task.WaitAll(first, remaining);
+                    waiter?.GetAwaiter().GetResult();
+                }
+                Require(returned.IsSet && first.IsCompleted && remaining.IsCompleted && fault.Exception != null, "Every worker must terminate and its fault be observed.");
+                Require(cancellable ? observed is OperationCanceledException : observed is AggregateException, "Caller cancellation priority or fault conversion changed.");
+            }
+            using MatchingTool single = new MatchingTool();
+            object singleEngine = typeof(MatchingTool).GetField("searchEngine", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(single);
+            singleEngine.GetType().GetMethod("WaitForSearchTasks", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(singleEngine, new object[] { Task.CompletedTask, null, null });
         }
 
         private static void TestSingleRoiCoordinates()

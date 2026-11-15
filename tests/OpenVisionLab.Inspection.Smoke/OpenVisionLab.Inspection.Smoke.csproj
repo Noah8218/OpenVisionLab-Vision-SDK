@@ -18,6 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\samples\OpenVisionLab.FirstInspection\HostOutcome.cs" Link="Support\HostOutcome.cs" />
+    <Compile Include="..\..\samples\OpenVisionLab.FirstInspection\FrameSession.cs" Link="Support\FrameSession.cs" />
     <ProjectReference Include="..\..\src\OpenVisionLab.Inspection\OpenVisionLab.Inspection.csproj" />
     <ProjectReference Include="..\..\src\OpenVisionLab.Vision2D.Blob\OpenVisionLab.Vision2D.Blob.csproj" />
   </ItemGroup>

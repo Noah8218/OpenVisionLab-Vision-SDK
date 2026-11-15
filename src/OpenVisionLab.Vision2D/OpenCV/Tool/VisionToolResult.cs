@@ -84,7 +84,9 @@ namespace OpenVisionLab.Vision2D.Tool
         QrCodeNotDetected = 1100,
         QrCodeDecodeFailed = 1101,
         QrCodeCountMismatch = 1102,
-        QrCodeBackendUnavailable = 1103
+        QrCodeBackendUnavailable = 1103,
+        CaliperNoEdge = 1200,
+        CaliperGeometryDegenerate = 1201
     }
 
     public enum VisionToolResultStatus
@@ -128,6 +130,8 @@ namespace OpenVisionLab.Vision2D.Tool
         public ComputeExecutionEvidence ComputeDiagnostics { get; internal set; }
         /// <summary>Immutable QR observation, including normal no-code/count/decode failures; null before observation or on exceptions.</summary>
         public QrCodeReadingEvidence QrCodeReading { get; internal set; }
+        /// <summary>Immutable caliper observation; Success denotes established geometry, while Acceptance separately records configured quality gates.</summary>
+        public CaliperMeasurementEvidence CaliperMeasurement { get; internal set; }
 
         public static VisionToolResult Passed(
             Mat resultImage,

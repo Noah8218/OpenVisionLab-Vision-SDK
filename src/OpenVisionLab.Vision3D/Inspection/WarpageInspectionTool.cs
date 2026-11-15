@@ -9,7 +9,7 @@ namespace OpenVisionLab.Vision3D.Inspection
     /// Fits z = ax + by + c to the finite ROI samples and evaluates residual peak-to-valley and RMS.
     /// This is a numeric planarity calculation in the declared map frame, not a metrology certification.
     /// </summary>
-    public sealed class WarpageInspectionTool : IThreeDInspectionTool
+    public sealed class WarpageInspectionTool : ICancellableThreeDInspectionTool
     {
         public WarpageInspectionTool()
             : this(new WarpageInspectionOptions())

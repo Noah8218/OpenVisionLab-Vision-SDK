@@ -22,6 +22,7 @@ namespace OpenVisionLab.Inspection.Smoke
     {
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("Dual-surface hardening measures independent raw planes and preserves geometric datum membership", TestIndependentRawThickness);
             yield return new SmokeCase("Height-difference edge retains strongest pair and exact-tie order", TestDeterministicHeightDifferenceEdge);
             yield return new SmokeCase("Height-difference edge skips missing pairs and requires support", TestDeterministicHeightDifferenceEdgeMissingAndSupport);
             yield return new SmokeCase("Height-difference edge exposes bounded top-two candidates per scanline", TestDeterministicHeightDifferenceEdgeCandidateEvidence);
@@ -101,6 +102,41 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Cross-section reports independent width and height failures", TestCrossSectionDimensionsFailure);
             yield return new SmokeCase("Cross-section rejects non-finite samples", TestCrossSectionDimensionsInvalidSample);
             yield return new SmokeCase("Cross-section rejects unrepresentable spans and recovers", TestCrossSectionUnrepresentableDimensions);
+        }
+
+        private static void TestIndependentRawThickness()
+        {
+            foreach (double offset in new[] { 0.0, 1e12 })
+            foreach (double scale in new[] { 1.0, 2.0 })
+            foreach (bool tilted in new[] { false, true })
+            {
+                var reference = new List<HeightFieldPlaneFitSample>();
+                for (int x = -1; x <= 1; x++)
+                for (int z = -1; z <= 1; z++)
+                    reference.Add(new HeightFieldPlaneFitSample(new ThreeDPoint(offset + x, 0.5 * x - 0.25 * z, offset + z), offset + scale * (100 + (tilted ? 2 * x + 3 * z : 0))));
+                var measured = reference.Select(sample => new HeightFieldPlaneFitSample(sample.Position, sample.RawHeight + 5 * scale)).ToArray();
+                var tool = new DualSurfaceThicknessInspectionTool();
+                var direct = tool.Execute(reference, measured, 4 * scale, 6 * scale, 3);
+                Require(direct.Success && direct.Decision == DualSurfaceThicknessDecision.Pass, "Independent raw/display axes must measure 5 raw units: " + direct.Message);
+                RequireApproximately(direct.Mean, 5 * scale, 1e-9, "Raw thickness changed under translation/scale.");
+                RequireApproximately(direct.Range, 0, 1e-9, "An exact raw plane has zero thickness spread.");
+                RequireApproximately(direct.ReferenceFitHeightRootMeanSquare, 0, 1e-9, "Raw reference residual must use the raw plane.");
+                var datum = new DeterministicDatumPlaneFitTool().Execute(reference, new DatumPlaneFitOptions { MaximumAbsoluteHeightResidual = 1e-6, MinimumInlierRatio = 0.9 });
+                Require(datum.Success && datum.InlierSamples.Count == reference.Count, "Geometric datum membership changed.");
+                var selected = DualSurfaceThicknessInspectionTool.ExecuteWithDatum(datum, measured, 4 * scale, 6 * scale, 3);
+                RequireApproximately(selected.Mean, direct.Mean, 1e-9, "Identical inliers must give identical raw thickness.");
+                var displayChanged = reference.Select(sample => new HeightFieldPlaneFitSample(new ThreeDPoint(sample.Position.X, sample.Position.Y * 10 + 700, sample.Position.Z), sample.RawHeight)).ToArray();
+                RequireApproximately(tool.Execute(displayChanged, measured, 4 * scale, 6 * scale, 3).Mean, direct.Mean, 1e-9, "Display-only Y must not affect raw thickness.");
+            }
+            var flat = new[] { new HeightFieldPlaneFitSample(new ThreeDPoint(0, 0, 0), 100), new HeightFieldPlaneFitSample(new ThreeDPoint(1, 0, 0), 100), new HeightFieldPlaneFitSample(new ThreeDPoint(0, 0, 1), 100) };
+            foreach (double[] values in new[] { new[] { 4.0, 5, 5, 6 }, new[] { 3.0, 5, 5, 7 } })
+            {
+                var result = new DualSurfaceThicknessInspectionTool().Execute(flat, values.Select(value => new HeightFieldPlaneFitSample(new ThreeDPoint(0, 999, 0), 100 + value)).ToArray(), 4, 6, 4);
+                Require(result.Success && result.Decision == (values[0] == 4 ? DualSurfaceThicknessDecision.Pass : DualSurfaceThicknessDecision.Fail), "Normal NG must remain a successful measurement.");
+                RequireApproximately(result.Mean, 5, 1e-12, "Authored thickness mean changed.");
+                RequireApproximately(result.RootMeanSquareSpread, Math.Sqrt(values[0] == 4 ? 0.5 : 2), 1e-12, "Authored spread changed.");
+                Require(result.BelowLowerLimitCount == (values[0] == 4 ? 0 : 1) && result.AboveUpperLimitCount == (values[0] == 4 ? 0 : 1), "Inclusive tolerance boundaries changed.");
+            }
         }
 
         private static void TestDeterministicHeightDifferenceEdge()
@@ -2995,7 +3031,8 @@ namespace OpenVisionLab.Inspection.Smoke
                 {
                     double x = (3.0 + (0.5 * index)) * scale, z = (-2.0 + (0.5 * index)) * scale;
                     double y = (0.5 * x) - (0.25 * z) + ((2.0 + verticalOffsets[index]) * scale);
-                    measurement[index] = new HeightFieldPlaneFitSample(new ThreeDPoint(x, y, z), y);
+                    double raw = (-3.0 * x) + (2.0 * z) + ((5.0 + verticalOffsets[index]) * scale);
+                    measurement[index] = new HeightFieldPlaneFitSample(new ThreeDPoint(x, y, z), raw);
                 }
                 PlaneFlatnessInspectionResult flatness = flatnessTool.Execute(reference, measurement, 1.51 * scale / normalLength);
                 PlaneFlatnessInspectionResult outside = flatnessTool.Execute(reference, measurement, 1.49 * scale / normalLength);
@@ -3019,6 +3056,12 @@ namespace OpenVisionLab.Inspection.Smoke
                     "Independent thickness samples must all participate in the measurement.");
                 RequireApproximately(thickness.Mean / scale, 1.0 / 6.0, 2e-12, "Thickness must use signed height-axis separation.");
                 RequireApproximately(thickness.Range / scale, 1.5, 2e-12, "Thickness range must use vertical separation.");
+                HeightFieldPlaneFitSample[] mixedAxes = measurement.Select(sample => new HeightFieldPlaneFitSample(sample.Position, sample.Position.Y)).ToArray();
+                DualSurfaceThicknessInspectionResult mixed = thicknessTool.Execute(reference, mixedAxes, -0.51 * scale, 1.01 * scale, 6);
+                Require(mixed.Success && mixed.Decision == DualSurfaceThicknessDecision.Fail && mixed.AboveUpperLimitCount == 6,
+                    "The former geometry-as-raw fixture must be a normal NG against the independent raw plane.");
+                RequireApproximately(mixed.Mean / scale, 12.0 + (0.625 * 2.5) + (1.0 / 6.0), 2e-12,
+                    "Independent raw/display equations must explain the former false Pass without changing tolerance.");
                 maximumFlatnessError = Math.Max(maximumFlatnessError, Math.Abs(flatness.Flatness / scale - (1.5 / normalLength)));
                 maximumVolumeError = Math.Max(maximumVolumeError, Math.Abs(volume.NetVolume / expectedVolume - 1.0));
                 maximumThicknessError = Math.Max(maximumThicknessError, Math.Abs(thickness.Mean / scale - (1.0 / 6.0)));

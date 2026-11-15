@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenCvSharp;
+using OpenVisionLab.Compute;
 using OpenVisionLab.Vision2D;
 using OpenVisionLab.Vision2D.Pipeline;
 using OpenVisionLab.Vision2D.Property;
@@ -16,14 +19,82 @@ namespace OpenVisionLab.Inspection.Smoke
 {
     internal static class EdgePoseRefinementSmokeSuite
     {
+        private static readonly string[] ModelCacheNames = { "rotatedModels", "scaledModels", "searchModels" };
         internal static IEnumerable<SmokeCase> Cases()
         {
+            yield return new SmokeCase("Edge hardening keeps success NoMatch recovery and retained snapshots on their own frames", TestFrameRecovery);
+            yield return new SmokeCase("Edge hardening retains finite search caches across continuous refined display poses", TestContinuousDisplayCache);
             yield return new SmokeCase("Pose refinement reduces independent off-grid position angle and scale errors", TestOffGrid);
             yield return new SmokeCase("Pose refinement respects bounds and recovers after invalid settings absence and cancellation", TestRecovery);
             yield return new SmokeCase("Pose refinement preserves polarity hybrid ROI scores and owned images", TestPolarityAndRoi);
             yield return new SmokeCase("Pose refinement preserves spatial and pose ambiguity and multiple-object identity", TestAmbiguityAndMultiple);
             yield return new SmokeCase("Pose refinement restores Tool options through existing XML teaching without executing", TestTeachingReplay);
             yield return new SmokeCase("Pose refinement observes cancellation at a bounded native attempt and recovers", TestNativeCancellation);
+        }
+
+        private static void TestContinuousDisplayCache()
+        {
+            using Mat template = CreateTemplate();
+            foreach (bool refine in new[] { false, true })
+            {
+                using EdgeBasedTemplateMatchingTool tool = CreateTool(template, refine);
+                object cache = null;
+                int retained = 0;
+                for (int frame = 0; frame < 12; frame++)
+                {
+                    using Mat image = CreateSource(template, 0.5 + frame * 0.15, 0.99 + frame * 0.001);
+                    using VisionToolResult result = tool.Execute(image);
+                    Require(result.Success, "Authored continuous-pose frame must match.");
+                    object store = typeof(EdgeBasedTemplateMatchingTool).GetField("modelStore", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tool);
+                    cache = store.GetType().GetProperty("Current").GetValue(store);
+                    int entries = ModelCacheNames.Sum(name => ((IDictionary)cache.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cache)).Count);
+                    if (frame == 0) retained = entries;
+                    Console.WriteLine("Edge cache refinement=" + refine + " frame=" + frame + " entries=" + entries);
+                    Require(entries == retained, "Continuous display poses added persistent search models.");
+                }
+                tool.Dispose();
+                foreach (string name in ModelCacheNames)
+                    Require(((IDictionary)cache.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cache)).Count == 0, "Dispose must clear cache entries.");
+            }
+        }
+
+        private static void TestFrameRecovery()
+        {
+            using Mat template = CreateTemplate();
+            using Mat first = CreateSource(template, 0, 1);
+            using Mat absent = new Mat(first.Size(), MatType.CV_8UC1, Scalar.All(33));
+            using Mat last = CreateSource(template, 0, 1, 51, 35);
+            first.Set(0, 0, (byte)21);
+            last.Set(0, 0, (byte)47);
+            foreach (bool draw in new[] { false, true })
+            {
+                using VisionComputeSession session = new VisionComputeSession(new VisionComputeOptions());
+                using EdgeBasedTemplateMatchingTool tool = CreateTool(template, false, session);
+                tool.property.USE_DRAW_IMAGE = draw;
+                using VisionToolResult initialAbsence = tool.Execute(absent);
+                Require(!initialAbsence.Success && initialAbsence.ResultImage.At<byte>(0, 0) == 33, "First NoMatch must use its input frame.");
+                using VisionToolResult a = tool.Execute(first);
+                Require(a.Success && a.ResultImage.At<byte>(0, 0) == 21, "Frame A must match.");
+                Require(a.ComputeDiagnostics != null && a.ComputeDiagnostics.FallbackReason == CudaFallbackReason.Disabled, "CPU-default execution must retain its current compute evidence.");
+                using VisionToolResult b = tool.Execute(absent);
+                Require(!b.Success && b.ErrorCode == VisionToolErrorCode.MatchingNoResult && tool.results.Count == 0, "Frame B must be NoMatch.");
+                Require(b.ResultImage != null && b.ResultImage.At<byte>(0, 0) == 33, "Frame B inherited frame A's result image.");
+                using VisionToolResult c = tool.Execute(last, CancellationToken.None);
+                Require(c.Success && c.ResultImage.At<byte>(0, 0) == 47, "Frame C must recover with its own image.");
+                Require(a.ResultImage.At<byte>(0, 0) == 21 && b.ResultImage.At<byte>(0, 0) == 33, "Retained snapshots must be independent.");
+                using Mat invalid = new Mat();
+                using VisionToolResult rejected = tool.Execute(invalid);
+                Require(!rejected.Success && rejected.ResultImage == null && tool.imageResult.Empty(), "Invalid input must clear current Tool image.");
+                using CancellationTokenSource cancellation = new CancellationTokenSource();
+                cancellation.Cancel();
+                RequireThrows<OperationCanceledException>(() => tool.Execute(first, cancellation.Token));
+                Require(tool.results.Count == 0 && tool.imageResult.Empty(), "Pre-cancel must expose no prior frame.");
+                tool.SetSourceImage(absent);
+                tool.Run();
+                Require(tool.results.Count == 0 && (tool.imageResult.Empty() || tool.imageResult.At<byte>(0, 0) == 33), "Direct Run must clear the previous image.");
+                tool.Dispose();
+                Require(a.ResultImage.At<byte>(0, 0) == 21 && c.ResultImage.At<byte>(0, 0) == 47, "Tool disposal must not invalidate snapshots.");
+            }
         }
 
         internal static Mat CreateTemplate()
@@ -45,9 +116,9 @@ namespace OpenVisionLab.Inspection.Smoke
             return source;
         }
 
-        internal static EdgeBasedTemplateMatchingTool CreateTool(Mat template, bool refine)
+        internal static EdgeBasedTemplateMatchingTool CreateTool(Mat template, bool refine, VisionComputeSession session = null)
         {
-            EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool { UsePoseRefinement = refine };
+            EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool(session) { UsePoseRefinement = refine };
             tool.SetProperty(new EdgeBasedTemplateMatchingToolProperty
             {
                 SCORE_MIN = 0.6D, USE_DRAW_IMAGE = false, SEARCH_STEP = 2, USE_POSITION_REFINE = true,

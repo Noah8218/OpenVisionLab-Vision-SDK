@@ -4,6 +4,7 @@ using OpenVisionLab.Vision3D.Inspection;
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace OpenVisionLab.Inspection
 {
@@ -59,6 +60,14 @@ namespace OpenVisionLab.Inspection
     /// </summary>
     public sealed class CombinedInspectionRunResult : IDisposable
     {
+        private readonly HashSet<VisionToolResult> ownedResults = new HashSet<VisionToolResult>(new ResultReferenceComparer());
+
+        internal void AddStep(CombinedInspectionStepResult step)
+        {
+            if (step.VisionResult != null) ownedResults.Add(step.VisionResult);
+            Steps.Add(step);
+        }
+
         public bool Success { get; internal set; }
 
         public string Message { get; internal set; } = string.Empty;
@@ -86,10 +95,14 @@ namespace OpenVisionLab.Inspection
 
         public void Dispose()
         {
-            foreach (CombinedInspectionStepResult step in Steps)
-            {
-                step?.VisionResult?.Dispose();
-            }
+            foreach (VisionToolResult result in ownedResults) result.Dispose();
+            ownedResults.Clear();
+        }
+
+        private sealed class ResultReferenceComparer : IEqualityComparer<VisionToolResult>
+        {
+            public bool Equals(VisionToolResult first, VisionToolResult second) => ReferenceEquals(first, second);
+            public int GetHashCode(VisionToolResult result) => RuntimeHelpers.GetHashCode(result);
         }
     }
 }

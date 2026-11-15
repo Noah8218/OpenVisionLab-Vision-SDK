@@ -46,7 +46,16 @@ using CombinedInspectionRunResult result = new CombinedInspectionRunner().Run(
 Console.WriteLine($"success={result.Success}, steps={result.Steps.Count}");
 ```
 
-Every configured step runs even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image, height map, or supplied tools. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
+The tokenless overload runs every configured step even after an earlier failure so the caller retains all evidence. The runner owns and disposes collected 2D result snapshots; it never disposes the caller's image, height map, or supplied tools. Source-neutral surface-match and mesh Tools are executed directly, not through this height-map-only runner.
+
+The additive `Run` overload accepts a `CancellationToken`. It forwards the token
+to cooperative 2D Tools and `ICancellableThreeDInspectionTool` implementations;
+other calls have pre/post checkpoints. Cancellation stops later steps without
+preempting an active native call. On normal return, collected evidence belongs to
+the returned result. On cancellation, the runner releases its partial results and
+rethrows `OperationCanceledException`; no combined result is returned.
+Reference-shared snapshots are released once. The existing
+`IVisionTool` and `IThreeDInspectionTool` interfaces acquire no required members.
 
 Use `ThreeDToolAdapter<TResult>` when heterogeneous typed 3D Tool calls need one
 ordered execution report. The adapter retains the exact result type and reports only

@@ -63,6 +63,7 @@ namespace OpenVisionLab.PackageConsumer.NetFrameworkSmoke
                     CheckTwoD();
                     CheckCanny();
                     CheckThreeD();
+                    OpenVisionLab.PackageConsumer.HardeningChecks.Run();
                 }
                 if (cuda) Console.WriteLine("PASS|framework-cuda-consumer");
                 foreach (ProcessModule module in Process.GetCurrentProcess().Modules)

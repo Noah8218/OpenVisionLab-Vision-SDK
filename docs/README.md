@@ -48,7 +48,7 @@ and required runtime dependencies.
 ## Current verification entry points
 
 ```powershell
-$testRoot = "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\local-check"
+$testRoot = Read-Host "Absolute directory for test output"
 New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
 $env:TEMP = $testRoot
 $env:TMP = $testRoot

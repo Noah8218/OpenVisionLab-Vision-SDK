@@ -8,8 +8,35 @@ using System.Text;
 
 namespace OpenVisionLab.Vision2D
 {
+    /// <summary>Channel order of an unsigned 8-bit input. Alpha is ignored during gray conversion.</summary>
+    public enum ImageChannelOrder { Gray = 0, Rgb = 1, Bgr = 2, Rgba = 3, Bgra = 4 }
+
     public class OpenCvHelper
     {
+        /// <summary>Creates an owned gray snapshot without modifying the source, including strided ROI inputs.</summary>
+        /// <remarks>Only CV_8U is supported. The caller disposes the returned Mat; alpha is ignored.</remarks>
+        public static Mat CreateGray8(Mat source, ImageChannelOrder order)
+        {
+            if (IsImageEmpty(source)) throw new ArgumentException("A non-empty, live source image is required.", nameof(source));
+            if (source.Depth() != MatType.CV_8U) throw new ArgumentException("Explicit scaling is required for non-8-bit input.", nameof(source));
+            int channels;
+            ColorConversionCodes conversion;
+            switch (order)
+            {
+                case ImageChannelOrder.Gray: channels = 1; conversion = ColorConversionCodes.RGB2GRAY; break;
+                case ImageChannelOrder.Rgb: channels = 3; conversion = ColorConversionCodes.RGB2GRAY; break;
+                case ImageChannelOrder.Bgr: channels = 3; conversion = ColorConversionCodes.BGR2GRAY; break;
+                case ImageChannelOrder.Rgba: channels = 4; conversion = ColorConversionCodes.RGBA2GRAY; break;
+                case ImageChannelOrder.Bgra: channels = 4; conversion = ColorConversionCodes.BGRA2GRAY; break;
+                default: throw new ArgumentOutOfRangeException(nameof(order));
+            }
+            if (source.Channels() != channels) throw new ArgumentException("Channel count does not match the declared order.", nameof(source));
+            if (channels == 1) return source.Clone();
+            Mat gray = new Mat();
+            try { Cv2.CvtColor(source, gray, conversion); return gray; }
+            catch { gray.Dispose(); throw; }
+        }
+
         public static bool IsMatEmpty(Mat MatSource)
         {
                         if (MatSource.IsDisposed)

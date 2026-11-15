@@ -2,7 +2,7 @@
 
 Use 2D inspection tools and height-map / full-XYZ 3D algorithms in your own C# application.
 
-[![Source v3.3.0-rc.1](https://img.shields.io/badge/source-v3.3.0--rc.1-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.2](https://img.shields.io/badge/source-v3.3.0--rc.2-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 **English** · [한국어](README.ko.md)
 
@@ -46,12 +46,25 @@ The caller owns `source`; the result owns its output image. Dispose both and the
    [3D quick start](docs/sdk-reference.md#3d-quick-start). Check errors, metrics,
    units and ownership before connecting the result to your application's judgment.
 
-This checkout's source version is **`3.3.0-rc.1`**, a prerelease defined in
+This checkout's source version is **`3.3.0-rc.2`**, a prerelease defined in
 [Directory.Build.props](Directory.Build.props); CLR assembly identity remains
 `3.0.0.0`. A source version does not establish a published NuGet package or binary
 release. Read the [version history](docs/sdk-reference.md#version) and
 [2.9.1 → 3.0 migration guide](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md)
 before updating an existing application.
+
+### Recent version history
+
+This project is maintained using explicit version numbers.
+
+| Version | Date | Changes |
+| --- | --- | --- |
+| `3.3.0-rc.2` | 2026-11-16 | Harden failure/cancellation and frame/raw-height ownership; add line/circle calipers and a device-free frame Host example. |
+| `3.3.0-rc.1` | 2026-11-02 | Add nine-point surface compensation, physical-edge gap/flush and cooperative 3D cancellation. |
+| `3.2.0-rc.5` | 2026-10-12 | Preserve package-verification diagnostics in CI. |
+| `3.2.0-rc.4` | 2026-10-12 | Add QR reading, optional 3D CUDA operations and consumer guidance. |
+| `3.1.0` | 2026-10-04 | Add optional CUDA edge scoring and improve surface measurements. |
+| `3.0.0` | 2026-08-05 | Introduce the OpenVisionLab package, DLL and namespace names. |
 
 ## Core capabilities
 
@@ -59,7 +72,7 @@ before updating an existing application.
 
 | Need | Module and contract |
 | --- | --- |
-| Threshold, filters, edges, contours, matching, LineGauge and QR reading | [Vision2D](src/OpenVisionLab.Vision2D/README.md) |
+| Threshold, filters, edges, contours, matching, LineGauge, rotated line/circle calipers and QR reading | [Vision2D](src/OpenVisionLab.Vision2D/README.md) |
 | Connected objects and area filtering | [Vision2D.Blob](src/OpenVisionLab.Vision2D.Blob/README.md) |
 | Height-map measurement, full-XYZ geometry, filtering, registration and surface/mesh tools | [Vision3D](src/OpenVisionLab.Vision3D/README.md) · [tool catalog](docs/three-d-inspection.md#public-tool-catalog) |
 | Sequential 2D and single-height-map inspection with original results | [Inspection](src/OpenVisionLab.Inspection/README.md) |
@@ -105,6 +118,17 @@ The same sample's [QR workflow](docs/sdk-reference.md#qr-configure-restore-and-e
 adds **configure → load → inspect**, including located ROIs, expected text and
 failure recovery. QR reading success and the host's text comparison are separate.
 
+The [device-free frame Host](docs/sdk-reference.md#device-free-frame-host) adds
+**host prepare → host load → host run**. It preserves raw bytes, correlates
+inspection/display/teaching by shot and settings revision, and handles bounded
+queues, cancellation and shutdown. It is a console integration example, not a
+camera driver or desktop UI. Copy the sample project and all its C# source files
+when using it outside this checkout.
+
+[`RotatedCaliperTool`](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle)
+measures lines and circles in source pixels. Geometry establishment and configured
+quality acceptance are separate; a disabled quality gate reports `NotEvaluated`.
+
 ## Build from source
 
 <a id="clone-and-develop-on-another-pc"></a>
@@ -145,8 +169,8 @@ The workflow defines checks; it does not publish packages or create releases.
 
 Package-specific READMEs remain with their projects and are included in their
 packages. The [documentation index](docs/README.md) retains the existing developer
-reading order. The detailed reference preserves the former root README's API,
-build, migration and version information.
+reading order. Use the detailed reference for API examples, source setup,
+migration and version information.
 
 ## Limits and validation scope
 

@@ -2,7 +2,7 @@
 
 C# 애플리케이션에 2D 검사 도구와 높이 맵 / 전체 XYZ 3D 알고리즘을 연결하세요.
 
-[![Source v3.3.0-rc.1](https://img.shields.io/badge/source-v3.3.0--rc.1-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.2](https://img.shields.io/badge/source-v3.3.0--rc.2-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 [English](README.md) · **한국어**
 
@@ -46,11 +46,24 @@ Console.WriteLine($"{result.ResultImage.Width}x{result.ResultImage.Height}");
    [3D 시작 예제](docs/sdk-reference.md#3d-quick-start)를 따라갑니다.
    오류·지표·단위·소유권을 확인한 뒤 애플리케이션의 판정과 연결합니다.
 
-이 체크아웃의 소스 버전은 **`3.3.0-rc.1`**이며 [Directory.Build.props](Directory.Build.props)에
+이 체크아웃의 소스 버전은 **`3.3.0-rc.2`**이며 [Directory.Build.props](Directory.Build.props)에
 정의된 사전 버전입니다. CLR 어셈블리 식별 버전은 `3.0.0.0`을 유지합니다.
 소스 버전이 해당 NuGet 패키지나 바이너리 릴리스의 게시를 뜻하지는 않습니다.
 기존 애플리케이션을 업데이트하기 전에 [버전 이력](docs/sdk-reference.md#version)과
 [2.9.1 → 3.0 마이그레이션 안내](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md)를 읽으세요.
+
+### 최근 버전 이력
+
+이 프로젝트는 명시적인 버전 번호로 관리합니다.
+
+| 버전 | 날짜 | 변경 내용 |
+| --- | --- | --- |
+| `3.3.0-rc.2` | 2026-11-16 | 실패·취소와 프레임·raw 높이 소유권을 보강하고 선·원 캘리퍼와 장비 없는 프레임 Host 예제를 추가했습니다. |
+| `3.3.0-rc.1` | 2026-11-02 | 9점 표면 보정, 물리 엣지 gap/flush와 협력 취소를 추가했습니다. |
+| `3.2.0-rc.5` | 2026-10-12 | CI에서 패키지 검증 오류를 보존하도록 개선했습니다. |
+| `3.2.0-rc.4` | 2026-10-12 | QR 판독, 선택형 3D CUDA 연산과 소비자 안내를 추가했습니다. |
+| `3.1.0` | 2026-10-04 | 선택형 CUDA 엣지 점수 계산과 표면 측정을 개선했습니다. |
+| `3.0.0` | 2026-08-05 | OpenVisionLab 패키지·DLL·네임스페이스 이름을 도입했습니다. |
 
 ## 핵심 기능
 
@@ -58,7 +71,7 @@ Console.WriteLine($"{result.ResultImage.Width}x{result.ResultImage.Height}");
 
 | 필요한 기능 | 모듈과 계약 |
 | --- | --- |
-| 이진화·필터·엣지·윤곽선·매칭·LineGauge·QR 판독 | [Vision2D](src/OpenVisionLab.Vision2D/README.md) |
+| 이진화·필터·엣지·윤곽선·매칭·LineGauge·회전 선/원 캘리퍼·QR 판독 | [Vision2D](src/OpenVisionLab.Vision2D/README.md) |
 | 연결 객체와 면적 필터링 | [Vision2D.Blob](src/OpenVisionLab.Vision2D.Blob/README.md) |
 | 높이 맵 측정·전체 XYZ 기하·필터·정합·표면/메시 도구 | [Vision3D](src/OpenVisionLab.Vision3D/README.md) · [도구 목록](docs/three-d-inspection.md#public-tool-catalog) |
 | 원래 결과를 보존하는 2D·단일 높이 맵 순차 검사 | [Inspection](src/OpenVisionLab.Inspection/README.md) |
@@ -105,6 +118,16 @@ Host 입력 수집 → 설정/학습 → 명시적 실행
 **configure → load → inspect**에 위치 보정 ROI·기대 문자열·실패 후 복구를 더합니다.
 QR 판독 성공과 호스트의 문자열 비교 결과는 구분합니다.
 
+[장비 없는 프레임 Host](docs/sdk-reference.md#device-free-frame-host)는
+**host prepare → host load → host run**을 제공합니다. raw 데이터를 보존하고
+shot과 설정 revision으로 검사·표시·티칭을 연결하며, 큐 제한·취소·종료를 다룹니다.
+카메라 드라이버나 화면을 제공하는 기능은 아니며 콘솔 통합 예제입니다.
+저장소 밖에서 실행하려면 예제 프로젝트와 그 폴더의 모든 C# 소스 파일을 복사하세요.
+
+[`RotatedCaliperTool`](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle)은
+입력 픽셀 좌표에서 선과 원을 측정합니다. 기하 측정 성립과 설정된 품질 합격을
+구분하며, 품질 기준을 켜지 않으면 `NotEvaluated`를 반환합니다.
+
 ## 소스 빌드
 
 <a id="clone-and-develop-on-another-pc"></a>
@@ -144,7 +167,7 @@ CI는 검사를 정의하며 패키지를 게시하거나 릴리스를 만들지
 
 모듈별 README는 각 프로젝트에 그대로 두며 해당 패키지에 포함됩니다.
 [문서 색인](docs/README.md)의 기존 개발자 읽기 순서도 유지합니다.
-상세 참조에는 기존 루트 README의 API·빌드·마이그레이션·버전 정보를 보존합니다.
+API·빌드·마이그레이션·버전 정보는 상세 참조에서 확인하세요.
 
 ## 한계와 검증 범위
 

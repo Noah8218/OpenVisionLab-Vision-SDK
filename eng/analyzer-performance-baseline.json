@@ -5,7 +5,7 @@
   "contract": "Reviewed performance diagnostics after deterministic allocation cleanup",
   "expectedWarningsByCode": {
     "CA1805": 69,
-    "CA1822": 67,
+    "CA1822": 66,
     "CA1825": 0,
     "CA1843": 0,
     "CA1859": 3,
@@ -13,11 +13,11 @@
     "CA1869": 2
   },
   "reviewedClassification": {
-    "retainedTotal": 242,
+    "retainedTotal": 241,
     "decisionGroups": {
       "explicit-default": 69,
       "public-instance-contract": 60,
-      "unmeasured-private-static": 7,
+      "unmeasured-private-static": 6,
       "concrete-type-coupling": 3,
       "one-shot-mutable-array": 100,
       "one-shot-json-options": 2,
@@ -33,7 +33,7 @@
     {
       "code": "CA1822",
       "decision": "retain",
-      "rationale": "Sixty public instance contracts and seven private candidates are retained. The two added typed Tools retain their published instance Execute contract; making them static would break the verified public API. The existing least-squares instance review follows the token overload that now owns the implementation, while its original overload remains a forwarding instance entry point. Three stateful 3D Execute methods continue to read computeSession and are not static candidates."
+      "rationale": "Sixty public instance contracts and six private candidates are retained. The two added typed Tools retain their published instance Execute contract; making them static would break the verified public API. The existing least-squares instance review follows the token overload that now owns the implementation, while its original overload remains a forwarding instance entry point. Three stateful 3D Execute methods continue to read computeSession and are not static candidates."
     },
     {
       "code": "CA1825",
@@ -439,11 +439,6 @@
     },
     {
       "identity": "CA1822|src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|FindBestCandidateParallelPositions|private MatchCandidate FindBestCandidateParallelPositions(|occurrence=1",
-      "decisionGroup": "unmeasured-private-static",
-      "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs"
-    },
-    {
-      "identity": "CA1822|src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs|OpenVisionLab.Vision2D.Tool.EdgeBasedTemplateMatchingTool|RefineBestCandidate|private MatchCandidate RefineBestCandidate(|occurrence=1",
       "decisionGroup": "unmeasured-private-static",
       "source": "src/OpenVisionLab.Vision2D/OpenCV/Tool/EdgeBasedTemplateMatchingTool.cs"
     },

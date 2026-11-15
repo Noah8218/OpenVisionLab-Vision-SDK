@@ -113,6 +113,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     return CreateMeanTool(parameters);
                 case "qrcode":
                     return CreateQrCodeTool(parameters);
+                case "rotatedcaliper":
+                    return CreateRotatedCaliperTool(parameters);
                 default:
                     throw new NotSupportedException($"Unsupported vision tool type '{step.ToolType}'.");
             }
@@ -510,6 +512,45 @@ namespace OpenVisionLab.Vision2D.Pipeline
             property.MEAN_TYPES = parameters.GetEnum(nameof(property.MEAN_TYPES), property.MEAN_TYPES);
 
             MeanTool tool = new MeanTool();
+            tool.SetProperty(property);
+            return tool;
+        }
+
+        private static RotatedCaliperTool CreateRotatedCaliperTool(VisionPipelineParameterReader parameters)
+        {
+            RotatedCaliperToolProperty property = new RotatedCaliperToolProperty();
+            property.NAME = parameters.GetString(nameof(property.NAME), property.NAME);
+            property.Shape = parameters.GetEnum(nameof(property.Shape), property.Shape);
+            property.CenterX = parameters.GetDouble(nameof(property.CenterX), property.CenterX);
+            property.CenterY = parameters.GetDouble(nameof(property.CenterY), property.CenterY);
+            property.AngleDegrees = parameters.GetDouble(nameof(property.AngleDegrees), property.AngleDegrees);
+            property.Radius = parameters.GetDouble(nameof(property.Radius), property.Radius);
+            property.StartAngleDegrees = parameters.GetDouble(nameof(property.StartAngleDegrees), property.StartAngleDegrees);
+            property.AngularPitchDegrees = parameters.GetDouble(nameof(property.AngularPitchDegrees), property.AngularPitchDegrees);
+            property.StationCount = parameters.GetInt(nameof(property.StationCount), property.StationCount);
+            property.StationPitch = parameters.GetDouble(nameof(property.StationPitch), property.StationPitch);
+            property.ScanLength = parameters.GetDouble(nameof(property.ScanLength), property.ScanLength);
+            property.ScanSampleCount = parameters.GetInt(nameof(property.ScanSampleCount), property.ScanSampleCount);
+            property.TangentWidth = parameters.GetDouble(nameof(property.TangentWidth), property.TangentWidth);
+            property.TangentSampleCount = parameters.GetInt(nameof(property.TangentSampleCount), property.TangentSampleCount);
+            property.MinimumTangentCoverage = parameters.GetDouble(nameof(property.MinimumTangentCoverage), property.MinimumTangentCoverage);
+            property.MinimumProfileCoverage = parameters.GetDouble(nameof(property.MinimumProfileCoverage), property.MinimumProfileCoverage);
+            property.Polarity = parameters.GetEnum(nameof(property.Polarity), property.Polarity);
+            property.Selection = parameters.GetEnum(nameof(property.Selection), property.Selection);
+            property.MinimumContrast = parameters.GetDouble(nameof(property.MinimumContrast), property.MinimumContrast);
+            property.TieEpsilon = parameters.GetDouble(nameof(property.TieEpsilon), property.TieEpsilon);
+            property.ConditioningEpsilon = parameters.GetDouble(nameof(property.ConditioningEpsilon), property.ConditioningEpsilon);
+            property.OutlierRemovalEnabled = parameters.GetBool(nameof(property.OutlierRemovalEnabled), property.OutlierRemovalEnabled);
+            property.OutlierResidualCutoff = parameters.GetDouble(nameof(property.OutlierResidualCutoff), property.OutlierResidualCutoff);
+            property.MaximumOutlierIterations = parameters.GetInt(nameof(property.MaximumOutlierIterations), property.MaximumOutlierIterations);
+            property.QualityGateEnabled = parameters.GetBool(nameof(property.QualityGateEnabled), property.QualityGateEnabled);
+            property.MinimumPointCount = parameters.GetInt(nameof(property.MinimumPointCount), property.MinimumPointCount);
+            property.MaximumRmsResidual = parameters.GetDouble(nameof(property.MaximumRmsResidual), property.MaximumRmsResidual);
+            property.MaximumResidual = parameters.GetDouble(nameof(property.MaximumResidual), property.MaximumResidual);
+            property.MinimumCircleCoverageDegrees = parameters.GetDouble(nameof(property.MinimumCircleCoverageDegrees), property.MinimumCircleCoverageDegrees);
+            property.MaximumCircleGapDegrees = parameters.GetDouble(nameof(property.MaximumCircleGapDegrees), property.MaximumCircleGapDegrees);
+            if (!RotatedCaliperTool.ValidSettings(property)) throw new ArgumentException("Invalid caliper geometry, sampling or quality configuration.");
+            RotatedCaliperTool tool = new RotatedCaliperTool();
             tool.SetProperty(property);
             return tool;
         }

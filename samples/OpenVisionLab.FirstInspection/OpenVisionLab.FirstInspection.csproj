@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="OpenVisionLab.Vision2D.Blob" Version="[$(_SelectedSdkPackageVersion)]" />
+    <PackageReference Include="OpenVisionLab.Inspection" Version="[$(_SelectedSdkPackageVersion)]" />
   </ItemGroup>
   <Target Name="RequireSelectedPackageVersion" BeforeTargets="CollectPackageReferences" Condition="'$(_SelectedSdkPackageVersion)' == ''">
     <Error Text="Select an exact SDK package version with -p:PackageVersion=... from your chosen feed." />

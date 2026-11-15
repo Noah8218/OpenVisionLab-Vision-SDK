@@ -9,7 +9,7 @@ namespace OpenVisionLab.Vision3D.Inspection
     /// Evaluates declared height-map scalar values as thickness. The caller owns the data meaning,
     /// calibration, unit, and reference-plane definition.
     /// </summary>
-    public sealed class ThicknessInspectionTool : IThreeDInspectionTool
+    public sealed class ThicknessInspectionTool : ICancellableThreeDInspectionTool
     {
         public ThicknessInspectionTool()
             : this(new ThicknessInspectionOptions())

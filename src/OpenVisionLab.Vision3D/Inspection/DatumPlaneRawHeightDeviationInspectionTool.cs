@@ -10,7 +10,7 @@ namespace OpenVisionLab.Vision3D.Inspection
     /// datum plane. It never fits a plane, transforms a map, or infers a
     /// physical unit, datum, calibration, or metrology claim.
     /// </summary>
-    public sealed class DatumPlaneRawHeightDeviationInspectionTool : IThreeDInspectionTool
+    public sealed class DatumPlaneRawHeightDeviationInspectionTool : ICancellableThreeDInspectionTool
     {
         public DatumPlaneRawHeightDeviationInspectionTool()
             : this(new DatumPlaneRawHeightDeviationInspectionOptions())

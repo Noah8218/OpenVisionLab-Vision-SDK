@@ -190,27 +190,33 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override VisionToolResult Execute(Mat source)
         {
-            results.Clear();
-            computeEvidence = null;
-            ResetCandidateDiagnostics();
+            ResetExecution();
             return AttachDiagnosticEvidence(base.Execute(source), CancellationToken.None);
         }
 
         public VisionToolResult Execute(Mat source, CancellationToken cancellationToken)
         {
-            results.Clear();
-            computeEvidence = null;
-            ResetCandidateDiagnostics();
+            ResetExecution();
             try
             {
                 return AttachDiagnosticEvidence(ExecuteWithCancellation(source, cancellationToken), cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                results.Clear();
-                computeEvidence = null;
+                ResetExecution();
                 throw;
             }
+        }
+
+        private void ResetExecution()
+        {
+            imageResult?.Dispose();
+            imageResult = new Mat();
+            results.Clear();
+            computeEvidence = null;
+            ResetMatchingFailure();
+            ResetPhaseTimings();
+            ResetCandidateDiagnostics();
         }
 
         private VisionToolResult AttachDiagnosticEvidence(VisionToolResult result, CancellationToken cancellationToken)
@@ -433,7 +439,6 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            computeEvidence = computeSession?.DescribeCpuExecution(CurrentCancellationToken);
             errorCode = VisionToolErrorCode.None;
             message = string.Empty;
             return true;
@@ -455,12 +460,10 @@ namespace OpenVisionLab.Vision2D.Tool
 
         public override void Run()
         {
+            ResetExecution();
             CurrentCancellationToken.ThrowIfCancellationRequested();
+            computeEvidence = OpenCvHelper.IsImageEmpty(imageSource) ? null : computeSession?.DescribeCpuExecution(CurrentCancellationToken);
             swTaktTimems.Restart();
-            results.Clear();
-            ResetMatchingFailure();
-            ResetPhaseTimings();
-            ResetCandidateDiagnostics();
 
             if (OpenCvHelper.IsImageEmpty(imageSource))
             {
@@ -2630,7 +2633,7 @@ namespace OpenVisionLab.Vision2D.Tool
             return globalState.Best;
         }
 
-        private MatchCandidate RefineBestCandidate(
+        private static MatchCandidate RefineBestCandidate(
             GradientImage gradients,
             RotatedEdgeTemplateModel model,
             CandidateScoreContext scoreContext,
@@ -5022,7 +5025,7 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            RotatedEdgeTemplateModel rotatedModel = modelCache.GetRotatedModel(result.Angle, result.Scale);
+            RotatedEdgeTemplateModel rotatedModel = modelCache.GetDisplayModel(result.Angle, result.Scale);
             if (rotatedModel.PointCount == 0)
             {
                 return false;
@@ -5381,6 +5384,21 @@ namespace OpenVisionLab.Vision2D.Tool
                 lock (sync)
                 {
                     return GetRotatedModelCore(angle, scale);
+                }
+            }
+
+            public RotatedEdgeTemplateModel GetDisplayModel(double angle, double scale)
+            {
+                lock (sync)
+                {
+                    double normalizedAngle = Math.Round(angle, 6);
+                    double normalizedScale = NormalizeScale(scale);
+                    if (rotatedModels.TryGetValue(CreateAngleScaleKey(normalizedAngle, normalizedScale), out RotatedEdgeTemplateModel cached)) return cached;
+                    // Continuous display poses are one-run managed values, never persistent search entries.
+                    if (Math.Abs(normalizedScale - 1D) <= 0.000001D) return CreateRotatedModel(Model, normalizedAngle);
+                    if (scaledModels.TryGetValue(normalizedScale, out EdgeTemplateModel scaled)) return CreateRotatedModel(scaled, normalizedAngle);
+                    using (Mat image = ResizeTemplateForScale(PreparedTemplate, normalizedScale))
+                        return CreateRotatedModel(modelFactory(image, normalizedScale), normalizedAngle);
                 }
             }
 

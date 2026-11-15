@@ -1,7 +1,7 @@
 # SDK reference
 
-The former root README's API examples, contracts, source setup, package notes,
-version history and illustration caveats are preserved below. For the short
+This reference covers API examples, contracts, source setup, package notes,
+version history and illustration caveats. For the short
 product introduction, see the [English README](../README.md) or [한국어 README](../README.ko.md).
 Commands and literal sample paths assume execution from the repository root.
 The existing [developer Start Here](README.md#start-here) retains its reading order.
@@ -23,7 +23,7 @@ It includes 2D image-processing tools, 3D feature extraction and measurement alg
 
 ## Version
 
-Current source version: `v3.3.0-rc.1` (prerelease).
+Current source version: `v3.3.0-rc.2` (prerelease).
 
 This project is maintained using explicit version numbers. The source version is
 defined in [`Directory.Build.props`](../Directory.Build.props). CLR assembly identity
@@ -31,6 +31,12 @@ remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a N
 package or binary release has been published.
 
 ### Recent version history
+
+#### `v3.3.0-rc.2` (2026-11-16)
+
+- Drain started Matching workers before releasing shared input/template data, keep Edge results on the current frame, and fit thickness reference planes from raw heights.
+- Add line/circle pixel calipers with immutable evidence and separate geometry/quality outcomes, plus a device-free frame Host with bounded ownership and safe recovery.
+- Extend cancellation, snapshot, package-only/offline and native-runtime checks while retaining existing public contracts and the earlier 3D compensation and physical-edge tools.
 
 #### `v3.3.0-rc.1` (2026-11-02)
 
@@ -140,10 +146,11 @@ assets together. Do not infer an available NuGet release from the source version
 ## First inspection example
 
 The [package-only console example](../samples/OpenVisionLab.FirstInspection/Program.cs)
-demonstrates teaching, locating a datum, moving ROIs, checking presence and measuring an edge in pixels. It uses Windows x64/.NET 8 and the transitive dependencies of
-`OpenVisionLab.Vision2D.Blob`. Copy its
+demonstrates teaching, locating a datum, moving ROIs, checking presence and measuring an edge in pixels. It uses Windows x64/.NET 8 and directly references
+`OpenVisionLab.Vision2D.Blob` and `OpenVisionLab.Inspection`, with their transitive dependencies. Copy its
 [project file](../samples/OpenVisionLab.FirstInspection/OpenVisionLab.FirstInspection.csproj)
-and `Program.cs` to an independent directory, or build it in this checkout.
+and every C# source file in that directory to an independent directory, or build
+it in this checkout. The project file selects the required package references.
 Select an exact, immutable package version from a feed you are authorized to use;
 the source version does not indicate package availability. Keep the managed
 OpenCvSharp and native OpenCV assets supplied by Core together. Current
@@ -151,7 +158,7 @@ OpenCvSharp and native OpenCV assets supplied by Core together. Current
 still apply.
 
 Choose an absolute writable work path for generated data, output and temporary files. The commands below start from the checkout root.
-After copying the two files to an independent directory, run there and set
+After copying the project and its C# source files to an independent directory, run there and set
 `$sampleProject` to `"./OpenVisionLab.FirstInspection.csproj"` instead. `prepare` requires an empty
 directory and `teach` requires a new destination filename.
 
@@ -244,7 +251,7 @@ in progress may finish before cancellation is observed. Saving never overwrites
 an existing bundle and cleans its own temporary file after failure/cancellation.
 
 For a local package feed, the focused
-[consumer check](../eng/Test-FirstInspectionSample.ps1) copies just the two source
+[consumer check](../eng/Test-FirstInspectionSample.ps1) copies the sample project and its C# source
 files, clears other package sources, uses an isolated cache, and verifies
 known answers, corruption, save/restore, cancellation and optional CUDA fallback.
 Its required parameters are `-PackageDirectory`, `-ExpectedVersion` and
@@ -252,6 +259,37 @@ Its required parameters are `-PackageDirectory`, `-ExpectedVersion` and
 version and restoration-recovery gate. `-CudaModule` optionally supplies a compatible native module
 for that owned test output. These automated checks do not establish first-use
 usability, field accuracy or performance superiority.
+
+### Device-free frame Host
+
+The same package-only example has an explicit acquisition/inspection/teaching
+workflow without a camera dependency. Build the complete sample as above and
+choose new input/output directories:
+
+```powershell
+dotnet $sample host prepare "$workRoot/host-input"
+dotnet $sample host load "$workRoot/host-input/host.json"
+dotnet $sample host run "$workRoot/host-input/host.json" "$workRoot/host-output"
+```
+
+`prepare` writes a padded Gray16LE synthetic frame and settings; `load` validates
+and restores them without connection, inspection or a CUDA probe. `run` executes
+the real caliper Tool and writes correlated raw, Gray8, opaque RGBA preview,
+teaching and result artifacts. Raw bytes and display conversion stay distinct.
+The JSON preserves shot/frame/camera IDs, clock domains, settings/model revisions,
+coordinates, hashes and shutdown evidence. The prepared continuous profile runs
+three shots; an explicitly selected single-shot profile runs one.
+
+Queues include pending triggers and retained frames. Callback buffers are copied
+before returning; late callbacks from an older generation cannot publish a new
+result. A stop deadline retains outstanding ownership rather than disposing
+active work. A failed producer stop requires an explicit successful retry.
+Cancellation uses exit130/`Canceled` with no approved measurement; settings and
+confirmed outputs are preserved. Use a new output directory on every run.
+
+These are device-free software contracts. The packed10/12 row formats implemented
+by the sample are explicitly local formats, not vendor PFNC. No camera driver,
+physical calibration, desktop rendering or machine acceptance is provided.
 
 ### QR configure, restore and explicit inspection
 

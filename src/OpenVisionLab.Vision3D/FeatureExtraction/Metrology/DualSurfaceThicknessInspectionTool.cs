@@ -166,7 +166,8 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                     continue;
                 }
 
-                double value = sample.RawHeight - plane.EvaluateY(sample.Position.X, sample.Position.Z);
+                if (!plane.TryEvaluateRawHeight(sample.Position.X, sample.Position.Z, out double referenceHeight)) continue;
+                double value = sample.RawHeight - referenceHeight;
                 if (IsFinite(value))
                 {
                     values.Add(value);
@@ -214,7 +215,9 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             foreach (HeightFieldPlaneFitSample sample in referenceSamples)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                double residual = sample.RawHeight - plane.EvaluateY(sample.Position.X, sample.Position.Z);
+                if (!plane.TryEvaluateRawHeight(sample.Position.X, sample.Position.Z, out double referenceHeight))
+                    return Complete(Error("Reference raw-height plane is unavailable or non-finite.", referenceCount, values.Count, referenceDatum), cancellationToken);
+                double residual = sample.RawHeight - referenceHeight;
                 referenceSquaredResidualSum += residual * residual;
             }
 

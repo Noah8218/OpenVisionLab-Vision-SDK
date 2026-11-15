@@ -64,8 +64,8 @@ function Invoke-OwnedProcess([string] $Name, [string[]] $Arguments) {
     finally { $process.Dispose() }
 }
 
-function Invoke-Sample([string] $Name, [string[]] $Arguments, [int] $ExpectedExit, [string] $ExpectedStatus) {
-    $result = Invoke-OwnedProcess $Name (@($dll) + $Arguments)
+function Invoke-Sample([string] $Name, [string[]] $Arguments, [int] $ExpectedExit, [string] $ExpectedStatus, [string] $AssemblyPath = $dll) {
+    $result = Invoke-OwnedProcess $Name (@($AssemblyPath) + $Arguments)
     Assert-Case ($result.ExitCode -eq $ExpectedExit) "$Name exit $($result.ExitCode), expected $ExpectedExit. See retained stdout/stderr."
     $data = $result.Output | ConvertFrom-Json
     Assert-Case ($data.Status -eq $ExpectedStatus) "$Name status $($data.Status), expected $ExpectedStatus."
@@ -80,6 +80,13 @@ function Record-Case([string] $Id, [string] $Scope, [string[]] $Evidence) {
 # never copied from the executed Tool result or the generated expected.json.
 function Assert-Inspection($Data, [int] $Dx, [int] $Dy) {
     Assert-Case ($Data.Status -eq 'Accepted' -and $Data.Units -eq 'px' -and $Data.Geometry -eq 'translation-only') 'Inspection contract differs.'
+    Assert-Case ($Data.Outcome.Execution -eq 'Completed' -and $Data.Outcome.MeasurementEstablished -and $Data.Outcome.Decision -eq 'Pass') 'Host execution/measurement/decision differs.'
+    Assert-Case ($Data.ShotId -match '^[a-f0-9]{32}$' -and $Data.FrameId -eq $Data.InputSha256 -and $Data.FeatureDetector -eq 'NotExecuted' -and $Data.AcceptedBlobCount -eq 1) 'Host frame correlation or accepted-candidate policy differs.'
+    Assert-Case (@($Data.NativeRuntimes).Count -eq 1) 'Expected exactly one loaded OpenCvSharpExtern identity after inspection.'
+    $native = $Data.NativeRuntimes[0]
+    Assert-Case ([IO.Path]::IsPathFullyQualified($native.FileName) -and [IO.Path]::GetFileName($native.FileName) -ieq 'OpenCvSharpExtern.dll' -and $native.Sha256 -match '^[A-Fa-f0-9]{64}$') 'Native path/hash identity is missing or invalid.'
+    Assert-Case ((Get-FileHash -LiteralPath $native.FileName -Algorithm SHA256).Hash -eq $native.Sha256) 'Loaded native identity hash differs from its file.'
+    foreach ($stage in $Data.Stages) { Assert-Case ([double]::IsFinite($stage.InternalElapsedMilliseconds) -and [double]::IsFinite($stage.TotalExecuteMilliseconds)) 'Stage timing evidence is missing or non-finite.' }
     Assert-Case ([Math]::Abs($Data.Pose.X - (112 + $Dx)) -le 1 -and [Math]::Abs($Data.Pose.Y - (92 + $Dy)) -le 1) 'Location differs from authored center.'
     Assert-Case ($Data.Pose.Angle -eq 0 -and $Data.Pose.Scale -eq 1) 'Unexpected rotation/scale.'
     Assert-Case ($Data.BlobCount -eq 1 -and $Data.BlobAreaPx -eq 165) 'Presence differs from the 15x11 authored mark.'
@@ -132,7 +139,7 @@ function Change-Xml($Entries, [scriptblock] $Change) {
 
 try {
     $sample = Join-Path $repository 'samples/OpenVisionLab.FirstInspection'
-    foreach ($name in @('Program.cs', 'OpenVisionLab.FirstInspection.csproj')) { Copy-Item -LiteralPath (Join-Path $sample $name) -Destination $consumer }
+    foreach ($name in @('Program.cs', 'HostOutcome.cs', 'FrameSession.cs', 'HostCommand.cs', 'OpenVisionLab.FirstInspection.csproj')) { Copy-Item -LiteralPath (Join-Path $sample $name) -Destination $consumer }
     Assert-Case (-not (Select-String -LiteralPath (Join-Path $consumer 'OpenVisionLab.FirstInspection.csproj') -Pattern 'ProjectReference|Compile Include')) 'Consumer must use packages only.'
     $escapedFeed = [Security.SecurityElement]::Escape($feed)
     $config = Join-Path $consumer 'NuGet.Config'
@@ -157,7 +164,7 @@ try {
     $assetsPath = Join-Path $build 'obj/OpenVisionLab.FirstInspection/project.assets.json'
     $assets = Get-Content -LiteralPath $assetsPath -Raw | ConvertFrom-Json -AsHashtable
     $packages = @($assets.libraries.Keys | Where-Object { $_ -like 'OpenVisionLab.*/*' } | Sort-Object)
-    $expectedPackages = @('OpenVisionLab.Compute', 'OpenVisionLab.Core', 'OpenVisionLab.Vision2D', 'OpenVisionLab.Vision2D.Blob') | ForEach-Object { "$_/$ExpectedVersion" } | Sort-Object
+    $expectedPackages = @('OpenVisionLab.Compute', 'OpenVisionLab.Core', 'OpenVisionLab.Inspection', 'OpenVisionLab.Vision2D', 'OpenVisionLab.Vision2D.Blob', 'OpenVisionLab.Vision3D') | ForEach-Object { "$_/$ExpectedVersion" } | Sort-Object
     Assert-Case (($packages -join '|') -eq ($expectedPackages -join '|')) 'Unexpected package dependency closure/version.'
     $rejected = Invoke-OwnedProcess 'version-unavailable-warm' @('restore', $project, '-p:PackageVersion=0.0.0-selection-missing', '--artifacts-path', $build, '--configfile', $config)
     Assert-Case ($rejected.ExitCode -ne 0) 'A populated cache substituted a different package version.'
@@ -171,6 +178,7 @@ try {
     }
     $scene = Join-Path $root 'scene'
     $bundle = Join-Path $root 'inspection.zip'
+    $null = Invoke-Sample 'help' @('--help') 0 'Help'
     $null = Invoke-Sample 'prepare' @('prepare', $scene) 0 'Prepared'
     $taught = Invoke-Sample 'teach' @('teach', $scene, $bundle) 0 'Taught'
     Assert-Inspection $taught.SelfCheck 0 0
@@ -232,6 +240,14 @@ try {
         $damaged = New-DamagedBundle $name $damages[$name]
         $null = Invoke-Sample "reject-$name" @('load', $damaged) 3 'InvalidInputOrSettings'
     }
+    # ReadBundle bounds host.json at 16 KiB; retain exactly three entries to reach ReadEntry.
+    $oversized = New-DamagedBundle 'oversized-host' { param($e) $e['host.json'] = [byte[]]::new(16 * 1024 + 1) }
+    $archive = [IO.Compression.ZipFile]::OpenRead($oversized)
+    try {
+        Assert-Case ($archive.Entries.Count -eq 3 -and $archive.GetEntry('host.json').Length -eq 16385 -and $null -ne $archive.GetEntry('pipeline.xml') -and $null -ne $archive.GetEntry('model.bin')) 'Oversize fixture must retain three entries and exceed only the host size bound by one byte.'
+    } finally { $archive.Dispose() }
+    $sizeRejected = Invoke-Sample 'reject-oversized-host' @('load', $oversized) 3 'InvalidInputOrSettings'
+    Assert-Case ($sizeRejected.Error -eq 'InvalidDataException' -and $sizeRejected.Message -ceq 'Invalid size for host.json') 'Oversize bundle did not reach the ReadEntry size guard.'
     $duplicate = New-DamagedBundle 'duplicate-entry' { param($e) } -Duplicate
     $null = Invoke-Sample 'reject-duplicate-entry' @('load', $duplicate) 3 'InvalidInputOrSettings'
     $truncated = Join-Path $root 'truncated-bundle.zip'
@@ -241,7 +257,7 @@ try {
     $null = Invoke-Sample 'reload-good' @('load', $bundle) 0 'LoadedOnly'
     Assert-Inspection (Invoke-Sample 'recover-bundle' @('inspect', $bundle, (Join-Path $scene 'translated.png')) 0 'Accepted') 18 11
     Assert-Case ((Get-FileHash -LiteralPath $bundle).Hash -eq $goodHash) 'Damage tests modified the good bundle.'
-    Record-Case 'F06' 'Sixteen isolated malformed/unsupported bundles: entries/hash/truncation/versions/learning/frame/identity/nonfinite/ROI/runtime gate/layer routing; last good hash preserved and normal restore/inspection recovery.' @('reject-learning-mismatch.stdout.log', 'reject-nonfinite-pose.stdout.log', 'reject-truncated-bundle.stdout.log', 'reject-unsupported-runtime-gate.stdout.log', 'reject-unsupported-layer-routing.stdout.log', 'reload-good.stdout.log', 'recover-bundle.stdout.log')
+    Record-Case 'F06' 'Seventeen isolated malformed/unsupported bundles: entries/hash/truncation/versions/learning/frame/identity/nonfinite/ROI/runtime gate/layer routing/host-size-limit-plus-one; last good hash preserved and normal restore/inspection recovery.' @('reject-oversized-host.stdout.log', 'reject-learning-mismatch.stdout.log', 'reject-nonfinite-pose.stdout.log', 'reject-truncated-bundle.stdout.log', 'reject-unsupported-runtime-gate.stdout.log', 'reject-unsupported-layer-routing.stdout.log', 'reload-good.stdout.log', 'recover-bundle.stdout.log')
 
     $null = Invoke-Sample 'reject-existing-destination' @('teach', $scene, $bundle) 3 'InvalidInputOrSettings'
     $parentFile = Join-Path $root 'parent-is-file'
@@ -273,6 +289,19 @@ try {
     $null = Invoke-Sample 'load-recovered-save' @('load', (Join-Path $root 'recovered.zip')) 0 'LoadedOnly'
     Assert-Inspection (Invoke-Sample 'inspect-recovered-save' @('inspect', (Join-Path $root 'recovered.zip'), (Join-Path $scene 'translated.png')) 0 'Accepted') 18 11
     Record-Case 'F07' 'Existing destination, file as parent, pre-canceled teach and finalization fault after observed temp creation fail without overwriting; no owned temp leak; new-name teach/load/inspect recovery. Active console cancel during teach is a separate check.' @('reject-existing-destination.stdout.log', 'reject-save-parent.stdout.log', 'reject-save-finalize.stdout.log', 'save-temporary-created.log', 'cancel-teach.stdout.log', 'recover-save.stdout.log', 'inspect-recovered-save.stdout.log')
+
+    $missingNativeBin = Join-Path $root 'missing-opencv-bin'
+    New-Item -ItemType Directory -Path $missingNativeBin | Out-Null
+    foreach ($file in Get-ChildItem -LiteralPath $bin -Recurse -File | Where-Object { $_.Name -ine 'OpenCvSharpExtern.dll' }) {
+        $destination = Join-Path $missingNativeBin ([IO.Path]::GetRelativePath($bin, $file.FullName))
+        New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($destination)) | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $destination
+    }
+    Assert-Case (@(Get-ChildItem -LiteralPath $missingNativeBin -Recurse -File -Filter 'OpenCvSharpExtern.dll').Count -eq 0) 'Isolated failure fixture retained the native runtime.'
+    $backendFailed = Invoke-Sample 'reject-missing-opencv' @('inspect', $bundle, (Join-Path $scene 'translated.png')) 3 'BackendUnavailable' -AssemblyPath (Join-Path $missingNativeBin 'OpenVisionLab.FirstInspection.dll')
+    Assert-Case ($backendFailed.Error -eq 'DllNotFoundException' -and $backendFailed.Outcome.Execution -eq 'Faulted' -and -not $backendFailed.Outcome.MeasurementEstablished -and $backendFailed.Outcome.Decision -eq 'NotEvaluated' -and -not $backendFailed.InspectionPerformed) 'Missing native runtime published an approved measurement or lost the binding failure.'
+    Assert-Inspection (Invoke-Sample 'recover-missing-opencv' @('inspect', $bundle, (Join-Path $scene 'translated.png')) 0 'Accepted') 18 11
+    Assert-Case ((Get-FileHash -LiteralPath $bundle).Hash -eq $goodHash) 'Native failure/recovery modified the good bundle.'
 
     $missingCuda = Invoke-Sample 'cuda-missing' @('inspect', $bundle, (Join-Path $scene 'translated.png'), '--cuda') 0 'Accepted'
     Assert-Inspection $missingCuda 18 11
@@ -308,7 +337,7 @@ try {
     Assert-Case ($loadedCuda.Host.UseCuda -and -not $loadedCuda.ProbePerformed -and -not $loadedCuda.InspectionPerformed) 'Restored preference was hidden or started work.'
     $policyRun = Invoke-Sample 'inspect-cuda-policy' @('inspect', $savedCuda, (Join-Path $scene 'translated.png')) 0 'Accepted'
     Assert-Case ($policyRun.RequestedCuda -and -not $policyRun.Compute.AccelerationApplied) 'Persisted explicit CUDA policy was not used.'
-    Record-Case 'F08' 'CPU default; missing/invalid module fallback; optional exact module evidence when supplied; run override does not alter saved bundle; explicit taught CUDA preference restores without executing; CPU retry.' @('cuda-missing.stdout.log', 'cuda-invalid.stdout.log', 'recover-cpu.stdout.log', 'load-cuda-policy.stdout.log', 'inspect-cuda-policy.stdout.log')
+    Record-Case 'F08' 'Missing OpenCV native runtime in isolated copied bin returns JSON fault/exit3 without approved measurement; intact-bin fresh process recovers and good bundle hash remains; CPU default; missing/invalid module fallback; optional exact module evidence when supplied; run override does not alter saved bundle; explicit taught CUDA preference restores without executing; CPU retry.' @('reject-missing-opencv.stdout.log', 'recover-missing-opencv.stdout.log', 'cuda-missing.stdout.log', 'cuda-invalid.stdout.log', 'recover-cpu.stdout.log', 'load-cuda-policy.stdout.log', 'inspect-cuda-policy.stdout.log')
 
     $null = Invoke-Sample 'cancel-inspect-before' @('inspect', $bundle, (Join-Path $scene 'translated.png'), '--cancel-before') 130 'Canceled'
     $null = Invoke-Sample 'cancel-inspect-active' @('inspect', $bundle, (Join-Path $scene 'translated.png'), '--cancel-after-ms', '1') 130 'Canceled'
@@ -382,8 +411,69 @@ try {
         Record-Case 'Q03-matching-roi' 'Existing matching/bundle datum moves explicit reference ROI; current-input corners; matching failure/out-of-frame ROI suppress reader; saved ROI and valid recovery.' @('qr-located-translated.stdout.log', 'qr-located-matching-failure.stdout.log', 'qr-located-roi-rejection.stdout.log', 'qr-located-recovery.stdout.log')
     }
 
+    $hostInput = Join-Path $root 'frame-host-input'
+    $hostPrepared = Invoke-Sample 'host-prepare' @('host', 'prepare', $hostInput) 0 'HostPrepared'
+    $hostProfile = Join-Path $hostInput 'host.json'
+    $hostProfileHash = (Get-FileHash -LiteralPath $hostProfile).Hash
+    $hostRawHash = (Get-FileHash -LiteralPath (Join-Path $hostInput 'source.raw')).Hash
+    $hostLoaded = Invoke-Sample 'host-load' @('host', 'load', $hostProfile) 0 'HostLoadedOnly'
+    Assert-Case (-not $hostLoaded.Connected -and -not $hostLoaded.Started -and -not $hostLoaded.ProbePerformed -and -not $hostLoaded.InspectionPerformed -and $hostLoaded.ProfileSha256 -eq $hostProfileHash) 'Host restore initiated acquisition/inspection or changed confirmed configuration.'
+    $hostRun = Invoke-Sample 'host-run' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-run')) 0 'HostInspected'
+    Assert-Case ($hostRun.AcceptedCount -eq 3 -and $hostRun.TerminalCount -eq 3 -and $hostRun.ShutdownComplete -and $hostRun.MachineDecision -eq 'NotProvided' -and $hostRun.Units -eq 'source-pixels') 'Host terminal correlation or equipment-decision boundary differs.'
+    Assert-Case (@($hostRun.Outcomes).Count -eq 3 -and @($hostRun.Outcomes.Ticket.ShotId | Select-Object -Unique).Count -eq 3) 'Host accepted shots lost unique correlation.'
+    Assert-Case ($hostRun.Display.FrameId -eq 'simulated-frame-2' -and $hostRun.Teaching.Context.FrameId -eq 'simulated-frame-0') 'Display latest-only or explicit frozen teach frame differs.'
+    $savedHostJson = Get-Content -LiteralPath (Join-Path $root 'frame-host-run/result.json') -Raw
+    $savedHostRun = $savedHostJson | ConvertFrom-Json
+    Assert-Case ($savedHostJson.Trim() -ceq (Get-Content -LiteralPath (Join-Path $reports 'host-run.stdout.log') -Raw).Trim()) 'Host stdout and saved result JSON differ.'
+    foreach ($shot in (@($hostRun.Outcomes) + @($savedHostRun.Outcomes))) {
+        $measurement = $shot.Outcome.Evidence.Measurement
+        $size = $measurement.InputImageSize
+        $station = $measurement.Stations[0]
+        Assert-Case ($null -ne $size -and $null -ne $station.StationCenter -and $null -ne $station.ScanNormal -and $null -ne $station.EdgePoint) 'Required Host measurement size/coordinates are null.'
+        foreach ($value in @($size.Width, $size.Height, $station.StationCenter.X, $station.StationCenter.Y, $station.ScanNormal.X, $station.ScanNormal.Y, $station.EdgePoint.X, $station.EdgePoint.Y)) {
+            Assert-Case ($null -ne $value -and [double]::IsFinite($value)) 'Required Host measurement coordinates are missing, null or non-finite.'
+        }
+        Assert-Case ($size.Width -eq 65 -and $size.Height -eq 49) 'Host measurement lost the authored input size 65x49.'
+        Assert-Case ($station.StationId -eq 0 -and $station.StationCenter.X -eq 20 -and $station.StationCenter.Y -eq 24 -and $station.ScanNormal.X -eq 0 -and $station.ScanNormal.Y -eq 1) 'Host first station center/normal differs from the authored sampling grid.'
+        Assert-Case ($station.EdgePoint.X -eq 20 -and [Math]::Abs($station.EdgePoint.Y - 24.25) -le .5) 'Host observed edge coordinates differ from the authored sigmoid center.'
+        Assert-Case ($shot.Context.ShotId -eq $shot.Ticket.ShotId -and $shot.Context.TriggerId -eq $shot.Ticket.TriggerId -and $shot.Context.SettingsRevision -eq 'settings-v1' -and $shot.Context.ClockDomain -eq 'simulated-clock-A') 'Host context lost acquisition/settings correlation.'
+        Assert-Case ($shot.Outcome.Execution -eq 'Completed' -and $shot.Outcome.MeasurementEstablished -and $shot.Outcome.Decision -eq 'Pass') 'Actual caliper inspection did not establish the explicitly accepted measurement.'
+        Assert-Case ([Math]::Abs($shot.Outcome.Evidence.Measurement.Line.CenterY - 24.25) -le .5) 'Host measurement differs from independently authored sigmoid center.'
+        Assert-Case ([double]::IsFinite($shot.Outcome.Evidence.InternalElapsedMilliseconds) -and [double]::IsFinite($shot.Outcome.Evidence.TotalExecuteMilliseconds)) 'Host timing evidence is invalid.'
+    }
+    foreach ($artifact in $hostRun.Artifacts) {
+        Assert-Case ($artifact.Raw.Sha256 -eq $hostRawHash -and (Get-FileHash -LiteralPath $artifact.Raw.Path).Hash -eq $hostRawHash) 'Borrowed callback overwrite corrupted original padded raw pixels.'
+        $rgba = [IO.File]::ReadAllBytes($artifact.PreviewRgba.Path)
+        Assert-Case ($rgba.Length -eq (65 * 49 * 4)) 'Preview dimensions differ.'
+        for ($i = 3; $i -lt $rgba.Length; $i += 4) { Assert-Case ($rgba[$i] -eq 255) 'Preview alpha must be opaque.' }
+    }
+    Assert-Case ((Get-FileHash -LiteralPath (Join-Path (Split-Path $hostRun.Teaching.Path) 'teach.raw')).Hash -eq $hostRawHash -and @(Get-ChildItem -LiteralPath $hostInput -Filter '.host-profile-*.tmp').Count -eq 0) 'Teach bytes differ or temporary profile leaked.'
+    $null = Invoke-Sample 'host-load-restored' @('host', 'load', $hostRun.RestoredProfile) 0 'HostLoadedOnly'
+    $null = Invoke-Sample 'host-run-restored' @('host', 'run', $hostRun.RestoredProfile, (Join-Path $root 'frame-host-reopened')) 0 'HostInspected'
+    Assert-Case (@($hostRun.Packages).Count -eq 7 -and @($hostRun.NativeRuntimes).Count -eq 1) 'Host SDK/native actual loaded identities are missing.'
+    $singleProfile = Join-Path $hostInput 'single.json'
+    $singleSettings = Get-Content -LiteralPath $hostProfile -Raw | ConvertFrom-Json
+    $singleSettings.Mode = 'SingleShot'
+    $singleSettings | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $singleProfile -Encoding utf8
+    $singleLoaded = Invoke-Sample 'host-single-load' @('host', 'load', $singleProfile) 0 'HostLoadedOnly'
+    Assert-Case ($singleLoaded.Settings.Mode -eq 'SingleShot' -and -not $singleLoaded.Started -and -not $singleLoaded.InspectionPerformed) 'Single-shot preference restoration ran work or hid the selected mode.'
+    $singleRun = Invoke-Sample 'host-single-run' @('host', 'run', $singleProfile, (Join-Path $root 'frame-host-single')) 0 'HostInspected'
+    Assert-Case ($singleRun.AcceptedCount -eq 1 -and $singleRun.TerminalCount -eq 1 -and $singleRun.ShutdownComplete) 'Single-shot Host route did not produce exactly one correlated terminal outcome.'
+    Record-Case 'HCLI01-correlated-device-free-workflow' 'Package-only managed prepare/load, copied padded Gray16 callback input, real caliper execution, independent size/station/normal/edge expectations in identical stdout/saved JSON, immutable full context, opaque display, explicit teach selection, hashes, native identities and restored fresh-process run; explicit single-shot preference/load/real execution.' @('host-load.stdout.log', 'host-run.stdout.log', 'host-run-restored.stdout.log', 'host-single-load.stdout.log', 'host-single-run.stdout.log')
+
+    $invalidHost = Join-Path $hostInput 'invalid-host.json'
+    [IO.File]::WriteAllText($invalidHost, '{"Version":')
+    $null = Invoke-Sample 'host-reject-profile' @('host', 'load', $invalidHost) 3 'InvalidInputOrSettings'
+    $null = Invoke-Sample 'host-reject-existing' @('host', 'prepare', $hostInput) 3 'InvalidInputOrSettings'
+    $null = Invoke-Sample 'host-reject-parent-file' @('host', 'prepare', (Join-Path $parentFile 'host')) 3 'InvalidInputOrSettings'
+    $null = Invoke-Sample 'host-cancel-before' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-canceled'), '--cancel-before') 130 'Canceled'
+    $null = Invoke-Sample 'host-reject-missing-opencv' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-no-native')) 3 'BackendUnavailable' -AssemblyPath (Join-Path $missingNativeBin 'OpenVisionLab.FirstInspection.dll')
+    $null = Invoke-Sample 'host-recover' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-recovered')) 0 'HostInspected'
+    Assert-Case ((Get-FileHash -LiteralPath $hostProfile).Hash -eq $hostProfileHash -and (Get-FileHash -LiteralPath (Join-Path $hostInput 'source.raw')).Hash -eq $hostRawHash) 'Host failure/recovery modified confirmed configuration/source bytes.'
+    Record-Case 'HCLI02-failure-restore' 'Malformed settings, existing destination, save parent file, pre-cancel, isolated missing OpenCV native runtime and intact fresh-process recovery preserve confirmed configuration/source bytes.' @('host-reject-profile.stdout.log', 'host-reject-parent-file.stdout.log', 'host-reject-missing-opencv.stdout.log', 'host-recover.stdout.log')
+
     $feedManifest = Get-ChildItem -LiteralPath $feed -Filter '*.nupkg' | Sort-Object Name | ForEach-Object { [ordered]@{ File = $_.Name; Sha256 = (Get-FileHash -LiteralPath $_.FullName).Hash } }
-    $summary = [ordered]@{ Status = 'Complete'; Scope = $(if ($QrFixtureDirectory) { 'Isolated package consumer, bounded F01-F09 managed cases and Q01-Q03 QR workflow' } else { 'Isolated package consumer and bounded F01-F09 managed cases' }); ExpectedPackageVersion = $ExpectedVersion; Packages = $packages; Feed = $feedManifest; RunningDllSha256 = (Get-FileHash -LiteralPath $dll).Hash; LoadedPackages = $translated.Packages; ConsoleMode = 'redirected pipes; no desktop window'; Storage = $root; Cases = $cases; Commands = $commands; OptionalCuda = $cudaEvidence; Unverified = @('Actual first-developer observation F10', 'Console.CancelKeyPress requires separate actual control-event evidence', 'Sensor images, rotation/scale, physical calibration/tolerances, field soak/performance'); }
+    $summary = [ordered]@{ Status = 'Complete'; Scope = $(if ($QrFixtureDirectory) { 'Isolated package consumer, bounded F01-F09 managed cases, Q01-Q03 QR and HCLI01-HCLI02 device-free Host workflow' } else { 'Isolated package consumer, bounded F01-F09 managed cases and HCLI01-HCLI02 device-free Host workflow' }); ExpectedPackageVersion = $ExpectedVersion; Packages = $packages; Feed = $feedManifest; RunningDllSha256 = (Get-FileHash -LiteralPath $dll).Hash; LoadedPackages = $translated.Packages; ConsoleMode = 'redirected pipes; no desktop window'; Storage = $root; Cases = $cases; Commands = $commands; OptionalCuda = $cudaEvidence; Unverified = @('Actual first-developer observation F10', 'Console.CancelKeyPress requires separate actual control-event evidence', 'Sensor images, rotation/scale, physical calibration/tolerances, field soak/performance'); }
     $summary | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath (Join-Path $reports 'summary.json') -Encoding utf8
     Write-Output "Passed $($cases.Count) bounded case groups; $($commands.Count) separate processes. Evidence: $reports"
 }

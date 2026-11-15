@@ -17,6 +17,8 @@ namespace OpenVisionLab.Inspection.Smoke
             bool surfaceChallenge = args.Length == 2 && args[0] == "--surface-challenge";
             bool support2D = args.Length == 2 && args[0] == "--2d-support";
             bool sdkQuality = args.Length == 2 && args[0] == "--sdk-quality";
+            bool exportQr = args.Length == 2 && args[0] == "--export-qr-fixtures";
+            bool hardeningStudy = args.Length == 3 && args[0] == "--hardening-study";
             bool operationHost = args.Length == 3 && args[0] == "--operation-host";
             bool operationStudy = args.Length == 4 && args[0] == "--operation-study";
             bool surfaceRobustness = args.Length == 2 && args[0] == "--surface-robustness";
@@ -29,8 +31,8 @@ namespace OpenVisionLab.Inspection.Smoke
             bool cudaWorkload = args.Length == 5 && args[0] == "--cuda-workload" && (args[1] == "cpu" || args[1] == "cuda")
                 && int.TryParse(args[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out imageSide);
             string filter = args.Length == 2 && args[0] == "--filter" ? args[1] : null;
-            if ((reportPath != null && (qualify || support2D || sdkQuality || operationHost || operationStudy || surfaceChallenge || surfaceRobustness || cudaBenchmark || cudaCold || cudaLarge || cudaWorkload))
-                || (args.Length > 0 && !listOnly && !qualify && !support2D && !sdkQuality && !operationHost && !operationStudy && !surfaceChallenge && !surfaceRobustness && !cudaBenchmark && !cudaCold && !cudaLarge && !cudaWorkload && string.IsNullOrWhiteSpace(filter)))
+            if ((reportPath != null && (exportQr || hardeningStudy || qualify || support2D || sdkQuality || operationHost || operationStudy || surfaceChallenge || surfaceRobustness || cudaBenchmark || cudaCold || cudaLarge || cudaWorkload))
+                || (args.Length > 0 && !exportQr && !hardeningStudy && !listOnly && !qualify && !support2D && !sdkQuality && !operationHost && !operationStudy && !surfaceChallenge && !surfaceRobustness && !cudaBenchmark && !cudaCold && !cudaLarge && !cudaWorkload && string.IsNullOrWhiteSpace(filter)))
             {
                 Console.Error.WriteLine("Usage: OpenVisionLab.Inspection.Smoke [--2d-support <D: report path> | --sdk-quality <D: report path> | --list | --filter <name substring> | --qualify <D: report path> | --surface-challenge <D: report path> | --surface-robustness <D: report path> | --cuda-benchmark <D: report path> | --cuda-study <D: report path> | --cuda-cold <cpu|cuda> <D: report path> | --cuda-large <cpu|cuda> <5000|10000|15000> <D: report path> | --cuda-workload <cpu|cuda> <5000|10000|15000> <texture|dense|absent|multi> <D: report path>] [--report <smoke JSON path> for full/list/filter]");
                 Console.Error.WriteLine("Dev operation modes: --operation-host <action> <D: input directory> | --operation-study <qr|edge-cpu|edge3-cpu|edge-cuda|edge3-cuda> <D: input directory> <D: report path>");
@@ -41,6 +43,8 @@ namespace OpenVisionLab.Inspection.Smoke
 
             try
             {
+                if (exportQr) { QrCodeFixtures.Export(args[1]); return 0; }
+                if (hardeningStudy) return HardeningEvaluation.Run(args[1], args[2]);
                 if (support2D) return Vision2DSupportEvaluationSmokeSuite.RunEvaluation(args[1]);
                 if (sdkQuality) return SdkQualityEvaluationSmokeSuite.RunEvaluation(args[1]);
                 if (operationHost) return SdkOperationEvaluationSmokeSuite.RunHost(args[1], args[2]);
@@ -74,6 +78,8 @@ namespace OpenVisionLab.Inspection.Smoke
                 runner.Run(CudaKernelSmokeSuite.Cases());
                 runner.Run(CudaLocalOperationSmokeSuite.Cases());
                 runner.Run(Vision2DSmokeSuite.Cases());
+                runner.Run(CaliperSmokeSuite.Cases());
+                runner.Run(FrameHostSmokeSuite.Cases());
                 runner.Run(QrCodeSmokeSuite.Cases());
                 runner.Run(EdgePoseRefinementSmokeSuite.Cases());
                 runner.Run(EdgeModelArtifactSmokeSuite.Cases());

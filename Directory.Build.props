@@ -4,7 +4,7 @@
     <Company>OpenVisionLab</Company>
     <Copyright>Copyright (c) 2026 최노아(Noah-Choi)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>3.3.0-rc.1</Version>
+    <Version>3.3.0-rc.2</Version>
     <!-- Source candidate version. CI packing uses a unique version for each run. -->
     <PackageVersion>$(Version)</PackageVersion>
     <InformationalVersion>$(Version)</InformationalVersion>

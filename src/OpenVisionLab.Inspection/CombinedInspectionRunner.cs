@@ -3,6 +3,7 @@ using OpenVisionLab.Vision3D.Inspection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 
 namespace OpenVisionLab.Inspection
 {
@@ -17,14 +18,24 @@ namespace OpenVisionLab.Inspection
             IEnumerable<IVisionTool> twoDTools,
             IEnumerable<IThreeDInspectionTool> threeDTools)
         {
+            return Run(input, twoDTools, threeDTools, CancellationToken.None);
+        }
+
+        /// <summary>Runs independent steps, stopping and releasing unreturned results on caller cancellation.</summary>
+        public CombinedInspectionRunResult Run(
+            CombinedInspectionInput input, IEnumerable<IVisionTool> twoDTools,
+            IEnumerable<IThreeDInspectionTool> threeDTools, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             Stopwatch stopwatch = Stopwatch.StartNew();
             CombinedInspectionRunResult result = new CombinedInspectionRunResult();
             CombinedInspectionInput resolvedInput = input ?? new CombinedInspectionInput();
 
             try
             {
-                ExecuteTwoDTools(result, resolvedInput, twoDTools);
-                ExecuteThreeDTools(result, resolvedInput, threeDTools);
+                ExecuteTwoDTools(result, resolvedInput, twoDTools, cancellationToken);
+                ExecuteThreeDTools(result, resolvedInput, threeDTools, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
             }
             catch
             {
@@ -52,7 +63,7 @@ namespace OpenVisionLab.Inspection
         private static void ExecuteTwoDTools(
             CombinedInspectionRunResult result,
             CombinedInspectionInput input,
-            IEnumerable<IVisionTool> tools)
+            IEnumerable<IVisionTool> tools, CancellationToken cancellationToken)
         {
             if (tools == null)
             {
@@ -61,9 +72,10 @@ namespace OpenVisionLab.Inspection
 
             foreach (IVisionTool tool in tools)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (tool == null)
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.TwoD,
                         ToolName = "Unconfigured 2D tool",
@@ -76,22 +88,24 @@ namespace OpenVisionLab.Inspection
                 }
 
                 string toolName = ResolveVisionToolName(tool, "Unnamed 2D tool");
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.TwoD,
                         ToolName = toolName,
-                        VisionResult = tool.Execute(input.Image)
+                        VisionResult = (tool is ICancellableVisionTool cancellable ? cancellable.Execute(input.Image, cancellationToken) : tool.Execute(input.Image))
                             ?? VisionToolResult.Failed(
                                 VisionToolErrorCode.ToolExecutionException,
                                 "The 2D tool returned no result.",
                                 TimeSpan.Zero)
                     });
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception exception)
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.TwoD,
                         ToolName = toolName,
@@ -102,13 +116,14 @@ namespace OpenVisionLab.Inspection
                             exception)
                     });
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
         }
 
         private static void ExecuteThreeDTools(
             CombinedInspectionRunResult result,
             CombinedInspectionInput input,
-            IEnumerable<IThreeDInspectionTool> tools)
+            IEnumerable<IThreeDInspectionTool> tools, CancellationToken cancellationToken)
         {
             if (tools == null)
             {
@@ -117,9 +132,10 @@ namespace OpenVisionLab.Inspection
 
             foreach (IThreeDInspectionTool tool in tools)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (tool == null)
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.ThreeD,
                         ToolName = "Unconfigured 3D tool",
@@ -132,13 +148,14 @@ namespace OpenVisionLab.Inspection
                 }
 
                 string toolName = ResolveThreeDToolName(tool, "Unnamed 3D tool");
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.ThreeD,
                         ToolName = toolName,
-                        ThreeDResult = tool.Execute(input.HeightMap)
+                        ThreeDResult = (tool is ICancellableThreeDInspectionTool cancellable ? cancellable.Execute(input.HeightMap, cancellationToken) : tool.Execute(input.HeightMap))
                             ?? ThreeDInspectionResult.Failed(
                                 ThreeDInspectionErrorCode.ToolExecutionException,
                                 "The 3D tool returned no result.",
@@ -146,9 +163,10 @@ namespace OpenVisionLab.Inspection
                                 input.HeightMap)
                     });
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception exception)
                 {
-                    result.Steps.Add(new CombinedInspectionStepResult
+                    result.AddStep(new CombinedInspectionStepResult
                     {
                         Domain = CombinedInspectionDomain.ThreeD,
                         ToolName = toolName,
@@ -161,6 +179,7 @@ namespace OpenVisionLab.Inspection
                             exception)
                     });
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
         }
 

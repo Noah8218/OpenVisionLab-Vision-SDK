@@ -25,6 +25,11 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
     {
         private readonly ThreeDPoint referenceOrigin;
         private readonly double localIntercept;
+        private readonly bool hasRawPlane;
+        private readonly double rawOrigin;
+        private readonly double rawSlopeX;
+        private readonly double rawSlopeZ;
+        private readonly double rawLocalIntercept;
 
         public LeastSquaresHeightFieldPlaneFitResult(
             double slopeX,
@@ -68,12 +73,17 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
             double targetRawHeight,
             double targetRawReferenceHeight,
             ThreeDPoint referenceOrigin,
-            double localIntercept)
+            double localIntercept, double rawOrigin, double rawSlopeX, double rawSlopeZ, double rawLocalIntercept)
             : this(slopeX, slopeZ, intercept, normal, offset, sampleCount, rootMeanSquareDistance,
                 target, targetProjection, targetSignedDistance, targetRawHeight, targetRawReferenceHeight)
         {
             this.referenceOrigin = referenceOrigin;
             this.localIntercept = localIntercept;
+            this.rawOrigin = rawOrigin;
+            this.rawSlopeX = rawSlopeX;
+            this.rawSlopeZ = rawSlopeZ;
+            this.rawLocalIntercept = rawLocalIntercept;
+            hasRawPlane = true;
         }
 
         public double SlopeX { get; }
@@ -97,6 +107,14 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 ? (SlopeX * x) + (SlopeZ * z) + Intercept
                 : referenceOrigin.Y + ((SlopeX * (x - referenceOrigin.X)) + (SlopeZ * (z - referenceOrigin.Z)) + localIntercept);
         }
+        internal bool TryEvaluateRawHeight(double x, double z, out double value)
+        {
+            value = hasRawPlane
+                ? rawOrigin + ((rawSlopeX * (x - referenceOrigin.X)) + (rawSlopeZ * (z - referenceOrigin.Z)) + rawLocalIntercept)
+                : double.NaN;
+            return !double.IsNaN(value) && !double.IsInfinity(value);
+        }
+
         internal double SignedDistance(ThreeDPoint point)
         {
             return referenceOrigin == null
@@ -296,7 +314,7 @@ namespace OpenVisionLab.Vision3D.FeatureExtraction
                 target.RawHeight,
                 rawReference,
                 origin.Position,
-                localIntercept);
+                localIntercept, origin.RawHeight, rawSlopeX, rawSlopeZ, rawIntercept);
             cancellationToken.ThrowIfCancellationRequested();
             return result;
         }

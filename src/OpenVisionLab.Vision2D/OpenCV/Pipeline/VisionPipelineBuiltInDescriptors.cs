@@ -13,6 +13,7 @@ namespace OpenVisionLab.Vision2D.Pipeline
     internal static class VisionPipelineBuiltInDescriptors
     {
         private const string PackageId = "OpenVisionLab.Vision2D";
+        private static readonly string[] RotatedCaliperAliases = { "RotatedCaliperTool" };
 
         public static readonly IReadOnlyList<VisionPipelineToolDescriptor> All =
             new ReadOnlyCollection<VisionPipelineToolDescriptor>(new[]
@@ -31,7 +32,8 @@ namespace OpenVisionLab.Vision2D.Pipeline
                 CreateSiftDescriptor(),
                 CreateLineGaugeDescriptor(),
                 CreateMeanDescriptor(),
-                CreateQrCodeDescriptor()
+                CreateQrCodeDescriptor(),
+                CreateRotatedCaliperDescriptor()
             });
 
         private static VisionPipelineToolDescriptor CreateThresholdDescriptor()
@@ -438,6 +440,44 @@ namespace OpenVisionLab.Vision2D.Pipeline
                     Integer(nameof(value.MEAN_MIN), value.MEAN_MIN),
                     Enum(nameof(value.MEAN_TYPES), value.MEAN_TYPES)
                 }));
+        }
+
+        private static VisionPipelineToolDescriptor CreateRotatedCaliperDescriptor()
+        {
+            RotatedCaliperToolProperty value = new RotatedCaliperToolProperty();
+            return Tool("rotatedCaliper", typeof(RotatedCaliperTool), typeof(RotatedCaliperToolProperty), RotatedCaliperAliases, new[]
+            {
+                String(nameof(value.NAME), value.NAME),
+                Enum(nameof(value.Shape), value.Shape),
+                Number(nameof(value.CenterX), value.CenterX),
+                Number(nameof(value.CenterY), value.CenterY),
+                Number(nameof(value.AngleDegrees), value.AngleDegrees),
+                Number(nameof(value.Radius), value.Radius),
+                Number(nameof(value.StartAngleDegrees), value.StartAngleDegrees),
+                Number(nameof(value.AngularPitchDegrees), value.AngularPitchDegrees),
+                Integer(nameof(value.StationCount), value.StationCount),
+                Number(nameof(value.StationPitch), value.StationPitch),
+                Number(nameof(value.ScanLength), value.ScanLength),
+                Integer(nameof(value.ScanSampleCount), value.ScanSampleCount),
+                Number(nameof(value.TangentWidth), value.TangentWidth),
+                Integer(nameof(value.TangentSampleCount), value.TangentSampleCount),
+                Number(nameof(value.MinimumTangentCoverage), value.MinimumTangentCoverage),
+                Number(nameof(value.MinimumProfileCoverage), value.MinimumProfileCoverage),
+                Enum(nameof(value.Polarity), value.Polarity),
+                Enum(nameof(value.Selection), value.Selection),
+                Number(nameof(value.MinimumContrast), value.MinimumContrast),
+                Number(nameof(value.TieEpsilon), value.TieEpsilon),
+                Number(nameof(value.ConditioningEpsilon), value.ConditioningEpsilon),
+                Boolean(nameof(value.OutlierRemovalEnabled), value.OutlierRemovalEnabled),
+                Number(nameof(value.OutlierResidualCutoff), value.OutlierResidualCutoff),
+                Integer(nameof(value.MaximumOutlierIterations), value.MaximumOutlierIterations),
+                Boolean(nameof(value.QualityGateEnabled), value.QualityGateEnabled),
+                Integer(nameof(value.MinimumPointCount), value.MinimumPointCount),
+                Number(nameof(value.MaximumRmsResidual), value.MaximumRmsResidual),
+                Number(nameof(value.MaximumResidual), value.MaximumResidual),
+                Number(nameof(value.MinimumCircleCoverageDegrees), value.MinimumCircleCoverageDegrees),
+                Number(nameof(value.MaximumCircleGapDegrees), value.MaximumCircleGapDegrees)
+            });
         }
 
         private static VisionPipelineToolDescriptor CreateQrCodeDescriptor()

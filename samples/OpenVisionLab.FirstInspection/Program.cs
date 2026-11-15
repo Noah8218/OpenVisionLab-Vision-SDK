@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.Diagnostics;
+using OpenVisionLab.Vision2D;
+using OpenVisionLab.FirstInspection;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -29,8 +32,14 @@ internal static class Program
         ConsoleCancelEventHandler handler = (_, e) => { e.Cancel = true; cancellation.Cancel(); };
         Console.CancelKeyPress += handler;
         string command = "";
+        string shotId = Guid.NewGuid().ToString("N");
         try
         {
+            if (args.Length == 1 && (args[0] == "--help" || args[0] == "help"))
+            {
+                Write(new { Status = "Help", Usage = "prepare <new-dir> | teach <dir> <new-bundle> | load <bundle> | inspect <bundle> <image> | qr configure/load/inspect/inspect-located | host prepare <new-dir>/load <host.json>/run <host.json> <new-dir>. Options: --cuda, --cancel-before, --cancel-after-ms N. Main file flow: translation-only and 8-bit gray/BGR/BGRA. Device-free host profile declares raw high-bit conversion. No automatic equipment OK." });
+                return 0;
+            }
             bool cuda = args.Contains("--cuda"), cancelBefore = args.Contains("--cancel-before");
             int? cancelAfter = null;
             List<string> positional = new List<string>();
@@ -52,6 +61,8 @@ internal static class Program
             object report;
             switch (command)
             {
+                case "host":
+                    return HostCommand.Run(positional, cancellation.Token);
                 case "qr":
                     return RunQr(positional, cancellation, cancelAfter);
                 case "prepare" when positional.Count == 2:
@@ -66,29 +77,29 @@ internal static class Program
                     break;
                 case "inspect" when positional.Count == 3:
                     Bundle bundle = ReadBundle(Path.GetFullPath(positional[1]), cancellation.Token);
-                    Inspection inspection = Inspect(bundle, Path.GetFullPath(positional[2]), cuda || bundle.Host.UseCuda, cancellation, cancelAfter);
+                    Inspection inspection = Inspect(bundle, Path.GetFullPath(positional[2]), cuda || bundle.Host.UseCuda, cancellation, cancelAfter, shotId);
                     Write(inspection);
                     return inspection.Status == "Accepted" ? 0 : 2;
                 default:
-                    throw new ArgumentException("Usage: prepare <new-work-dir> | teach <work-dir> <new-bundle> [--cuda] | load <bundle> | inspect <bundle> <image> [--cuda] [--cancel-after-ms N] | qr configure <new-profile.xml> [count [x,y,width,height]] | qr load <profile.xml> | qr inspect <profile.xml> <image> [expected-text] | qr inspect-located <profile.xml> <bundle> <image> [expected-text]. --cancel-before demonstrates pre-cancellation. Ctrl+C requests cooperative cancellation.");
+                    throw new ArgumentException("Usage: prepare <new-work-dir> | teach <work-dir> <new-bundle> [--cuda] | load <bundle> | inspect <bundle> <image> [--cuda] [--cancel-after-ms N] | qr configure <new-profile.xml> [count [x,y,width,height]] | qr load <profile.xml> | qr inspect <profile.xml> <image> [expected-text] | qr inspect-located <profile.xml> <bundle> <image> [expected-text] | host prepare <new-directory> | host load <host.json> | host run <host.json> <new-output-directory>. --cancel-before demonstrates pre-cancellation. Ctrl+C requests cooperative cancellation.");
             }
             Write(report);
             return 0;
         }
         catch (OperationCanceledException)
         {
-            Write(new { Status = "Canceled", Message = "Cancellation requested; no inspection value is published. Native calls may complete before cancellation is observed." });
+            Write(new { ShotId = shotId, Outcome = HostOutcome.Canceled(), Status = "Canceled", Message = "Cancellation requested; no inspection value is published. Native calls may complete before cancellation is observed." });
             return 130;
         }
-        catch (Exception error) when (command == "qr" && error.GetBaseException() is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        catch (Exception error) when (error.GetBaseException() is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
             Exception cause = error.GetBaseException();
-            Write(new { Status = "BackendUnavailable", Error = cause.GetType().Name, cause.Message, InspectionPerformed = false });
+            Write(new { ShotId = shotId, Outcome = HostOutcome.Faulted(), Status = "BackendUnavailable", Error = cause.GetType().Name, cause.Message, InspectionPerformed = false });
             return 3;
         }
         catch (Exception error) when (error is ArgumentException or InvalidDataException or JsonException or IOException or UnauthorizedAccessException or InvalidOperationException or OpenCVException or FormatException or OverflowException or NotSupportedException or System.Xml.XmlException)
         {
-            Write(new { Status = "InvalidInputOrSettings", Error = error.GetType().Name, error.Message });
+            Write(new { ShotId = shotId, Outcome = HostOutcome.Faulted(), Status = "InvalidInputOrSettings", Error = error.GetType().Name, error.Message });
             return 3;
         }
         finally
@@ -143,6 +154,7 @@ internal static class Program
         if (expected != null && reader.property.ExpectedCodeCount != 1) throw new ArgumentException("A single expected text requires ExpectedCodeCount=1.");
         string imagePath = Path.GetFullPath(args[located ? 4 : 3]);
         using Mat image = ReadQrImage(imagePath, token);
+        using Mat gray = OpenCvHelper.CreateGray8(image, image.Channels() == 1 ? ImageChannelOrder.Gray : ImageChannelOrder.Bgr);
         if (cancelAfter.HasValue) cancellation.CancelAfter(cancelAfter.Value);
         object? location = null;
         if (located)
@@ -152,8 +164,6 @@ internal static class Program
             if (image.Width != bundle.Host.Width || image.Height != bundle.Host.Height) throw new ArgumentException("QR image frame size differs from the matching reference frame.");
             using VisionComputeSession session = new VisionComputeSession(new VisionComputeOptions { UseCuda = bundle.Host.UseCuda });
             using EdgeBasedTemplateMatchingTool matcher = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(bundle.Pipeline.Steps[0], _ => bundle.Model, session);
-            using Mat gray = image.Clone();
-            if (gray.Channels() == 3) Cv2.CvtColor(gray, gray, ColorConversionCodes.BGR2GRAY);
             using VisionToolResult match = matcher.Execute(gray, token);
             if (!match.Success)
             {
@@ -172,12 +182,12 @@ internal static class Program
             location = new { CurrentPose = pose, ReferencePose = bundle.Host.ReferencePose, AppliedRoi = RectText(reader.property.CvROI) };
         }
         token.ThrowIfCancellationRequested();
-        using VisionToolResult result = reader.Execute(image, token);
+        using VisionToolResult result = reader.Execute(gray, token);
         bool? agrees = expected == null || !result.Success ? null : string.Equals(result.QrCodeReading.Candidates.Single().Text, expected, StringComparison.Ordinal);
         string status = !result.Success ? "ReadingFailed" : agrees == false ? "TextMismatch" : agrees == true ? "TextMatched" : "Read";
         Write(new
         {
-            Status = status, result.Success, result.ErrorName, result.Message, QrExecutionPerformed = true,
+            ShotId = Guid.NewGuid().ToString("N"), Outcome = agrees == false ? HostOutcome.Completed(true, false) : HostOutcome.Qr(result), FeatureDetector = "NotExecuted", InputFormat = "8-bit gray/BGR", Status = status, result.Success, result.ErrorName, result.Message, QrExecutionPerformed = true,
             Units = "px", CoordinateFrame = "current-input-Mat", ExpectedText = expected, TextComparison = "Ordinal", TextAgrees = agrees,
             Input = imagePath, InputSha256 = HashFile(imagePath), ProfileSha256 = HashFile(profilePath), Location = location,
             Reading = result.QrCodeReading == null ? null : new
@@ -352,7 +362,7 @@ internal static class Program
         return new { Status = "Taught", Bundle = destination, BundleSha256 = HashFile(destination), ModelSha256 = Hash(model), host.ReferencePose, SelfCheck = check };
     }
 
-    private static Inspection Inspect(Bundle bundle, string path, bool cuda, CancellationTokenSource cancellation, int? cancelAfter)
+    private static Inspection Inspect(Bundle bundle, string path, bool cuda, CancellationTokenSource cancellation, int? cancelAfter, string? shotId = null)
     {
         CancellationToken token = cancellation.Token;
         // Construction does not probe CUDA. Declare the session first so caller Mats and Tools release before it.
@@ -361,17 +371,19 @@ internal static class Program
         if (image.Width != bundle.Host.Width || image.Height != bundle.Host.Height) throw new ArgumentException("Image frame size differs from the taught reference frame.");
         Inspection output = new Inspection
         {
-            Status = "ExecutionFailed", Input = path, InputSha256 = HashFile(path), PipelineSha256 = Hash(Encoding.UTF8.GetBytes(bundle.Xml)),
-            ModelSha256 = Hash(bundle.Model), RequestedCuda = cuda, InputGray00 = image.At<byte>(0, 0), Packages = PackageIdentities()
+            ShotId = shotId ?? Guid.NewGuid().ToString("N"), Status = "ExecutionFailed", Input = path, InputSha256 = HashFile(path), PipelineSha256 = Hash(Encoding.UTF8.GetBytes(bundle.Xml)),
+            ModelSha256 = Hash(bundle.Model), RequestedCuda = cuda, InputGray00 = image.At<byte>(0, 0), Packages = PackageIdentities(), NativeRuntimes = NativeIdentities()
         };
         using EdgeBasedTemplateMatchingTool matcher = (EdgeBasedTemplateMatchingTool)VisionPipelineToolFactory.Create(bundle.Pipeline.Steps[0], _ => bundle.Model, session);
         using BlobTool presence = (BlobTool)VisionPipelineBlobToolFactory.Create(bundle.Pipeline.Steps[1]);
         using LineGaugeTool gauge = (LineGaugeTool)VisionPipelineBlobToolFactory.Create(bundle.Pipeline.Steps[2]);
         if (cancelAfter.HasValue) cancellation.CancelAfter(cancelAfter.Value);
         Console.Error.WriteLine("MatchingStarted: translation-only; cooperative cancellation; results in px.");
+        long stageStart = Stopwatch.GetTimestamp();
         using (VisionToolResult located = matcher.Execute(image, token))
         {
-            output.Stages.Add(StageOf("Matching", located));
+            output.Stages.Add(StageOf("Matching", located, stageStart));
+            output.Outcome = HostOutcome.Matching(located);
             output.Compute = ComputeOf(located.ComputeDiagnostics);
             if (!located.Success) { output.Status = located.ErrorCode == VisionToolErrorCode.MatchingNoResult ? "PatternNotFound" : "ExecutionFailed"; return output; }
             RequireCurrentMatch(located, matcher);
@@ -387,29 +399,37 @@ internal static class Program
         catch (ArgumentException error)
         {
             output.Status = "RoiRejected";
+            output.Outcome = HostOutcome.Completed(false, false);
             output.Stages.Add(new Stage("RoiTransfer", false, "HostRoiOutsideImage", error.Message));
             return output;
         }
         output.PresenceRoi = RectText(presence.property.CvROI);
         output.GaugeRoi = RectText(gauge.property.CvROI);
         token.ThrowIfCancellationRequested();
+        stageStart = Stopwatch.GetTimestamp();
         using (VisionToolResult found = presence.Execute(image))
         {
             token.ThrowIfCancellationRequested(); // Blob is synchronous; it has no cancellable overload.
-            output.Stages.Add(StageOf("Presence", found));
+            output.Stages.Add(StageOf("Presence", found, stageStart));
+            output.AcceptedBlobCount = presence.candidates.Count(value => value.Accepted);
+            output.Outcome = HostOutcome.Blob(found, output.AcceptedBlobCount);
             if (!found.Success) { output.Status = found.ErrorCode == VisionToolErrorCode.BlobNoResult ? "MarkNotFound" : "ExecutionFailed"; return output; }
+            if (output.AcceptedBlobCount == 0) { output.Status = "MarkNotFound"; return output; }
             output.BlobCount = presence.results.Count;
             output.BlobAreaPx = presence.results.Sum(value => value.Area);
         }
+        stageStart = Stopwatch.GetTimestamp();
         using (VisionToolResult measured = gauge.Execute(image, token))
         {
-            output.Stages.Add(StageOf("LineGauge", measured));
-            if (!measured.Success) { output.Status = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? "EdgeNotFound" : "ExecutionFailed"; return output; }
+            output.Stages.Add(StageOf("LineGauge", measured, stageStart));
+            if (!measured.Success) { output.Status = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? "EdgeNotFound" : "ExecutionFailed"; output.Outcome = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? HostOutcome.Completed(false, false) : HostOutcome.Faulted(); return output; }
             LineGaugeSubpixelEvidence evidence = gauge.resultList.Single().SubpixelEvidence;
             if (!evidence.HasFit || !evidence.ProjectsX) throw new InvalidDataException("No accepted X projection subpixel fit.");
+            if (!double.IsFinite(evidence.Slope) || !double.IsFinite(evidence.Intercept) || !double.IsFinite(evidence.OrthogonalRmse)) throw new InvalidDataException("Line measurement is non-finite.");
             output.Line = new LineEvidence(evidence.Slope, evidence.Intercept, evidence.OrthogonalRmse, evidence.Points.Select(value => new PixelPoint(value.X, value.Y)).ToArray());
         }
         token.ThrowIfCancellationRequested();
+        output.Outcome = HostOutcome.Completed(true, true);
         output.Status = "Accepted";
         return output;
     }
@@ -522,11 +542,9 @@ internal static class Program
         if (!File.Exists(path) || new FileInfo(path).Length == 0 || new FileInfo(path).Length > 64 * 1024 * 1024) throw new ArgumentException("Image is missing, empty or exceeds the example file limit.");
         using Mat raw = Cv2.ImRead(path, ImreadModes.Unchanged);
         if (raw.Empty() || raw.Depth() != MatType.CV_8U || raw.Channels() is not (1 or 3 or 4) || (long)raw.Width * raw.Height > MaximumImagePixels) throw new ArgumentException("Input must be a nonempty 8-bit gray/BGR/BGRA image within the example size limit; depth is never silently reduced.");
-        Mat gray = new Mat();
+        Mat gray = OpenCvHelper.CreateGray8(raw, raw.Channels() == 1 ? ImageChannelOrder.Gray : raw.Channels() == 3 ? ImageChannelOrder.Bgr : ImageChannelOrder.Bgra);
         try
         {
-            if (raw.Channels() == 1) raw.CopyTo(gray);
-            else Cv2.CvtColor(raw, gray, raw.Channels() == 3 ? ColorConversionCodes.BGR2GRAY : ColorConversionCodes.BGRA2GRAY);
             token.ThrowIfCancellationRequested();
             return gray;
         }
@@ -561,7 +579,7 @@ internal static class Program
 
     private static Pose PoseOf(MatchingResult value) => new Pose(value.Center.X, value.Center.Y, value.Angle, value.Scale);
     private static MatchingResult MatchOf(Pose value) => new MatchingResult(0, 0, new Point2f((float)value.X, (float)value.Y), new Rect2f(), value.Angle, value.Scale);
-    private static Stage StageOf(string name, VisionToolResult result) => new Stage(name, result.Success, result.ErrorName, result.Message);
+    private static Stage StageOf(string name, VisionToolResult result, long start) => new Stage(name, result.Success, result.ErrorName, result.Message, result.Elapsed.TotalMilliseconds, Stopwatch.GetElapsedTime(start).TotalMilliseconds);
     private static object? ComputeOf(ComputeExecutionEvidence? evidence) => evidence == null ? null : new
     {
         evidence.RequestedCuda, evidence.AccelerationApplied, FallbackReason = evidence.FallbackReason.ToString(),
@@ -570,12 +588,20 @@ internal static class Program
         InstallationAction = evidence.Support.InstallationAction.ToString(), evidence.GpuBatchCount, evidence.NativeExecutionErrorCode,
         evidence.InitializationMilliseconds, evidence.UploadMilliseconds, evidence.KernelWaitMilliseconds, evidence.DownloadMilliseconds, evidence.PeakScratchBytes
     };
-    private static object[] PackageIdentities() => new[] { typeof(BlobTool).Assembly, typeof(EdgeBasedTemplateMatchingTool).Assembly, typeof(VisionComputeSession).Assembly, typeof(OpenVisionLab.Core.FormulaUtil).Assembly, typeof(Mat).Assembly }.Select(assembly => (object)new
+    internal static object[] PackageIdentities() => new[] { typeof(BlobTool).Assembly, typeof(EdgeBasedTemplateMatchingTool).Assembly, typeof(VisionComputeSession).Assembly, typeof(OpenVisionLab.Core.FormulaUtil).Assembly, typeof(OpenVisionLab.Inspection.CombinedInspectionRunner).Assembly, typeof(OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult).Assembly, typeof(Mat).Assembly }.Select(assembly => (object)new
     {
         Name = assembly.GetName().Name, AssemblyVersion = assembly.GetName().Version?.ToString(),
         InformationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
         Path = assembly.Location, Sha256 = HashFile(assembly.Location)
     }).ToArray();
+    internal static object[] NativeIdentities()
+    {
+        using Process process = Process.GetCurrentProcess();
+        string version = Cv2.GetVersionString();
+        object[] identities = process.Modules.Cast<ProcessModule>().Where(module => string.Equals(module.ModuleName, "OpenCvSharpExtern.dll", StringComparison.OrdinalIgnoreCase)).Select(module => (object)new { module.FileName, Sha256 = HashFile(module.FileName), OpenCvVersion = version }).ToArray();
+        if (identities.Length != 1) throw new InvalidOperationException("Expected exactly one loaded OpenCvSharpExtern native runtime after native execution.");
+        return identities;
+    }
     private static void SaveImage(string path, Mat image) { if (!Cv2.ImWrite(path, image)) throw new IOException("Image write failed: " + path); }
     private static string RectText(Rect roi) => FormattableString.Invariant($"{roi.X},{roi.Y},{roi.Width},{roi.Height}");
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
@@ -586,10 +612,20 @@ internal static class Program
     private sealed record PixelPoint(double X, double Y);
     private sealed record HostSettings(int Version, string ReferenceImageSha256, string Frame, int Width, int Height, string Units, string Geometry, Pose ReferencePose, bool UseCuda);
     private sealed record Bundle(string Xml, VisionPipeline Pipeline, byte[] Model, HostSettings Host);
-    private sealed record Stage(string Name, bool Success, string ErrorName, string Message);
+    private sealed record Stage(string Name, bool Success, string ErrorName, string Message, double? InternalElapsedMilliseconds = null, double? TotalExecuteMilliseconds = null);
     private sealed record LineEvidence(double Slope, double InterceptPx, double OrthogonalRmsePx, PixelPoint[] Points);
     private sealed class Inspection
     {
+        public string ShotId { get; init; } = "";
+        public string Camera => "File";
+        public string Recipe => ModelSha256;
+        public long Sequence => 1;
+        public string FrameId => InputSha256;
+        public int Thread => Environment.CurrentManagedThreadId;
+        public string InputFormat => "CV_8UC1; explicit Gray/BGR/BGRA conversion; alpha ignored";
+        public string FeatureDetector => "NotExecuted";
+        public HostOutcome Outcome { get; set; } = HostOutcome.Faulted();
+        public int AcceptedBlobCount { get; set; }
         public string Status { get; set; } = "";
         public string Units => "px";
         public string Geometry => "translation-only";
@@ -600,6 +636,7 @@ internal static class Program
         public bool RequestedCuda { get; init; }
         public byte InputGray00 { get; init; }
         public object[] Packages { get; init; } = Array.Empty<object>();
+        public object[] NativeRuntimes { get; init; } = Array.Empty<object>();
         public List<Stage> Stages { get; } = new List<Stage>();
         public object? Compute { get; set; }
         public Pose? Pose { get; set; }

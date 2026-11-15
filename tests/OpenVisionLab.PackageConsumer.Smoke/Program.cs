@@ -20,6 +20,7 @@ if (args.Length > 0 && args[0] == "--cuda-local")
 }
 
 CheckCanny();
+OpenVisionLab.PackageConsumer.HardeningChecks.Run();
 
 using Mat image = new Mat(2, 2, MatType.CV_8UC1, new Scalar(100));
 using ThresholdTool threshold = new ThresholdTool();
@@ -292,8 +293,8 @@ using (VisionPipelineContext canceledPipelineContext = new VisionPipelineContext
     }
 }
 
-if (VisionPipelineToolFactory.Descriptors.Count != 15
-    || VisionPipelineBlobToolFactory.Descriptors.Count != 16
+if (VisionPipelineToolFactory.Descriptors.Count != 16
+    || VisionPipelineBlobToolFactory.Descriptors.Count != 17
     || !VisionPipelineToolFactory.TryGetDescriptor("QrCodeTool", out VisionPipelineToolDescriptor qrDescriptor)
     || qrDescriptor.ToolType != "qrcode"
     || qrDescriptor.PackageId != "OpenVisionLab.Vision2D"
