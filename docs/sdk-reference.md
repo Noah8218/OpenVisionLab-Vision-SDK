@@ -23,7 +23,7 @@ It includes 2D image-processing tools, 3D feature extraction and measurement alg
 
 ## Version
 
-Current source version: `v3.3.0-rc.2` (prerelease).
+Current source version: `v3.3.0-rc.3` (prerelease).
 
 This project is maintained using explicit version numbers. The source version is
 defined in [`Directory.Build.props`](../Directory.Build.props). CLR assembly identity
@@ -31,6 +31,12 @@ remains `3.0.0.0` for 3.x compatibility. A source update does not imply that a N
 package or binary release has been published.
 
 ### Recent version history
+
+#### `v3.3.0-rc.3` (2026-11-16)
+
+- Validate active Matching grids and cap model generation while preserving configured angle bounds and worker ownership.
+- Bound frame Host cancellation callbacks, expire missing acquisitions and correlate terminal faults, rejections and cancellation.
+- Add opt-in Caliper quality metrics and exact-artifact/offline package consumers without changing existing public signatures or geometry success.
 
 #### `v3.3.0-rc.2` (2026-11-16)
 
@@ -234,7 +240,7 @@ as a percentage and `ScoreMin` as a 0..1 threshold (0.9 means 90%). Read
 `Stages` to distinguish location failure from mark absence or invalid input.
 Exit `0` means the command succeeded, `2` is a
 completed inspection reporting absence or rejection, `3` is invalid input/settings
-or file failure, and `130` is cancellation. `Accepted` means the example produced all required inspection results; the application owns the equipment decision.
+or backend/worker/file failure, and `130` is cancellation of that execution. `Accepted` means the example produced all required inspection results; the application owns the equipment decision.
 Missing/unexecuted measurements are null. `Line` expresses the global pixel line
 `x = Slope * y + InterceptPx`; `BlobAreaPx` counts pixels in the detected mark.
 The authored reference and analytic
@@ -280,10 +286,29 @@ The JSON preserves shot/frame/camera IDs, clock domains, settings/model revision
 coordinates, hashes and shutdown evidence. The prepared continuous profile runs
 three shots; an explicitly selected single-shot profile runs one.
 
+Terminal JSON uses additive `SchemaVersion=2`. `CommandId` identifies the command;
+`ShotId` identifies each accepted frame, including failed/canceled shots. `Outcome`
+provides `Execution`, `MeasurementEstablished`, `Decision`, `FailureStage` and the
+original `ErrorCode`/`ErrorType`/`ErrorMessage` where applicable. `MachineDecision`
+remains `NotProvided`. For multiple shots, fault/acquisition timeout takes priority
+over cancellation, then completed rejection, then pass; individual evidence remains.
+
+New profiles set `AcquisitionTimeoutMilliseconds=5000`; omitted/zero in older
+profiles retains the unlimited acquisition setting. A monotonic clock expires a
+missing callback with `AcquisitionTimeout`, no measurement and `NotEvaluated`.
+Late frames cannot commit a second terminal. A timed-out receiving copy retains
+its raw-byte reservation until the copy completes; `MaximumRawBytes` describes
+session reservations, not total process or consumer-retained result memory.
+
 Queues include pending triggers and retained frames. Callback buffers are copied
 before returning; late callbacks from an older generation cannot publish a new
 result. A stop deadline retains outstanding ownership rather than disposing
-active work. A failed producer stop requires an explicit successful retry.
+active work. Cancellation callbacks share the same overall stop deadline. An
+incomplete stop retains its generation's owners and prevents restart/disposal;
+retry observes the same cancellation operation. Callback faults remain shutdown
+errors even after all owners quiesce. A failed producer stop requires an explicit
+successful retry. Only cancellation of the current generation classifies a worker
+`OperationCanceledException` as canceled; unrelated cancellation exceptions are faults.
 Cancellation uses exit130/`Canceled` with no approved measurement; settings and
 confirmed outputs are preserved. Use a new output directory on every run.
 

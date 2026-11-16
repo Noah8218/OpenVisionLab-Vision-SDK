@@ -2,7 +2,7 @@
 
 Use 2D inspection tools and height-map / full-XYZ 3D algorithms in your own C# application.
 
-[![Source v3.3.0-rc.2](https://img.shields.io/badge/source-v3.3.0--rc.2-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.3](https://img.shields.io/badge/source-v3.3.0--rc.3-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 **English** · [한국어](README.ko.md)
 
@@ -46,12 +46,40 @@ The caller owns `source`; the result owns its output image. Dispose both and the
    [3D quick start](docs/sdk-reference.md#3d-quick-start). Check errors, metrics,
    units and ownership before connecting the result to your application's judgment.
 
-This checkout's source version is **`3.3.0-rc.2`**, a prerelease defined in
+This checkout's source version is **`3.3.0-rc.3`**, a prerelease defined in
 [Directory.Build.props](Directory.Build.props); CLR assembly identity remains
 `3.0.0.0`. A source version does not establish a published NuGet package or binary
 release. Read the [version history](docs/sdk-reference.md#version) and
 [2.9.1 → 3.0 migration guide](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md)
 before updating an existing application.
+
+### Package files and offline use
+
+The [3.3.0-rc.2 GitHub prerelease](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/releases/tag/v3.3.0-rc.2)
+contains six SDK `.nupkg` files and a SHA-256 list. Those files remain rc.2; the
+rc.3 source update does not replace them or announce a new package publication.
+Download all six into one local directory, verify their SHA-256 values, and set
+`PackageVersion=3.3.0-rc.2` when consuming that release. GitHub assets and NuGet.org
+publication are separate channels.
+
+Keep the six SDK files separate from a complete dependency feed. The
+[`Test-SdkArtifactConsumers.ps1`](eng/Test-SdkArtifactConsumers.ps1) command takes
+`-PackageDirectory`, `-ExpectedVersion`, `-ExpectedCommit`, `-QrFixtureDirectory`
+and a new `-OutputDirectory`. It prepares dependencies online, records exact
+package/DLL/native hashes, and checks net48/x64/C# 7.3, net8/win-x64 and the
+FirstInspection CLI using independent empty caches and local-only sources.
+QR fixtures come from the smoke executable's `--export-qr-fixtures` command.
+For older published files, `-ProvenanceSourceDirectory` selects the matching
+source's provenance checker; the consumer and package source commits stay distinct.
+
+Reuse [`New-SdkOfflineKit.ps1`](eng/New-SdkOfflineKit.ps1) with fixed SDK files,
+prepared `-DependencyCache` directories, the exact version/commit and a new
+`-OutputDirectory`; `-VerifyOnly` checks the resulting manifest before restore.
+The generated `NuGet.Config` clears other sources and points to the complete feed.
+Install the required .NET SDK, framework targeting/reference packs and runtime
+before offline use. Source restriction is distinct from network-disconnected
+verification; the kit does not install frameworks. Existing native redistribution
+limits remain in force.
 
 ### Recent version history
 
@@ -59,6 +87,7 @@ This project is maintained using explicit version numbers.
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| `3.3.0-rc.3` | 2026-11-16 | Bound Matching pose grids; harden frame Host shutdown, acquisition deadlines and terminal results; connect Caliper quality to opt-in Pipeline acceptance and verify fixed package consumers. |
 | `3.3.0-rc.2` | 2026-11-16 | Harden failure/cancellation and frame/raw-height ownership; add line/circle calipers and a device-free frame Host example. |
 | `3.3.0-rc.1` | 2026-11-02 | Add nine-point surface compensation, physical-edge gap/flush and cooperative 3D cancellation. |
 | `3.2.0-rc.5` | 2026-10-12 | Preserve package-verification diagnostics in CI. |
@@ -128,6 +157,16 @@ when using it outside this checkout.
 [`RotatedCaliperTool`](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle)
 measures lines and circles in source pixels. Geometry establishment and configured
 quality acceptance are separate; a disabled quality gate reports `NotEvaluated`.
+The opt-in [`caliper-quality.pipeline.xml`](samples/OpenVisionLab.FirstInspection/caliper-quality.pipeline.xml)
+requires `Caliper.QualityAccepted >= 1`; an unevaluated quality gate has no such
+metric and fails that requirement. `Success` and source-pixel units retain their
+existing meaning. See the [metric contract](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle).
+
+Matching and Edge matching validate only active angle/scale grids before model
+allocation. Exhaustive and coarse search use the configured bounds; the combined
+fine/coarse/scale budget is 10,000 poses. See the numeric policy in
+[`MatchingPoseGrid`](src/OpenVisionLab.Vision2D/OpenCV/Tool/MatchingPoseGrid.cs).
+This guard bounds generated work, not production takt or total process memory.
 
 ## Build from source
 

@@ -304,30 +304,26 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
+            if (!MatchingPoseGrid.TryValidate(property.USE_FIND_ANGLE, property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE,
+                property.USE_COARSE_TO_FINE_ANGLE_SEARCH, property.COARSE_ANGLE_STEP, property.USE_FIND_SCALE,
+                property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP, out errorCode, out message)) return false;
+
             if (UsePoseUniquenessValidation
                 && (property.NUM_MATCH != 1 || property.USE_MULTI_ROI
                     || !IsFinite(PoseMatchMinScoreMargin) || PoseMatchMinScoreMargin < 0D || PoseMatchMinScoreMargin > 1D
                     || !IsFinite(PoseMatchMinAngleDifferenceDegrees) || PoseMatchMinAngleDifferenceDegrees <= 0D || PoseMatchMinAngleDifferenceDegrees > 180D
                     || !IsFinite(PoseMatchMinRelativeScaleDifference) || PoseMatchMinRelativeScaleDifference <= 0D
                     || !IsFinite(property.SCORE_MIN)
-                    || (property.USE_FIND_ANGLE && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE))
-                    || (property.USE_FIND_ANGLE && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
-                        && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.COARSE_ANGLE_STEP))
-                    || (property.USE_FIND_SCALE && !IsRepresentablePoseGrid(property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP))
                     || (property.USE_HYBRID_VERIFY && !IsFinite(property.HYBRID_VERIFY_IMAGE_WEIGHT))))
             {
                 errorCode = VisionToolErrorCode.InvalidParameter;
-                message = "Pose uniqueness validation requires one result, one search region, a finite score margin in 0..1, angle difference in (0,180], positive relative scale difference, finite score settings and active grids representable at six-decimal model precision with Int32 indices.";
+                message = "Pose uniqueness validation requires one result, one search region, a finite score margin in 0..1, angle difference in (0,180], positive relative scale difference and finite score settings.";
                 return false;
             }
 
             if (UsePoseRefinement
                 && (PoseRefinementMaximumIterations < 1 || PoseRefinementMaximumIterations > 100
-                    || !IsFinite(PoseRefinementEpsilon) || PoseRefinementEpsilon <= 0D
-                    || (property.USE_FIND_ANGLE && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE))
-                    || (property.USE_FIND_ANGLE && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
-                        && !IsRepresentablePoseGrid(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.COARSE_ANGLE_STEP))
-                    || (property.USE_FIND_SCALE && !IsRepresentablePoseGrid(property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP))))
+                    || !IsFinite(PoseRefinementEpsilon) || PoseRefinementEpsilon <= 0D))
             {
                 errorCode = VisionToolErrorCode.InvalidParameter;
                 message = "Pose refinement requires 1..100 iterations, positive finite epsilon and representable active pose grids.";
@@ -363,43 +359,10 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            if (property.USE_FIND_ANGLE && property.FIND_ANGLE <= 0)
+            if (property.USE_FIND_ANGLE && property.USE_COARSE_TO_FINE_ANGLE_SEARCH && property.COARSE_ANGLE_TOP_K <= 0)
             {
                 errorCode = VisionToolErrorCode.MatchingInvalidAngleStep;
-                message = $"Edge based matching angle step must be greater than 0 when angle search is enabled. AngleStep={property.FIND_ANGLE}.";
-                return false;
-            }
-
-            if (property.USE_FIND_ANGLE
-                && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
-                && property.COARSE_ANGLE_STEP <= 0)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidAngleStep;
-                message = $"Edge based matching coarse angle step must be greater than 0 when coarse-to-fine angle search is enabled. CoarseAngleStep={property.COARSE_ANGLE_STEP}.";
-                return false;
-            }
-
-            if (property.USE_FIND_ANGLE
-                && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
-                && property.COARSE_ANGLE_TOP_K <= 0)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidAngleStep;
-                message = $"Edge based matching coarse angle top K must be greater than 0 when coarse-to-fine angle search is enabled. CoarseAngleTopK={property.COARSE_ANGLE_TOP_K}.";
-                return false;
-            }
-
-            if (property.USE_FIND_SCALE
-                && (property.FIND_SCALE_MIN <= 0D || property.FIND_SCALE_MAX <= 0D))
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidScale;
-                message = $"Edge based matching scale range must be greater than 0 when scale search is enabled. Scale={property.FIND_SCALE_MIN:0.###}..{property.FIND_SCALE_MAX:0.###}.";
-                return false;
-            }
-
-            if (property.USE_FIND_SCALE && property.FIND_SCALE_STEP <= 0D)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidScale;
-                message = $"Edge based matching scale step must be greater than 0 when scale search is enabled. ScaleStep={property.FIND_SCALE_STEP:0.###}.";
+                message = "Coarse angle top K must be greater than zero when enabled.";
                 return false;
             }
 
@@ -941,10 +904,6 @@ namespace OpenVisionLab.Vision2D.Tool
         }
 
         private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
-
-        private static bool IsRepresentablePoseGrid(double minimum, double maximum, double step) =>
-            IsFinite(minimum) && IsFinite(maximum) && IsFinite(step) && Math.Round(step, 6) > 0D
-            && Math.Abs(minimum / step) < int.MaxValue && Math.Abs(maximum / step) < int.MaxValue;
 
         private void AddPoseMatchDiagnostics(IDictionary<string, double> metrics)
         {
@@ -2704,7 +2663,7 @@ namespace OpenVisionLab.Vision2D.Tool
             List<MatchCandidate> candidates, MatchCandidate fallback, MatchCandidate imageProposal)
         {
             MatchCandidate best = null;
-            foreach (MatchCandidate candidate in candidates.Concat(new[] { fallback, imageProposal }))
+            foreach (MatchCandidate candidate in (candidates ?? Enumerable.Empty<MatchCandidate>()).Concat(new[] { fallback, imageProposal }))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (candidate == null) continue;
@@ -3359,36 +3318,9 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private static IEnumerable<double> CreateSearchScalesInRange(double minScale, double maxScale, double scaleStep)
+        private IEnumerable<double> CreateSearchScalesInRange(double minScale, double maxScale, double scaleStep)
         {
-            if (scaleStep <= 0D)
-            {
-                yield break;
-            }
-
-            if (minScale > maxScale)
-            {
-                double temp = minScale;
-                minScale = maxScale;
-                maxScale = temp;
-            }
-
-            HashSet<double> emitted = new HashSet<double>();
-            int start = (int)Math.Ceiling(minScale / scaleStep);
-            int end = (int)Math.Floor(maxScale / scaleStep);
-            for (int i = start; i <= end; i++)
-            {
-                double scale = NormalizeScale(i * scaleStep);
-                if (scale > 0D && emitted.Add(scale))
-                {
-                    yield return scale;
-                }
-            }
-
-            if (minScale <= 1D && maxScale >= 1D && emitted.Add(1D))
-            {
-                yield return 1D;
-            }
+            return MatchingPoseGrid.Scales(minScale, maxScale, scaleStep, false, 0D, cancellationToken);
         }
 
         public bool ShouldUseCoarseToFineAngleSearch()
@@ -3398,36 +3330,9 @@ namespace OpenVisionLab.Vision2D.Tool
                 && property.COARSE_ANGLE_STEP > property.FIND_ANGLE;
         }
 
-        private static IEnumerable<double> CreateSearchAnglesInRange(double minAngle, double maxAngle, double angleStep)
+        private IEnumerable<double> CreateSearchAnglesInRange(double minAngle, double maxAngle, double angleStep)
         {
-            if (angleStep <= 0D)
-            {
-                yield break;
-            }
-
-            if (minAngle > maxAngle)
-            {
-                double temp = minAngle;
-                minAngle = maxAngle;
-                maxAngle = temp;
-            }
-
-            HashSet<double> emitted = new HashSet<double>();
-            int start = (int)Math.Ceiling(minAngle / angleStep);
-            int end = (int)Math.Floor(maxAngle / angleStep);
-            for (int i = start; i <= end; i++)
-            {
-                double angle = Math.Round(i * angleStep, 6);
-                if (emitted.Add(angle))
-                {
-                    yield return angle;
-                }
-            }
-
-            if (minAngle <= 0D && maxAngle >= 0D && emitted.Add(0D))
-            {
-                yield return 0D;
-            }
+            return MatchingPoseGrid.Angles(minAngle, maxAngle, angleStep, cancellationToken);
         }
 
         public static RotatedEdgeTemplateModel CreateRotatedModel(EdgeTemplateModel model, double angle)

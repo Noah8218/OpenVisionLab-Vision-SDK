@@ -16,15 +16,18 @@ namespace OpenVisionLab.FirstInspection
 
     internal sealed class FrameSettings
     {
-        internal FrameSettings(string revision, int width, int height, int stride, FramePixelFormat format, double scale, double offset, ushort? missingValue = null, byte missingGray = 0, string modelRevision = "unassigned")
+        internal FrameSettings(string revision, int width, int height, int stride, FramePixelFormat format, double scale, double offset, ushort? missingValue = null, byte missingGray = 0, string modelRevision = "unassigned", int acquisitionTimeoutMilliseconds = 0)
         {
             if (string.IsNullOrWhiteSpace(revision) || string.IsNullOrWhiteSpace(modelRevision) || width < 1 || height < 1 || !Enum.IsDefined(typeof(FramePixelFormat), format) || !Finite(scale) || scale <= 0 || !Finite(offset)) throw new ArgumentException("Invalid frame settings.");
             int bits = format == FramePixelFormat.Gray8 ? 8 : format == FramePixelFormat.Gray16LittleEndian ? 16 : format == FramePixelFormat.TestPacked10RowLittleEndian ? 10 : 12;
             long rowBytes = ((long)width * bits + 7) / 8;
             if (stride < rowBytes || (long)stride * height > 64 * 1024 * 1024 || (long)width * height > 16 * 1024 * 1024) throw new ArgumentException("Invalid frame dimensions, stride or frame size limit.");
             if (missingValue.HasValue && missingValue.Value > ((1 << bits) - 1)) throw new ArgumentException("Missing sentinel exceeds the raw format.");
+            ArgumentOutOfRangeException.ThrowIfNegative(acquisitionTimeoutMilliseconds);
+            AcquisitionTimeoutMilliseconds = acquisitionTimeoutMilliseconds;
             Revision = revision; Width = width; Height = height; Stride = stride; Format = format; Scale = scale; Offset = offset; MissingValue = missingValue; MissingGray = missingGray; ModelRevision = modelRevision;
         }
+        public int AcquisitionTimeoutMilliseconds { get; }
         public string Revision { get; }
         public string ModelRevision { get; }
         public int RawDepthBits => Format == FramePixelFormat.Gray8 ? 8 : Format == FramePixelFormat.Gray16LittleEndian ? 16 : Format == FramePixelFormat.TestPacked10RowLittleEndian ? 10 : 12;
@@ -42,8 +45,11 @@ namespace OpenVisionLab.FirstInspection
 
     internal sealed class FrameTicket
     {
-        internal FrameTicket(string cameraId, string sessionId, long generation, string shotId, string triggerId, FrameSettings settings)
-        { CameraId = cameraId; SessionId = sessionId; Generation = generation; ShotId = shotId; TriggerId = triggerId; Settings = settings; }
+        internal FrameTicket(string cameraId, string sessionId, long generation, string shotId, string triggerId, FrameSettings settings, string commandId)
+        { CommandId = commandId; CameraId = cameraId; SessionId = sessionId; Generation = generation; ShotId = shotId; TriggerId = triggerId; Settings = settings; AcceptedTimestamp = Stopwatch.GetTimestamp(); AcquisitionDeadline = settings.AcquisitionTimeoutMilliseconds == 0 ? 0 : checked(AcceptedTimestamp + (long)Math.Ceiling(settings.AcquisitionTimeoutMilliseconds * (double)Stopwatch.Frequency / 1000)); }
+        public string CommandId { get; }
+        public long AcceptedTimestamp { get; }
+        public long AcquisitionDeadline { get; }
         public string CameraId { get; }
         public string SessionId { get; }
         public long Generation { get; }
@@ -57,6 +63,7 @@ namespace OpenVisionLab.FirstInspection
         internal FrameContext(FrameTicket ticket, string frameId, long sequence, long deviceTimestamp, string clockDomain)
         { Ticket = ticket; FrameId = frameId; Sequence = sequence; DeviceTimestamp = deviceTimestamp; ClockDomain = clockDomain; HostReceivedAt = DateTimeOffset.UtcNow; }
         public FrameTicket Ticket { get; }
+        public string CommandId => Ticket.CommandId;
         public string CameraId => Ticket.CameraId;
         public string SessionId => Ticket.SessionId;
         public long Generation => Ticket.Generation;
@@ -120,16 +127,32 @@ namespace OpenVisionLab.FirstInspection
 
     internal sealed class FrameInspection
     {
-        internal FrameInspection(string execution, bool measured, string decision, object? evidence = null)
-        { Execution = execution; MeasurementEstablished = measured; Decision = decision; Evidence = evidence; }
-        public string Execution { get; }
-        public bool MeasurementEstablished { get; }
-        public string Decision { get; }
+        internal FrameInspection(string execution, bool measured, string decision, object? evidence = null,
+            string? failureStage = null, Exception? error = null, string? errorCode = null)
+        {
+            Outcome = HostOutcome.Frame(execution, measured, decision);
+            if (execution == "Canceled" && failureStage == null) { failureStage = "Cancellation"; errorCode = "Canceled"; }
+            if (failureStage != null) Outcome = Outcome.WithFailure(failureStage, errorCode ?? error?.GetType().Name, error?.GetType().FullName, error?.Message ?? errorCode);
+            Evidence = evidence;
+        }
+        internal FrameInspection(HostOutcome outcome, object? evidence = null) { Outcome = outcome; Evidence = evidence; }
+        public HostOutcome Outcome { get; }
+        public string Execution => Outcome.Execution;
+        public bool MeasurementEstablished => Outcome.MeasurementEstablished;
+        public string Decision => Outcome.Decision;
+        public string? FailureStage => Outcome.FailureStage;
+        public string? ErrorCode => Outcome.ErrorCode;
+        public string? ErrorType => Outcome.ErrorType;
+        public string? ErrorMessage => Outcome.ErrorMessage;
         public object? Evidence { get; }
     }
     internal sealed class FrameTerminal
     {
         internal FrameTerminal(FrameTicket ticket, FrameSnapshot? frame, FrameInspection inspection) { Ticket = ticket; Frame = frame; Inspection = inspection; }
+        public int SchemaVersion { get; } = 2;
+        public string CommandId => Ticket.CommandId;
+        public string ShotId => Ticket.ShotId;
+        public HostOutcome Outcome => Inspection.Outcome;
         public FrameTicket Ticket { get; }
         public FrameSnapshot? Frame { get; }
         public FrameInspection Inspection { get; }
@@ -143,9 +166,10 @@ namespace OpenVisionLab.FirstInspection
     }
     internal sealed class FrameStopResult
     {
-        internal FrameStopResult(bool complete, string outstandingOwner) { Complete = complete; OutstandingOwner = outstandingOwner; }
+        internal FrameStopResult(bool complete, string outstandingOwner, Exception? error = null) { Complete = complete; OutstandingOwner = outstandingOwner; Error = error; }
         public bool Complete { get; }
         public string OutstandingOwner { get; }
+        public Exception? Error { get; }
     }
 
     // Sole mutable-state owner. Inspection is serialized on its worker, outside the callback and state lock.
@@ -162,6 +186,7 @@ namespace OpenVisionLab.FirstInspection
         }
         private readonly object gate = new object();
         private readonly string cameraId;
+        private readonly string commandId;
         private readonly int maxItems;
         private readonly long maxBytes;
         private readonly Func<FrameSnapshot, CancellationToken, FrameInspection> inspect;
@@ -173,6 +198,11 @@ namespace OpenVisionLab.FirstInspection
         private FrameRunMode mode;
         private bool connected, running, stopping, disposed;
         private Task? producerStop;
+        private Task? cancellationCallbacks;
+        private CancellationTokenRegistration externalCancellation;
+        private bool cancelRequested;
+        private Exception? stopError;
+        private TaskCompletionSource<FrameStopResult>? stopCompletion;
         private int callbacks;
         private Task worker = Task.CompletedTask;
         private CancellationTokenSource cancellation = new CancellationTokenSource();
@@ -180,9 +210,10 @@ namespace OpenVisionLab.FirstInspection
         private FrameTeaching? teaching;
         private long rejected, displayDropped, accepted, terminalCount;
 
-        internal FrameSession(string cameraId, int maxItems, long maxBytes, Func<FrameSnapshot, CancellationToken, FrameInspection> inspect)
+        internal FrameSession(string cameraId, int maxItems, long maxBytes, Func<FrameSnapshot, CancellationToken, FrameInspection> inspect, string? commandId = null)
         {
             if (string.IsNullOrWhiteSpace(cameraId) || maxItems < 1 || maxBytes < 1 || inspect == null) throw new ArgumentException("Invalid Host capacity or inspection delegate.");
+            this.commandId = commandId ?? Guid.NewGuid().ToString("N");
             this.cameraId = cameraId; this.maxItems = maxItems; this.maxBytes = maxBytes; this.inspect = inspect;
         }
         public FrameSnapshot? LatestDisplay { get { lock (gate) return latestDisplay; } }
@@ -209,21 +240,35 @@ namespace OpenVisionLab.FirstInspection
         internal long Start(FrameRunMode value, CancellationToken externalToken = default)
         {
             CancellationTokenSource previous;
+            CancellationTokenRegistration previousRegistration;
             long currentGeneration;
             lock (gate)
             {
                 ThrowIfDisposed();
                 if (!Enum.IsDefined(typeof(FrameRunMode), value)) throw new ArgumentException("Invalid run mode.");
-                if (running) return generation;
-                if (!connected || stopping || settings == null) throw new InvalidOperationException("Connect and configure before explicit Start; complete prior Stop first.");
+                if (running && !cancelRequested) return generation;
+                if (!connected || running || stopping || settings == null) throw new InvalidOperationException("Connect and configure before explicit Start; complete prior Stop first.");
                 externalToken.ThrowIfCancellationRequested();
                 currentGeneration = generation = checked(generation + 1); mode = value; running = true; producerStop = null;
                 previous = cancellation;
-                cancellation = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
+                previousRegistration = externalCancellation;
+                cancellation = new CancellationTokenSource();
+                cancellationCallbacks = null; cancelRequested = false; stopError = null;
+                stopCompletion = new TaskCompletionSource<FrameStopResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+                CancellationTokenSource generationSource = cancellation;
+                long capturedGeneration = generation;
+                externalCancellation = externalToken.Register(() =>
+                {
+                    lock (gate)
+                    {
+                        if (generation == capturedGeneration && ReferenceEquals(cancellation, generationSource)) RequestCancellation();
+                    }
+                });
                 // The worker must run even if cancellation arrives before scheduling, to terminate accepted shots.
                 worker = Task.Run(Work, CancellationToken.None);
             }
             // Linked-token registration disposal may wait for a callback; never hold the state lock here.
+            previousRegistration.Dispose();
             previous.Dispose();
             return currentGeneration;
         }
@@ -232,9 +277,10 @@ namespace OpenVisionLab.FirstInspection
             lock (gate)
             {
                 ThrowIfDisposed();
+                ExpireAcquisitions();
                 ticket = null;
                 if (!running || stopping) reason = "Stopped";
-                else if (cancellation.IsCancellationRequested) reason = "Canceled";
+                else if (cancelRequested || cancellation.IsCancellationRequested) reason = "Canceled";
                 else if (string.IsNullOrWhiteSpace(triggerId)) reason = "InvalidTriggerId";
                 else if (mode == FrameRunMode.SingleShot && entries.Values.Any(e => e.Terminal == null)) reason = "Busy";
                 else
@@ -244,8 +290,8 @@ namespace OpenVisionLab.FirstInspection
                     if (entries.Count >= maxItems || ReservedBytes() + settings!.RawBytes > maxBytes) reason = "Overload";
                     else
                     {
-                        ticket = new FrameTicket(cameraId, sessionId, generation, Guid.NewGuid().ToString("N"), triggerId, settings!);
-                        entries.Add(ticket.ShotId, new Entry { Ticket = ticket }); accepted++; reason = "Accepted"; return true;
+                        ticket = new FrameTicket(cameraId, sessionId, generation, Guid.NewGuid().ToString("N"), triggerId, settings!, commandId);
+                        entries.Add(ticket.ShotId, new Entry { Ticket = ticket }); accepted++; reason = "Accepted"; Monitor.PulseAll(gate); return true;
                     }
                 }
                 rejected++; return false;
@@ -263,7 +309,8 @@ namespace OpenVisionLab.FirstInspection
             Entry? entry;
             lock (gate)
             {
-                if (disposed || !running || stopping || ticket == null || ticket.Generation != generation || ticket.SessionId != sessionId || !entries.TryGetValue(ticket.ShotId, out entry) || !ReferenceEquals(entry.Ticket, ticket) || entry.Receiving || entry.Frame != null || entry.Terminal != null) return false;
+                if (!disposed) ExpireAcquisitions();
+                if (disposed || !running || stopping || cancelRequested || ticket == null || ticket.Generation != generation || ticket.SessionId != sessionId || !entries.TryGetValue(ticket.ShotId, out entry) || !ReferenceEquals(entry.Ticket, ticket) || entry.Receiving || entry.Frame != null || entry.Terminal != null) return false;
                 entry.Receiving = true; callbacks++;
             }
             FrameSnapshot? snapshot = null;
@@ -280,9 +327,11 @@ namespace OpenVisionLab.FirstInspection
             lock (gate)
             {
                 callbacks--; entry.Receiving = false;
-                bool current = running && !stopping && !cancellation.IsCancellationRequested && ticket.Generation == generation && ticket.SessionId == sessionId;
+                ExpireAcquisitions();
+                bool current = running && !stopping && !cancelRequested && !cancellation.IsCancellationRequested && ticket.Generation == generation && ticket.SessionId == sessionId && entry.Terminal == null;
+                if (entry.Terminal != null) { Prune(); Monitor.PulseAll(gate); return false; }
                 if (!current) Finish(entry, new FrameInspection("Canceled", false, "NotEvaluated"));
-                else if (failure != null) Finish(entry, new FrameInspection("Faulted", false, "NotEvaluated", failure.Message));
+                else if (failure != null) Finish(entry, new FrameInspection("Faulted", false, "NotEvaluated", failure.Message, "AcquisitionCopy", failure));
                 else
                 {
                     entry.Frame = snapshot;
@@ -314,10 +363,12 @@ namespace OpenVisionLab.FirstInspection
                 while (!entries.Values.Any(e => e.Terminal != null && !e.Consumed))
                 {
                     ThrowIfDisposed();
+                    ExpireAcquisitions();
+                    if (entries.Values.Any(e => e.Terminal != null && !e.Consumed)) break;
                     token.ThrowIfCancellationRequested();
                     TimeSpan remaining = timeout - Stopwatch.GetElapsedTime(started);
                     if (remaining <= TimeSpan.Zero) return false;
-                    Monitor.Wait(gate, remaining);
+                    Monitor.Wait(gate, NextAcquisitionWait(remaining));
                 }
                 token.ThrowIfCancellationRequested();
                 return true;
@@ -334,78 +385,110 @@ namespace OpenVisionLab.FirstInspection
                 Prune(); return results;
             }
         }
+        // Complete describes quiescence. Error is preserved even after every owner has stopped.
         internal FrameStopResult Stop(TimeSpan timeout, Action? stopProducer = null)
         {
             if (timeout < TimeSpan.Zero || timeout.TotalMilliseconds > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(timeout));
             long started = Stopwatch.GetTimestamp();
-            Task stopTask;
+            Task stopTask, generationWorker;
+            Task<FrameStopResult> generationCompletion;
+            long stoppedGeneration;
             lock (gate)
             {
                 ThrowIfDisposed();
-                if (!running && !stopping) return new FrameStopResult(true, "");
+                if (!running && !stopping) return new FrameStopResult(true, "", stopError);
+                stoppedGeneration = generation; generationWorker = worker;
+                generationCompletion = stopCompletion!.Task;
                 running = false; stopping = true;
-                // A failed acknowledgment is retried only with an explicitly supplied new stop action.
+                // A failed producer acknowledgment requires an explicitly supplied recovery action.
                 if (producerStop == null || (stopProducer != null && (producerStop.IsFaulted || producerStop.IsCanceled))) producerStop = Task.Run(() => stopProducer?.Invoke());
                 stopTask = producerStop;
                 Monitor.PulseAll(gate);
             }
-            // A driver stop/unsubscribe can itself block. Preserve that operation and all native
-            // owners on deadline; a retry observes the same operation instead of starting it twice.
             try
             {
                 TimeSpan remaining = timeout - Stopwatch.GetElapsedTime(started);
                 if (!stopTask.IsCompleted && (remaining <= TimeSpan.Zero || !stopTask.Wait(remaining))) return new FrameStopResult(false, "ProducerStop; Camera retained");
                 stopTask.GetAwaiter().GetResult();
             }
-            catch (Exception error)
-            {
-                return new FrameStopResult(false, "ProducerStop: " + error.GetBaseException().Message);
-            }
+            catch (Exception error) { return new FrameStopResult(false, "ProducerStop: " + error.GetBaseException().Message, error); }
+            Task cancelTask;
             lock (gate)
             {
-                while (callbacks != 0)
+                if (generation != stoppedGeneration) return generationCompletion.GetAwaiter().GetResult();
+                while (callbacks != 0 && generation == stoppedGeneration)
                 {
                     TimeSpan remaining = timeout - Stopwatch.GetElapsedTime(started);
                     if (remaining <= TimeSpan.Zero) return new FrameStopResult(false, "AcquisitionCallback (" + callbacks + ")");
                     Monitor.Wait(gate, remaining);
                 }
+                if (generation != stoppedGeneration) return generationCompletion.GetAwaiter().GetResult();
+                cancelTask = RequestCancellation();
             }
-            cancellation.Cancel();
+            Exception? cancellationError = null;
+            try
+            {
+                TimeSpan remaining = timeout - Stopwatch.GetElapsedTime(started);
+                if (!cancelTask.IsCompleted && (remaining <= TimeSpan.Zero || !cancelTask.Wait(remaining))) return new FrameStopResult(false, "CancellationCallbacks; Tool/Compute/Camera retained");
+                cancelTask.GetAwaiter().GetResult();
+            }
+            catch (Exception error) { cancellationError = error; }
             lock (gate)
             {
+                if (generation != stoppedGeneration) return generationCompletion.GetAwaiter().GetResult();
+                stopError ??= cancellationError;
                 while (queue.Count != 0) Finish(queue.Dequeue(), new FrameInspection("Canceled", false, "NotEvaluated"));
                 foreach (Entry e in entries.Values) if (e.Frame == null && e.Terminal == null) Finish(e, new FrameInspection("Canceled", false, "NotEvaluated"));
                 Monitor.PulseAll(gate);
             }
             TimeSpan workerRemaining = timeout - Stopwatch.GetElapsedTime(started);
-            if (!worker.IsCompleted && (workerRemaining <= TimeSpan.Zero || !worker.Wait(workerRemaining))) return new FrameStopResult(false, "InspectionWorker; Tool/Compute/Camera retained");
+            if (!generationWorker.IsCompleted && (workerRemaining <= TimeSpan.Zero || !generationWorker.Wait(workerRemaining))) return new FrameStopResult(false, "InspectionWorker; Tool/Compute/Camera retained", cancellationError);
             lock (gate)
             {
+                if (generation != stoppedGeneration) return generationCompletion.GetAwaiter().GetResult();
                 latestDisplay = null; teaching = null;
-
-                Prune(); stopping = false;
-                return new FrameStopResult(true, "");
+                Prune();
+                FrameStopResult result = new FrameStopResult(true, "", stopError);
+                stopCompletion!.TrySetResult(result);
+                stopping = false;
+                return result;
             }
         }
+
+        // Called under gate; user callbacks run on one tracked task outside the state lock.
+        private Task RequestCancellation()
+        {
+            cancelRequested = true;
+            if (cancellationCallbacks == null)
+            {
+                CancellationTokenSource source = cancellation;
+                cancellationCallbacks = Task.Run(() => source.Cancel());
+            }
+            Monitor.PulseAll(gate);
+            return cancellationCallbacks;
+        }
+
         internal FrameStopResult Disconnect(TimeSpan timeout, Action? stopProducer = null)
         {
             FrameStopResult result = Stop(timeout, stopProducer);
-            if (result.Complete) lock (gate) { ThrowIfDisposed(); connected = false; }
+            if (result.Complete && result.Error == null) lock (gate) { ThrowIfDisposed(); connected = false; }
             return result;
         }
         public void Dispose()
         {
             CancellationTokenSource source;
+            CancellationTokenRegistration registration;
             lock (gate)
             {
                 if (disposed) return;
-                if (running || stopping || callbacks != 0 || !worker.IsCompleted || (producerStop != null && !producerStop.IsCompleted))
+                if (running || stopping || callbacks != 0 || !worker.IsCompleted || (producerStop != null && !producerStop.IsCompleted) || (cancellationCallbacks != null && !cancellationCallbacks.IsCompleted))
                     throw new InvalidOperationException("Stop must complete before Dispose; in-use callback/worker/Tool/Compute/Camera owners are retained.");
                 disposed = true; connected = false; latestDisplay = null; teaching = null;
-                entries.Clear(); queue.Clear(); source = cancellation;
+                entries.Clear(); queue.Clear(); source = cancellation; registration = externalCancellation;
                 Monitor.PulseAll(gate);
             }
             // Linked-token registration disposal can wait for callbacks and must stay outside the state lock.
+            registration.Dispose();
             source.Dispose();
             GC.SuppressFinalize(this);
         }
@@ -417,7 +500,11 @@ namespace OpenVisionLab.FirstInspection
                 Entry entry;
                 lock (gate)
                 {
-                    while (queue.Count == 0 && running) Monitor.Wait(gate);
+                    while (queue.Count == 0 && running)
+                    {
+                        ExpireAcquisitions();
+                        Monitor.Wait(gate, NextAcquisitionWait(Timeout.InfiniteTimeSpan));
+                    }
                     if (!running) return;
                     entry = queue.Dequeue();
                 }
@@ -425,14 +512,14 @@ namespace OpenVisionLab.FirstInspection
                 try
                 {
                     cancellation.Token.ThrowIfCancellationRequested();
-                    result = inspect(entry.Frame!, cancellation.Token) ?? new FrameInspection("Faulted", false, "NotEvaluated", "Inspection returned no terminal result.");
+                    result = inspect(entry.Frame!, cancellation.Token) ?? new FrameInspection("Faulted", false, "NotEvaluated", "Inspection returned no terminal result.", "InspectionWorker", errorCode: "MissingTerminal");
                     cancellation.Token.ThrowIfCancellationRequested();
                 }
-                catch (OperationCanceledException) { result = new FrameInspection("Canceled", false, "NotEvaluated"); }
-                catch (Exception error) { result = new FrameInspection("Faulted", false, "NotEvaluated", error.GetType().Name + ": " + error.Message); }
+                catch (OperationCanceledException error) when (cancellation.IsCancellationRequested) { result = new FrameInspection("Canceled", false, "NotEvaluated", failureStage: "InspectionWorker", error: error, errorCode: "Canceled"); }
+                catch (Exception error) { result = new FrameInspection("Faulted", false, "NotEvaluated", error.GetType().Name + ": " + error.Message, "InspectionWorker", error); }
                 lock (gate)
                 {
-                    if (!running || cancellation.IsCancellationRequested) result = new FrameInspection("Canceled", false, "NotEvaluated");
+                    if ((!running || cancelRequested || cancellation.IsCancellationRequested) && result.Execution != "Canceled" && result.Execution != "Faulted") result = new FrameInspection("Canceled", false, "NotEvaluated");
                     Finish(entry, result); Monitor.PulseAll(gate);
                 }
             }
@@ -440,12 +527,32 @@ namespace OpenVisionLab.FirstInspection
         private void Finish(Entry entry, FrameInspection result)
         {
             if (entry.Terminal != null) return;
-            entry.Terminal = new FrameTerminal(entry.Ticket, entry.Frame, result); terminalCount++;
+            entry.Terminal = new FrameTerminal(entry.Ticket, entry.Frame, result); terminalCount++; Monitor.PulseAll(gate);
+        }
+        // No device clock is used for acquisition deadlines. Receiving entries retain their reservation.
+        private void ExpireAcquisitions()
+        {
+            long now = Stopwatch.GetTimestamp();
+            foreach (Entry entry in entries.Values)
+            {
+                if (entry.Frame != null || entry.Terminal != null) continue;
+                if (cancelRequested || stopping) Finish(entry, new FrameInspection("Canceled", false, "NotEvaluated"));
+                else if (entry.Ticket.AcquisitionDeadline != 0 && now >= entry.Ticket.AcquisitionDeadline)
+                    Finish(entry, new FrameInspection("AcquisitionTimeout", false, "NotEvaluated", failureStage: "Acquisition", errorCode: "AcquisitionTimeout"));
+            }
+        }
+        // Under gate: a Host waiter can service deadlines while the inspection worker is busy.
+        private TimeSpan NextAcquisitionWait(TimeSpan maximum)
+        {
+            long next = entries.Values.Where(e => e.Frame == null && e.Terminal == null && e.Ticket.AcquisitionDeadline != 0).Select(e => e.Ticket.AcquisitionDeadline).DefaultIfEmpty(0).Min();
+            if (next == 0) return maximum;
+            TimeSpan untilDeadline = TimeSpan.FromMilliseconds(Math.Max(1, Math.Min(int.MaxValue, Math.Ceiling((next - Stopwatch.GetTimestamp()) * 1000D / Stopwatch.Frequency))));
+            return maximum == Timeout.InfiniteTimeSpan || untilDeadline < maximum ? untilDeadline : maximum;
         }
         private long ReservedBytes() => entries.Values.Sum(e => (long)e.Ticket.Settings.RawBytes);
         private void Prune()
         {
-            string[] released = entries.Where(pair => pair.Value.Consumed && (pair.Value.Frame == null || (!ReferenceEquals(pair.Value.Frame, latestDisplay) && !ReferenceEquals(pair.Value.Frame, teaching?.Frame)))).Select(pair => pair.Key).ToArray();
+            string[] released = entries.Where(pair => pair.Value.Consumed && !pair.Value.Receiving && (pair.Value.Frame == null || (!ReferenceEquals(pair.Value.Frame, latestDisplay) && !ReferenceEquals(pair.Value.Frame, teaching?.Frame)))).Select(pair => pair.Key).ToArray();
             foreach (string id in released) entries.Remove(id);
         }
     }

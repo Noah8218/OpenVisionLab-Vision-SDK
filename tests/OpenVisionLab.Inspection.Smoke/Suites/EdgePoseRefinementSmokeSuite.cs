@@ -251,7 +251,7 @@ namespace OpenVisionLab.Inspection.Smoke
             {
                 tool.property.COARSE_ANGLE_STEP = step;
                 using VisionToolResult rejected = tool.Execute(source);
-                Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.InvalidParameter, "An active unrepresentable coarse grid must fail before refinement.");
+                Require(!rejected.Success && rejected.ErrorCode == VisionToolErrorCode.MatchingInvalidAngleStep, "An active unrepresentable coarse grid must fail before refinement.");
             }
             tool.property.COARSE_ANGLE_STEP = 5D;
             tool.property.USE_COARSE_TO_FINE_ANGLE_SEARCH = false;

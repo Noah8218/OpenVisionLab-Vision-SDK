@@ -69,6 +69,13 @@ function Invoke-Sample([string] $Name, [string[]] $Arguments, [int] $ExpectedExi
     Assert-Case ($result.ExitCode -eq $ExpectedExit) "$Name exit $($result.ExitCode), expected $ExpectedExit. See retained stdout/stderr."
     $data = $result.Output | ConvertFrom-Json
     Assert-Case ($data.Status -eq $ExpectedStatus) "$Name status $($data.Status), expected $ExpectedStatus."
+    Assert-Case ($data.SchemaVersion -eq 2 -and $data.CommandId -match '^[a-f0-9]{32}$' -and $data.MachineDecision -eq 'NotProvided') "$Name is missing the additive v2 envelope."
+    Assert-Case ($result.Errors.Contains("CommandId=$($data.CommandId)")) "$Name stderr command identity differs."
+    if ($null -ne $data.ShotId) {
+        Assert-Case ($data.ShotId -match '^[a-f0-9]{32}$' -and $result.Errors.Contains("ShotId=$($data.ShotId)")) "$Name shot identity differs between request and terminal."
+    }
+    if ($ExpectedExit -eq 3) { Assert-Case ($data.Outcome.Execution -eq 'Faulted' -and -not $data.Outcome.MeasurementEstablished -and $data.Outcome.Decision -eq 'NotEvaluated' -and $data.Outcome.FailureStage -and $data.Outcome.ErrorType -and $data.Outcome.ErrorMessage) "$Name must retain the original fault and stage." }
+    if ($ExpectedExit -eq 130) { Assert-Case ($data.Outcome.Execution -eq 'Canceled' -and -not $data.Outcome.MeasurementEstablished -and $data.Outcome.Decision -eq 'NotEvaluated') "$Name cancellation mapping differs." }
     return $data
 }
 
@@ -421,6 +428,10 @@ try {
     $hostRun = Invoke-Sample 'host-run' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-run')) 0 'HostInspected'
     Assert-Case ($hostRun.AcceptedCount -eq 3 -and $hostRun.TerminalCount -eq 3 -and $hostRun.ShutdownComplete -and $hostRun.MachineDecision -eq 'NotProvided' -and $hostRun.Units -eq 'source-pixels') 'Host terminal correlation or equipment-decision boundary differs.'
     Assert-Case (@($hostRun.Outcomes).Count -eq 3 -and @($hostRun.Outcomes.Ticket.ShotId | Select-Object -Unique).Count -eq 3) 'Host accepted shots lost unique correlation.'
+    Assert-Case ($hostLoaded.Settings.AcquisitionTimeoutMilliseconds -eq 5000) 'A new Host profile must make the acquisition deadline explicit.'
+    foreach ($shot in $hostRun.Outcomes) {
+        Assert-Case ($shot.SchemaVersion -eq 2 -and $shot.CommandId -ceq $hostRun.CommandId -and $shot.Ticket.CommandId -ceq $hostRun.CommandId -and $shot.ShotId -ceq $shot.Ticket.ShotId -and $shot.Context.CommandId -ceq $hostRun.CommandId) 'Host command and shot identities differ across terminal/context/ticket.'
+    }
     Assert-Case ($hostRun.Display.FrameId -eq 'simulated-frame-2' -and $hostRun.Teaching.Context.FrameId -eq 'simulated-frame-0') 'Display latest-only or explicit frozen teach frame differs.'
     $savedHostJson = Get-Content -LiteralPath (Join-Path $root 'frame-host-run/result.json') -Raw
     $savedHostRun = $savedHostJson | ConvertFrom-Json
@@ -471,6 +482,32 @@ try {
     $null = Invoke-Sample 'host-recover' @('host', 'run', $hostProfile, (Join-Path $root 'frame-host-recovered')) 0 'HostInspected'
     Assert-Case ((Get-FileHash -LiteralPath $hostProfile).Hash -eq $hostProfileHash -and (Get-FileHash -LiteralPath (Join-Path $hostInput 'source.raw')).Hash -eq $hostRawHash) 'Host failure/recovery modified confirmed configuration/source bytes.'
     Record-Case 'HCLI02-failure-restore' 'Malformed settings, existing destination, save parent file, pre-cancel, isolated missing OpenCV native runtime and intact fresh-process recovery preserve confirmed configuration/source bytes.' @('host-reject-profile.stdout.log', 'host-reject-parent-file.stdout.log', 'host-reject-missing-opencv.stdout.log', 'host-recover.stdout.log')
+
+    $legacy = Get-Content -LiteralPath $hostProfile -Raw | ConvertFrom-Json
+    $legacy.PSObject.Properties.Remove('AcquisitionTimeoutMilliseconds')
+    $legacyPath = Join-Path $hostInput 'legacy-host.json'
+    $legacy | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $legacyPath -Encoding utf8
+    $legacyLoaded = Invoke-Sample 'host-load-legacy-timeout' @('host','load',$legacyPath) 0 'HostLoadedOnly'
+    Assert-Case ($legacyLoaded.Settings.AcquisitionTimeoutMilliseconds -eq 0 -and -not $legacyLoaded.Started) 'Legacy omitted timeout must restore disabled without executing.'
+    $noEdgeDirectory = Join-Path $root 'host-no-edge-input'
+    New-Item -ItemType Directory -Path $noEdgeDirectory | Out-Null
+    $noEdge = Get-Content -LiteralPath $hostProfile -Raw | ConvertFrom-Json
+    $blankRaw = Join-Path $noEdgeDirectory 'source.raw'
+    [IO.File]::WriteAllBytes($blankRaw, [byte[]]::new([int]($noEdge.Stride * $noEdge.Height)))
+    $noEdge.SourceSha256 = (Get-FileHash -LiteralPath $blankRaw).Hash
+    $noEdgeProfile = Join-Path $noEdgeDirectory 'host.json'
+    $noEdge | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $noEdgeProfile -Encoding utf8
+    $quality = Invoke-Sample 'host-no-edge' @('host','run',$noEdgeProfile,(Join-Path $root 'host-no-edge-output')) 2 'HostInspectionFailed'
+    Assert-Case (@($quality.Outcomes | Where-Object { $_.Outcome.Execution -ne 'Completed' -or $_.Outcome.MeasurementEstablished -or $_.Outcome.Decision -ne 'NotEvaluated' -or $_.Outcome.ErrorCode -ne 'CaliperNoEdge' }).Count -eq 0) 'No-edge must keep original code and unevaluated geometry, never zero/Pass.'
+    $saveFailure = Invoke-Sample 'host-save-failure' @('host','run',$hostProfile,(Join-Path $parentFile 'host-output')) 3 'InvalidInputOrSettings'
+    Assert-Case ($saveFailure.Outcome.FailureStage -eq 'Save') 'Storage failure must remain distinguishable from acquisition/inspection.'
+    Assert-Case ($null -eq $saveFailure.ShotId -and $saveFailure.Host.CommandId -ceq $saveFailure.CommandId -and $saveFailure.Host.AcceptedCount -eq 3 -and $saveFailure.Host.TerminalCount -eq 3 -and $saveFailure.Host.ShutdownComplete) 'A failed multi-shot command must preserve its accepted/terminal group instead of inventing one shot ID.'
+    foreach ($shot in $saveFailure.Host.Outcomes) {
+        Assert-Case ($shot.CommandId -ceq $saveFailure.CommandId -and $shot.ShotId -ceq $shot.Ticket.ShotId -and $shot.Context.ShotId -ceq $shot.ShotId) 'Failed-save terminal identities differ.'
+        Assert-Case ((Get-Content -LiteralPath (Join-Path $reports 'host-save-failure.stderr.log') -Raw).Contains("ShotId=$($shot.ShotId)")) 'Failed-save terminal cannot be correlated with execution log.'
+    }
+    $null = Invoke-Sample 'host-recover-after-save' @('host','run',$hostProfile,(Join-Path $root 'host-after-save-recovery')) 0 'HostInspected'
+    Record-Case 'DEV04-envelope-and-exit' 'All CLI process responses retain command/shot identity and additive v2 Outcome; QR no-match/decode/count/ROI, backend/input/cancel, legacy deadline, Host no-edge/save failure and recovery keep fault/acceptance distinctions. Worker OCE/error and Stop races have separate FrameHost smoke evidence.' @('host-load-legacy-timeout.stdout.log','host-no-edge.stdout.log','host-save-failure.stdout.log','host-recover-after-save.stdout.log')
 
     $feedManifest = Get-ChildItem -LiteralPath $feed -Filter '*.nupkg' | Sort-Object Name | ForEach-Object { [ordered]@{ File = $_.Name; Sha256 = (Get-FileHash -LiteralPath $_.FullName).Hash } }
     $summary = [ordered]@{ Status = 'Complete'; Scope = $(if ($QrFixtureDirectory) { 'Isolated package consumer, bounded F01-F09 managed cases, Q01-Q03 QR and HCLI01-HCLI02 device-free Host workflow' } else { 'Isolated package consumer, bounded F01-F09 managed cases and HCLI01-HCLI02 device-free Host workflow' }); ExpectedPackageVersion = $ExpectedVersion; Packages = $packages; Feed = $feedManifest; RunningDllSha256 = (Get-FileHash -LiteralPath $dll).Hash; LoadedPackages = $translated.Packages; ConsoleMode = 'redirected pipes; no desktop window'; Storage = $root; Cases = $cases; Commands = $commands; OptionalCuda = $cudaEvidence; Unverified = @('Actual first-developer observation F10', 'Console.CancelKeyPress requires separate actual control-event evidence', 'Sensor images, rotation/scale, physical calibration/tolerances, field soak/performance'); }

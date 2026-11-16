@@ -2,7 +2,7 @@
 
 C# 애플리케이션에 2D 검사 도구와 높이 맵 / 전체 XYZ 3D 알고리즘을 연결하세요.
 
-[![Source v3.3.0-rc.2](https://img.shields.io/badge/source-v3.3.0--rc.2-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
+[![Source v3.3.0-rc.3](https://img.shields.io/badge/source-v3.3.0--rc.3-blue)](Directory.Build.props) [![Libraries .NET Standard 2.0](https://img.shields.io/badge/libraries-.NET_Standard_2.0-512BD4)](src/OpenVisionLab.Vision3D/OpenVisionLab.Vision3D.csproj) [![Native runtime Windows x64](https://img.shields.io/badge/native_runtime-Windows_x64-0078D6)](src/OpenVisionLab.Core/OpenVisionLab.Core.csproj)
 
 [English](README.md) · **한국어**
 
@@ -46,11 +46,36 @@ Console.WriteLine($"{result.ResultImage.Width}x{result.ResultImage.Height}");
    [3D 시작 예제](docs/sdk-reference.md#3d-quick-start)를 따라갑니다.
    오류·지표·단위·소유권을 확인한 뒤 애플리케이션의 판정과 연결합니다.
 
-이 체크아웃의 소스 버전은 **`3.3.0-rc.2`**이며 [Directory.Build.props](Directory.Build.props)에
+이 체크아웃의 소스 버전은 **`3.3.0-rc.3`**이며 [Directory.Build.props](Directory.Build.props)에
 정의된 사전 버전입니다. CLR 어셈블리 식별 버전은 `3.0.0.0`을 유지합니다.
 소스 버전이 해당 NuGet 패키지나 바이너리 릴리스의 게시를 뜻하지는 않습니다.
 기존 애플리케이션을 업데이트하기 전에 [버전 이력](docs/sdk-reference.md#version)과
 [2.9.1 → 3.0 마이그레이션 안내](docs/MIGRATING_LIB_2_9_1_TO_OPENVISIONLAB_3_0.md)를 읽으세요.
+
+### 패키지 파일과 오프라인 사용
+
+[3.3.0-rc.2 GitHub 사전 릴리스](https://github.com/Noah8218/OpenVisionLab-Vision-SDK/releases/tag/v3.3.0-rc.2)에는
+SDK `.nupkg` 6개와 SHA-256 목록이 있습니다. 이 파일은 rc.2 그대로이며 rc.3 소스
+업데이트가 기존 파일을 교체하거나 새 패키지 게시를 뜻하지는 않습니다.
+6개를 한 로컬 경로에 내려받아 SHA-256을 대조하고, 해당 릴리스 소비에는
+`PackageVersion=3.3.0-rc.2`를 지정하세요. GitHub 자산과 NuGet.org는 별도 게시 채널입니다.
+
+SDK 6개 경로와 전체 의존성을 포함한 피드는 구분합니다.
+[`Test-SdkArtifactConsumers.ps1`](eng/Test-SdkArtifactConsumers.ps1)에
+`-PackageDirectory`, `-ExpectedVersion`, `-ExpectedCommit`, `-QrFixtureDirectory`와
+새 `-OutputDirectory`를 지정하면 의존성을 온라인으로 준비하고 package/DLL/native
+hash를 기록한 뒤, 독립된 빈 cache와 로컬 source만으로 net48/x64/C# 7.3,
+net8/win-x64와 FirstInspection CLI를 검사합니다. QR fixture는 smoke 실행 파일의
+`--export-qr-fixtures`로 생성합니다. 이전 공개 파일은 `-ProvenanceSourceDirectory`에
+그 파일의 소스 checkout을 지정하며 consumer와 package의 source commit을 구분합니다.
+
+고정 SDK 파일, 준비한 `-DependencyCache`, 정확한 버전/commit과 새 출력 경로로
+[`New-SdkOfflineKit.ps1`](eng/New-SdkOfflineKit.ps1)을 사용해 kit를 생성할 수 있습니다.
+`-VerifyOnly`로 manifest를 확인한 뒤 복원하세요. 생성된 `NuGet.Config`는 다른
+source를 clear하고 전체 의존성 피드만 지정합니다. 필요한 .NET SDK, framework
+참조·targeting pack과 runtime은 오프라인 사용 전에 설치해야 합니다. source 제한과
+실제 네트워크 차단 시험은 별개이며 kit는 framework 설치를 대신하지 않습니다.
+기존 native 재배포 제한은 유지합니다.
 
 ### 최근 버전 이력
 
@@ -58,6 +83,7 @@ Console.WriteLine($"{result.ResultImage.Width}x{result.ResultImage.Height}");
 
 | 버전 | 날짜 | 변경 내용 |
 | --- | --- | --- |
+| `3.3.0-rc.3` | 2026-11-16 | Matching 탐색 grid를 제한하고 Host 종료·촬영 deadline·terminal 결과를 보강했습니다. Caliper 품질을 선택형 Pipeline acceptance에 연결하고 고정 패키지 소비 검사를 추가했습니다. |
 | `3.3.0-rc.2` | 2026-11-16 | 실패·취소와 프레임·raw 높이 소유권을 보강하고 선·원 캘리퍼와 장비 없는 프레임 Host 예제를 추가했습니다. |
 | `3.3.0-rc.1` | 2026-11-02 | 9점 표면 보정, 물리 엣지 gap/flush와 협력 취소를 추가했습니다. |
 | `3.2.0-rc.5` | 2026-10-12 | CI에서 패키지 검증 오류를 보존하도록 개선했습니다. |
@@ -127,6 +153,15 @@ shot과 설정 revision으로 검사·표시·티칭을 연결하며, 큐 제한
 [`RotatedCaliperTool`](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle)은
 입력 픽셀 좌표에서 선과 원을 측정합니다. 기하 측정 성립과 설정된 품질 합격을
 구분하며, 품질 기준을 켜지 않으면 `NotEvaluated`를 반환합니다.
+선택형 [`caliper-quality.pipeline.xml`](samples/OpenVisionLab.FirstInspection/caliper-quality.pipeline.xml)은
+`Caliper.QualityAccepted >= 1`을 요구합니다. 미평가일 때는 해당 metric이 없어
+이 조건을 통과하지 않습니다. 기존 `Success`와 입력 픽셀 단위 의미는 유지합니다.
+[metric 계약](src/OpenVisionLab.Vision2D/README.md#rotated-caliper-line-and-circle)을 확인하세요.
+
+Matching과 Edge matching은 활성 angle/scale grid만 모델 할당 전에 검증합니다.
+전체·coarse 탐색이 설정 범위를 지키며 fine/coarse/scale의 조합 상한은 10,000입니다.
+수치 규칙의 원본은 [`MatchingPoseGrid`](src/OpenVisionLab.Vision2D/OpenCV/Tool/MatchingPoseGrid.cs)입니다.
+이 제한은 생성할 작업량을 제한하며 생산 takt나 프로세스 전체 메모리를 보장하지 않습니다.
 
 ## 소스 빌드
 

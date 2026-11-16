@@ -68,43 +68,16 @@ namespace OpenVisionLab.Vision2D.Tool
                 return false;
             }
 
-            if (property.MAGNIFIATION <= 0)
+            if (double.IsNaN(property.MAGNIFIATION) || double.IsInfinity(property.MAGNIFIATION) || property.MAGNIFIATION <= 0)
             {
                 errorCode = VisionToolErrorCode.MatchingInvalidScale;
                 message = $"Matching magnification must be greater than 0. Magnification={property.MAGNIFIATION}.";
                 return false;
             }
 
-            if (property.USE_FIND_SCALE
-                && (property.FIND_SCALE_MIN <= 0D || property.FIND_SCALE_MAX <= 0D))
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidScale;
-                message = $"Matching scale range must be greater than 0 when scale search is enabled. Scale={property.FIND_SCALE_MIN:0.###}..{property.FIND_SCALE_MAX:0.###}.";
-                return false;
-            }
-
-            if (property.USE_FIND_SCALE && property.FIND_SCALE_STEP <= 0D)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidScale;
-                message = $"Matching scale step must be greater than 0 when scale search is enabled. ScaleStep={property.FIND_SCALE_STEP:0.###}.";
-                return false;
-            }
-
-            if (property.USE_FIND_ANGLE && property.FIND_ANGLE <= 0)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidAngleStep;
-                message = $"Matching angle step must be greater than 0 when angle search is enabled. AngleStep={property.FIND_ANGLE}.";
-                return false;
-            }
-
-            if (property.USE_FIND_ANGLE
-                && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
-                && property.COARSE_ANGLE_STEP <= 0)
-            {
-                errorCode = VisionToolErrorCode.MatchingInvalidAngleStep;
-                message = $"Matching coarse angle step must be greater than 0 when coarse-to-fine angle search is enabled. CoarseAngleStep={property.COARSE_ANGLE_STEP}.";
-                return false;
-            }
+            if (!MatchingPoseGrid.TryValidate(property.USE_FIND_ANGLE, property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, property.FIND_ANGLE,
+                property.USE_COARSE_TO_FINE_ANGLE_SEARCH, property.COARSE_ANGLE_STEP, property.USE_FIND_SCALE,
+                property.FIND_SCALE_MIN, property.FIND_SCALE_MAX, property.FIND_SCALE_STEP, out errorCode, out message)) return false;
 
             if (property.USE_FIND_ANGLE
                 && property.USE_COARSE_TO_FINE_ANGLE_SEARCH
@@ -1267,10 +1240,14 @@ namespace OpenVisionLab.Vision2D.Tool
                 ? RotatedTemplateCache.ComputeContentHash(imageTpl, cancellationToken)
                 : 0UL;
 
-            Task firstTask = Task.Run(() =>
+            Task firstTask = null;
+            if (!property.USE_FIND_ANGLE || (Math.Min(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX) <= 0 && Math.Max(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX) >= 0))
             {
-                FindTemplate(imageSubMat, imageTpl, candidates, 0, scale, roi, applyRoiOffset, property.SCORE_MIN);
-            }, cancellationToken);
+                firstTask = Task.Run(() =>
+                {
+                    FindTemplate(imageSubMat, imageTpl, candidates, 0, scale, roi, applyRoiOffset, property.SCORE_MIN);
+                }, cancellationToken);
+            }
 
             Task plusTask = null;
             Task minusTask = null;
@@ -1427,8 +1404,8 @@ namespace OpenVisionLab.Vision2D.Tool
 
         private IEnumerable<double> CreateSearchAnglesAround(double centerAngle, double radius, double angleStep)
         {
-            double minAngle = Math.Max(property.FIND_ANGLE_MIN, centerAngle - radius);
-            double maxAngle = Math.Min(property.FIND_ANGLE_MAX, centerAngle + radius);
+            double minAngle = Math.Max(Math.Min(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX), centerAngle - radius);
+            double maxAngle = Math.Min(Math.Max(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX), centerAngle + radius);
             foreach (double angle in CreateSearchAnglesInRange(minAngle, maxAngle, angleStep))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1436,40 +1413,19 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private static IEnumerable<double> CreateSearchAnglesInRange(double minAngle, double maxAngle, double angleStep)
+        private IEnumerable<double> CreateSearchAnglesInRange(double minAngle, double maxAngle, double angleStep)
         {
-            if (angleStep <= 0)
-            {
-                yield break;
-            }
-
-            int start = (int)Math.Ceiling(minAngle / angleStep);
-            int end = (int)Math.Floor(maxAngle / angleStep);
-            for (int i = start; i <= end; i++)
-            {
-                double angle = Math.Round(angleStep * i, 6);
-                yield return Math.Abs(angle) < 0.000001D ? 0D : angle;
-            }
+            return MatchingPoseGrid.Angles(minAngle, maxAngle, angleStep, cancellationToken);
         }
 
         private IEnumerable<double> CreatePositiveSearchAngles(double angleStep)
         {
-            int count = (int)(property.FIND_ANGLE_MAX / angleStep);
-            for (int i = 1; i <= count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return angleStep * i;
-            }
+            return MatchingPoseGrid.Angles(property.FIND_ANGLE_MIN, property.FIND_ANGLE_MAX, angleStep, cancellationToken).Where(angle => angle > 0D);
         }
 
         private IEnumerable<double> CreateNegativeSearchAngles(double angleStep)
         {
-            int count = Math.Abs((int)(property.FIND_ANGLE_MIN / angleStep));
-            for (int i = 1; i <= count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return angleStep * i * -1;
-            }
+            return MatchingPoseGrid.Angles(-(double)property.FIND_ANGLE_MAX, -(double)property.FIND_ANGLE_MIN, angleStep, cancellationToken).Where(angle => angle > 0D).Select(angle => -angle);
         }
 
         public IEnumerable<double> CreateSearchScales()
@@ -1491,41 +1447,9 @@ namespace OpenVisionLab.Vision2D.Tool
             }
         }
 
-        private static IEnumerable<double> CreateSearchScalesInRange(double minScale, double maxScale, double scaleStep)
+        private IEnumerable<double> CreateSearchScalesInRange(double minScale, double maxScale, double scaleStep)
         {
-            if (scaleStep <= 0D)
-            {
-                yield break;
-            }
-
-            if (minScale > maxScale)
-            {
-                double temp = minScale;
-                minScale = maxScale;
-                maxScale = temp;
-            }
-
-            HashSet<double> emitted = new HashSet<double>();
-            int start = (int)Math.Ceiling((minScale - 0.000000001D) / scaleStep);
-            int end = (int)Math.Floor((maxScale + 0.000000001D) / scaleStep);
-            for (int i = start; i <= end; i++)
-            {
-                double scale = NormalizeScale(i * scaleStep);
-                if (scale > 0D && emitted.Add(scale))
-                {
-                    yield return scale;
-                }
-            }
-
-            if (minScale <= 1D && maxScale >= 1D && emitted.Add(1D))
-            {
-                yield return 1D;
-            }
-
-            if (emitted.Count == 0)
-            {
-                yield return NormalizeScale(minScale);
-            }
+            return MatchingPoseGrid.Scales(minScale, maxScale, scaleStep, true, 0.000000001D, cancellationToken);
         }
 
         private static double NormalizeScale(double scale)

@@ -328,7 +328,19 @@ residual and circle-coverage limits before using `Accepted`/`Rejected`. Returned
 evidence and result images are independent snapshots. The Tool supports
 cooperative cancellation; serialize configuration, execution and disposal.
 Pipeline uses `rotatedCaliper` (alias `RotatedCaliperTool`) with the same schema
-and property contract. Physical-unit conversion and equipment judgment belong to
+and property contract. `Caliper.QualityAccepted` is 1/0 only when quality was
+evaluated; `NotEvaluated` leaves the metric absent. A geometry result publishes
+`Caliper.RadiusPx`, `Caliper.DiameterPx`, `Caliper.CircleCoverageDegrees` and
+`Caliper.MaximumCircleGapDegrees` for a circle. Failed geometry does not publish
+zero as a measurement. Coverage remains `360 - maximum angular gap`: 24 stations
+spaced at 15 degrees give 345 degrees, not 360.
+
+The [quality-gated Pipeline example](../../samples/OpenVisionLab.FirstInspection/caliper-quality.pipeline.xml)
+requires `Caliper.QualityAccepted >= 1`. Load it with `VisionPipelineSerializer`,
+place the input image in `VisionPipelineContext.SetLayer("Source", image)`, and
+execute explicitly with `VisionPipelineRuntime.Run`. Missing or unevaluated
+quality fails the required-metric rule. Existing recipes without that rule retain
+their previous `Success` behavior. Physical-unit conversion and equipment judgment belong to
 the host. See the [device-free Host workflow](../../docs/sdk-reference.md#device-free-frame-host).
 
 ## Results, errors and recovery

@@ -18,6 +18,9 @@ namespace OpenVisionLab.Inspection.Smoke
         internal static IEnumerable<SmokeCase> Cases()
         {
             yield return new SmokeCase("Matching hardening drains faulted and canceled workers before releasing shared images", TestWorkerDrain);
+            yield return new SmokeCase("Matching DEV01 exhaustive and coarse obey declared angle ranges", TestPoseGridRanges);
+            yield return new SmokeCase("Matching DEV01 active grid validation budget and recovery", TestPoseGridValidation);
+            yield return new SmokeCase("Matching DEV01 iterator observes cancellation between rounded poses", TestGridIteratorCancellation);
             yield return new SmokeCase("Matching single ROI publishes global coordinates", TestSingleRoiCoordinates);
             yield return new SmokeCase("Matching multi ROI preserves ROI and result order", TestMultiRoiOrder);
             yield return new SmokeCase("Matching normalized modes retain the same exact location", TestNormalizedMatchModes);
@@ -249,6 +252,125 @@ namespace OpenVisionLab.Inspection.Smoke
                     previous = current;
                 }
             }
+        }
+
+        private static void TestPoseGridRanges()
+        {
+            using Mat template = CreatePattern(32, 28, false);
+            using Mat source = CreateSource(110, 85, template, new Rect(47, 31, template.Width, template.Height));
+            foreach (bool edge in new[] { false, true })
+            foreach (bool coarse in new[] { false, true })
+            foreach (int optional in edge ? new[] { 0, 1, 2, 3 } : new[] { 0 })
+            {
+                using OpenCvAlgorithmBase tool = CreateGridTool(template, edge, out object settings, out List<MatchingResult> results);
+                if (edge)
+                {
+                    ((EdgeBasedTemplateMatchingTool)tool).UsePoseRefinement = (optional & 1) != 0;
+                    ((EdgeBasedTemplateMatchingTool)tool).UsePoseUniquenessValidation = (optional & 2) != 0;
+                }
+                SetGrid(settings, "USE_FIND_ANGLE", true);
+                SetGrid(settings, "USE_COARSE_TO_FINE_ANGLE_SEARCH", coarse);
+                SetGrid(settings, "COARSE_ANGLE_STEP", 4D);
+                foreach ((int minimum, int maximum, double step) in new[] { (5, 10, 1D), (-10, -5, 1D), (-5, 5, 1D), (0, 0, 1D), (5, 10, 2D), (10, 5, 1D), (5, -5, 1D) })
+                {
+                    SetGrid(settings, "FIND_ANGLE_MIN", minimum); SetGrid(settings, "FIND_ANGLE_MAX", maximum); SetGrid(settings, "FIND_ANGLE", step);
+                    using VisionToolResult run = tool.Execute(source);
+                    Require((run.Success && results.Count > 0) || ((optional & 2) != 0 && run.ErrorCode == VisionToolErrorCode.MatchingAmbiguous && results.Count == 0),
+                        $"Range edge={edge} coarse={coarse} optional={optional} {minimum}..{maximum}/{step}: " + run.ErrorName + ": " + run.Message + " " + run.Exception);
+                    Require(results.All(result => result.Angle >= Math.Min(minimum, maximum) && result.Angle <= Math.Max(minimum, maximum)), "A stronger out-of-range zero pose must never win the search.");
+                }
+            }
+        }
+
+        private static void TestPoseGridValidation()
+        {
+            using Mat template = CreatePattern(32, 28, false);
+            using Mat source = CreateSource(110, 85, template, new Rect(47, 31, template.Width, template.Height));
+            foreach (bool edge in new[] { false, true })
+            foreach (int optional in edge ? new[] { 0, 1, 2, 3 } : new[] { 0 })
+            {
+                using OpenCvAlgorithmBase tool = CreateGridTool(template, edge, out object settings, out _);
+                if (edge) { ((EdgeBasedTemplateMatchingTool)tool).UsePoseRefinement = (optional & 1) != 0; ((EdgeBasedTemplateMatchingTool)tool).UsePoseUniquenessValidation = (optional & 2) != 0; }
+                void Invalid(VisionToolErrorCode code)
+                {
+                    using VisionToolResult run = tool.Execute(source);
+                    Require(!run.Success && run.ErrorCode == code, "Invalid active grid must fail before model allocation: expected " + code + ", got " + run.ErrorName);
+                }
+                SetGrid(settings, "USE_FIND_ANGLE", true);
+                foreach (double step in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity, 0D, -1D, 0.0000001D })
+                {
+                    SetGrid(settings, "FIND_ANGLE", step); Invalid(VisionToolErrorCode.MatchingInvalidAngleStep);
+                }
+                SetGrid(settings, "FIND_ANGLE", 1D); SetGrid(settings, "FIND_ANGLE_MIN", int.MaxValue); SetGrid(settings, "FIND_ANGLE_MAX", int.MaxValue);
+                Invalid(VisionToolErrorCode.MatchingInvalidAngleStep);
+                SetGrid(settings, "FIND_ANGLE_MIN", -10); SetGrid(settings, "FIND_ANGLE_MAX", 10);
+                SetGrid(settings, "USE_COARSE_TO_FINE_ANGLE_SEARCH", true);
+                foreach (double step in new[] { double.NaN, double.PositiveInfinity, 0D, -1D, 0.0000001D })
+                {
+                    SetGrid(settings, "COARSE_ANGLE_STEP", step); Invalid(VisionToolErrorCode.MatchingInvalidAngleStep);
+                }
+                SetGrid(settings, "USE_FIND_ANGLE", false); SetGrid(settings, "USE_FIND_SCALE", true);
+                foreach (string field in new[] { "FIND_SCALE_MIN", "FIND_SCALE_MAX", "FIND_SCALE_STEP" })
+                {
+                    foreach (double value in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity, 0D, -1D, 0.0000001D })
+                    {
+                        SetGrid(settings, "FIND_SCALE_MIN", 1D); SetGrid(settings, "FIND_SCALE_MAX", 1D); SetGrid(settings, "FIND_SCALE_STEP", 0.1D);
+                        SetGrid(settings, field, value); Invalid(VisionToolErrorCode.MatchingInvalidScale);
+                    }
+                }
+                SetGrid(settings, "FIND_SCALE_MIN", 1D); SetGrid(settings, "FIND_SCALE_MAX", 2D); SetGrid(settings, "FIND_SCALE_STEP", 0.01D);
+                SetGrid(settings, "USE_FIND_ANGLE", true); SetGrid(settings, "USE_COARSE_TO_FINE_ANGLE_SEARCH", false);
+                SetGrid(settings, "FIND_ANGLE_MIN", -100); SetGrid(settings, "FIND_ANGLE_MAX", 100); Invalid(VisionToolErrorCode.InvalidParameter);
+                SetGrid(settings, "USE_FIND_SCALE", false); SetGrid(settings, "FIND_ANGLE", 0.000001D); Invalid(VisionToolErrorCode.InvalidParameter);
+                // Disabled stale values do not gate execution; the same owner recovers.
+                SetGrid(settings, "USE_FIND_ANGLE", false); SetGrid(settings, "FIND_ANGLE", double.NaN);
+                using VisionToolResult recovered = tool.Execute(source);
+                Require(recovered.Success, "Invalid-to-valid recovery must ignore disabled angle/scale/coarse grids.");
+            }
+        }
+
+        private static OpenCvAlgorithmBase CreateGridTool(Mat template, bool edge, out object settings, out List<MatchingResult> results)
+        {
+            if (edge)
+            {
+                EdgeBasedTemplateMatchingTool tool = new EdgeBasedTemplateMatchingTool();
+                EdgeBasedTemplateMatchingToolProperty property = new EdgeBasedTemplateMatchingToolProperty { SCORE_MIN = -1D, USE_DRAW_IMAGE = false, MAX_TEMPLATE_POINTS = 100 };
+                tool.SetProperty(property); tool.SetTemplateImage(template); settings = property; results = tool.results; return tool;
+            }
+            MatchingTool imageTool = CreateTool(template, new MatchingToolProperty { SCORE_MIN = 0D, NUM_MATCH = 1, USE_FIND_ANGLE = false });
+            settings = imageTool.property; results = imageTool.results; return imageTool;
+        }
+
+        private static void SetGrid(object settings, string name, object value) => settings.GetType().GetProperty(name).SetValue(settings, value);
+
+        private static void TestGridIteratorCancellation()
+        {
+            Type grid = typeof(MatchingTool).Assembly.GetType("OpenVisionLab.Vision2D.Tool.MatchingPoseGrid", true);
+            MethodInfo angles = grid.GetMethod("Angles", BindingFlags.Static | BindingFlags.NonPublic);
+            using CancellationTokenSource cancellation = new CancellationTokenSource();
+            IEnumerable<double> values = (IEnumerable<double>)angles.Invoke(null, new object[] { 0D, 0.001D, 0.0000006D, cancellation.Token });
+            using IEnumerator<double> iterator = values.GetEnumerator();
+            Require(iterator.MoveNext(), "The bounded representable grid must emit a pose.");
+            cancellation.Cancel();
+            RequireThrows<OperationCanceledException>(() => iterator.MoveNext());
+
+            using Mat template = CreatePattern(32, 28, false);
+            using Mat source = CreateSource(110, 85, template, new Rect(47, 31, template.Width, template.Height));
+            using OpenCvAlgorithmBase tool = CreateGridTool(template, true, out _, out _);
+            object cache = tool.GetType().GetMethod("GetTemplateModelCache", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(tool, null);
+            using CancellationTokenSource modelCancellation = new CancellationTokenSource();
+            IEnumerable<double> modelAngles = (IEnumerable<double>)angles.Invoke(null, new object[] { -2D, 2D, 1D, modelCancellation.Token });
+            IEnumerable<double> InterruptAfterOneModel()
+            {
+                foreach (double angle in modelAngles) { yield return angle; modelCancellation.Cancel(); }
+            }
+            double[] scales = { 1D };
+            TargetInvocationException interrupted = RequireThrows<TargetInvocationException>(() => cache.GetType().GetMethod("GetSearchModels").Invoke(cache, new object[] { "bounded-cancellation", InterruptAfterOneModel(), scales }));
+            Require(interrupted.InnerException is OperationCanceledException, "Eager model creation must observe grid cancellation after its first model.");
+            object models = cache.GetType().GetField("rotatedModels", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(cache);
+            Require((int)models.GetType().GetProperty("Count").GetValue(models) == 1, "The interrupted creation must allocate only the first controlled model.");
+            using VisionToolResult recovered = tool.Execute(source);
+            Require(recovered.Success && !source.IsDisposed && !template.IsDisposed, "The same model owner must recover without releasing caller input/template.");
         }
 
         private static MatchingTool CreateTool(Mat template, MatchingToolProperty property)

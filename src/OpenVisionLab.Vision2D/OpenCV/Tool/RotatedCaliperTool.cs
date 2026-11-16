@@ -165,6 +165,23 @@ namespace OpenVisionLab.Vision2D.Tool
             metrics["Caliper.MeasurementEstablished"] = LatestMeasurement.MeasurementEstablished ? 1 : 0;
             if (LatestMeasurement.RmsResidual.HasValue) metrics["Caliper.RmsResidualPx"] = LatestMeasurement.RmsResidual.Value;
             if (LatestMeasurement.MaxResidual.HasValue) metrics["Caliper.MaxResidualPx"] = LatestMeasurement.MaxResidual.Value;
+            if (LatestMeasurement.Acceptance != CaliperAcceptance.NotEvaluated)
+                metrics["Caliper.QualityAccepted"] = LatestMeasurement.Acceptance == CaliperAcceptance.Accepted ? 1D : 0D;
+            if (LatestMeasurement.Circle != null)
+            {
+                metrics["Caliper.RadiusPx"] = LatestMeasurement.Circle.Radius;
+                metrics["Caliper.DiameterPx"] = LatestMeasurement.Circle.Radius * 2D;
+                metrics["Caliper.CircleCoverageDegrees"] = LatestMeasurement.CircleCoverageDegrees.Value;
+                metrics["Caliper.MaximumCircleGapDegrees"] = LatestMeasurement.MaximumCircleGapDegrees.Value;
+            }
+            if (LatestMeasurement.Line != null)
+            {
+                metrics["Caliper.LineCenterXPx"] = LatestMeasurement.Line.CenterX;
+                metrics["Caliper.LineCenterYPx"] = LatestMeasurement.Line.CenterY;
+                metrics["Caliper.LineNormalX"] = LatestMeasurement.Line.NormalX;
+                metrics["Caliper.LineNormalY"] = LatestMeasurement.Line.NormalY;
+                metrics["Caliper.LineSignedDistancePx"] = LatestMeasurement.Line.SignedDistance;
+            }
             return metrics;
         }
         protected override IEnumerable<VisionToolOverlay> CollectOverlays()

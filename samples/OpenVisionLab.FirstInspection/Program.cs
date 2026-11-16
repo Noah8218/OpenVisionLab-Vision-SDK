@@ -32,12 +32,16 @@ internal static class Program
         ConsoleCancelEventHandler handler = (_, e) => { e.Cancel = true; cancellation.Cancel(); };
         Console.CancelKeyPress += handler;
         string command = "";
+        string commandId = Guid.NewGuid().ToString("N");
         string shotId = Guid.NewGuid().ToString("N");
+        string? FailureShotId() => command == "host" ? null : shotId;
+        void WriteCommand(object value) => Write(value, commandId, FailureShotId());
+        Console.Error.WriteLine("CommandStarted|CommandId=" + commandId);
         try
         {
             if (args.Length == 1 && (args[0] == "--help" || args[0] == "help"))
             {
-                Write(new { Status = "Help", Usage = "prepare <new-dir> | teach <dir> <new-bundle> | load <bundle> | inspect <bundle> <image> | qr configure/load/inspect/inspect-located | host prepare <new-dir>/load <host.json>/run <host.json> <new-dir>. Options: --cuda, --cancel-before, --cancel-after-ms N. Main file flow: translation-only and 8-bit gray/BGR/BGRA. Device-free host profile declares raw high-bit conversion. No automatic equipment OK." });
+                WriteCommand(new { Status = "Help", Usage = "prepare <new-dir> | teach <dir> <new-bundle> | load <bundle> | inspect <bundle> <image> | qr configure/load/inspect/inspect-located | host prepare <new-dir>/load <host.json>/run <host.json> <new-dir>. Options: --cuda, --cancel-before, --cancel-after-ms N. Main file flow: translation-only and 8-bit gray/BGR/BGRA. Device-free host profile declares raw high-bit conversion. No automatic equipment OK." });
                 return 0;
             }
             bool cuda = args.Contains("--cuda"), cancelBefore = args.Contains("--cancel-before");
@@ -54,17 +58,17 @@ internal static class Program
                 else if (args[i].StartsWith("--", StringComparison.Ordinal)) throw new ArgumentException("Unknown option: " + args[i]);
                 else positional.Add(args[i]);
             }
+            command = positional.FirstOrDefault() ?? "";
             if (cancelBefore) cancellation.Cancel();
             cancellation.Token.ThrowIfCancellationRequested();
-            command = positional.FirstOrDefault() ?? "";
             if ((cuda && command != "teach" && command != "inspect") || (cancelAfter.HasValue && command != "inspect" && command != "qr")) throw new ArgumentException("--cuda is for teach/inspect; --cancel-after-ms is for inspect.");
             object report;
             switch (command)
             {
                 case "host":
-                    return HostCommand.Run(positional, cancellation.Token);
+                    return HostCommand.Run(positional, cancellation.Token, commandId);
                 case "qr":
-                    return RunQr(positional, cancellation, cancelAfter);
+                    return RunQr(positional, cancellation, cancelAfter, commandId, shotId);
                 case "prepare" when positional.Count == 2:
                     report = Prepare(Path.GetFullPath(positional[1]), cancellation.Token);
                     break;
@@ -78,28 +82,28 @@ internal static class Program
                 case "inspect" when positional.Count == 3:
                     Bundle bundle = ReadBundle(Path.GetFullPath(positional[1]), cancellation.Token);
                     Inspection inspection = Inspect(bundle, Path.GetFullPath(positional[2]), cuda || bundle.Host.UseCuda, cancellation, cancelAfter, shotId);
-                    Write(inspection);
-                    return inspection.Status == "Accepted" ? 0 : 2;
+                    WriteCommand(inspection);
+                    return HostOutcome.ExitCode(inspection.Outcome);
                 default:
                     throw new ArgumentException("Usage: prepare <new-work-dir> | teach <work-dir> <new-bundle> [--cuda] | load <bundle> | inspect <bundle> <image> [--cuda] [--cancel-after-ms N] | qr configure <new-profile.xml> [count [x,y,width,height]] | qr load <profile.xml> | qr inspect <profile.xml> <image> [expected-text] | qr inspect-located <profile.xml> <bundle> <image> [expected-text] | host prepare <new-directory> | host load <host.json> | host run <host.json> <new-output-directory>. --cancel-before demonstrates pre-cancellation. Ctrl+C requests cooperative cancellation.");
             }
-            Write(report);
+            WriteCommand(report);
             return 0;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException error) when (cancellation.IsCancellationRequested)
         {
-            Write(new { ShotId = shotId, Outcome = HostOutcome.Canceled(), Status = "Canceled", Message = "Cancellation requested; no inspection value is published. Native calls may complete before cancellation is observed." });
+            WriteCommand(new { ShotId = FailureShotId(), Host = error.Data["HostContext"], Outcome = HostOutcome.Canceled().WithFailure(error.Data["FailureStage"] as string ?? "Cancellation", "Canceled", error.GetType().FullName, error.Message), Status = "Canceled", Message = "Cancellation requested; no inspection value is published. Native calls may complete before cancellation is observed." });
             return 130;
         }
         catch (Exception error) when (error.GetBaseException() is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
         {
             Exception cause = error.GetBaseException();
-            Write(new { ShotId = shotId, Outcome = HostOutcome.Faulted(), Status = "BackendUnavailable", Error = cause.GetType().Name, cause.Message, InspectionPerformed = false });
+            WriteCommand(new { ShotId = FailureShotId(), Host = error.Data["HostContext"], Outcome = HostOutcome.Faulted("Backend", cause), Status = "BackendUnavailable", Error = cause.GetType().Name, cause.Message, InspectionPerformed = false });
             return 3;
         }
-        catch (Exception error) when (error is ArgumentException or InvalidDataException or JsonException or IOException or UnauthorizedAccessException or InvalidOperationException or OpenCVException or FormatException or OverflowException or NotSupportedException or System.Xml.XmlException)
+        catch (Exception error)
         {
-            Write(new { ShotId = shotId, Outcome = HostOutcome.Faulted(), Status = "InvalidInputOrSettings", Error = error.GetType().Name, error.Message });
+            WriteCommand(new { ShotId = FailureShotId(), Host = error.Data["HostContext"], Outcome = HostOutcome.Faulted(error.Data["FailureStage"] as string ?? "InputOrExecution", error), Status = "InvalidInputOrSettings", Error = error.GetType().Name, error.Message });
             return 3;
         }
         finally
@@ -108,8 +112,9 @@ internal static class Program
         }
     }
 
-    private static int RunQr(List<string> args, CancellationTokenSource cancellation, int? cancelAfter)
+    private static int RunQr(List<string> args, CancellationTokenSource cancellation, int? cancelAfter, string commandId, string shotId)
     {
+        void WriteQr(object value) => Write(value, commandId, shotId);
         CancellationToken token = cancellation.Token;
         string action = args.Count > 1 ? args[1] : "";
         if (cancelAfter.HasValue && action != "inspect" && action != "inspect-located") throw new ArgumentException("QR --cancel-after-ms requires an explicit inspect action.");
@@ -134,14 +139,14 @@ internal static class Program
                 File.Move(temporary, destination, false);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
-            Write(new { Status = "ConfiguredOnly", Profile = destination, Settings = step.Parameters, InspectionPerformed = false, ProbePerformed = false });
+            WriteQr(new { Status = "ConfiguredOnly", Profile = destination, Settings = step.Parameters, InspectionPerformed = false, ProbePerformed = false });
             return 0;
         }
         if (action == "load" && args.Count == 3)
         {
             string path = Path.GetFullPath(args[2]);
             VisionPipelineStep step = ReadQrProfile(path, token).Steps[0];
-            Write(new { Status = "LoadedOnly", Profile = path, ProfileSha256 = HashFile(path), Settings = step.Parameters, InspectionPerformed = false, ProbePerformed = false, Packages = PackageIdentities() });
+            WriteQr(new { Status = "LoadedOnly", Profile = path, ProfileSha256 = HashFile(path), Settings = step.Parameters, InspectionPerformed = false, ProbePerformed = false, Packages = PackageIdentities() });
             return 0;
         }
         bool located = action == "inspect-located";
@@ -167,8 +172,8 @@ internal static class Program
             using VisionToolResult match = matcher.Execute(gray, token);
             if (!match.Success)
             {
-                Write(new { Status = "LocationFailed", match.ErrorName, match.Message, QrExecutionPerformed = false, QrCodeReading = (object?)null });
-                return 2;
+                WriteQr(new { ShotId = shotId, Outcome = HostOutcome.Matching(match), Status = "LocationFailed", match.ErrorName, match.Message, QrExecutionPerformed = false, QrCodeReading = (object?)null });
+                return HostOutcome.ExitCode(HostOutcome.Matching(match));
             }
             RequireCurrentMatch(match, matcher);
             Pose pose = PoseOf(matcher.results.Single());
@@ -176,7 +181,7 @@ internal static class Program
             try { reader.property.CvROI = MapRoi(transform, reader.property.CvROI, image.Size()); }
             catch (ArgumentException error)
             {
-                Write(new { Status = "RoiRejected", error.Message, QrExecutionPerformed = false, QrCodeReading = (object?)null });
+                WriteQr(new { ShotId = shotId, Outcome = HostOutcome.Completed(false, false).WithFailure("RoiTransfer", "HostRoiOutsideImage", error.GetType().FullName, error.Message), Status = "RoiRejected", error.Message, QrExecutionPerformed = false, QrCodeReading = (object?)null });
                 return 2;
             }
             location = new { CurrentPose = pose, ReferencePose = bundle.Host.ReferencePose, AppliedRoi = RectText(reader.property.CvROI) };
@@ -185,9 +190,9 @@ internal static class Program
         using VisionToolResult result = reader.Execute(gray, token);
         bool? agrees = expected == null || !result.Success ? null : string.Equals(result.QrCodeReading.Candidates.Single().Text, expected, StringComparison.Ordinal);
         string status = !result.Success ? "ReadingFailed" : agrees == false ? "TextMismatch" : agrees == true ? "TextMatched" : "Read";
-        Write(new
+        WriteQr(new
         {
-            ShotId = Guid.NewGuid().ToString("N"), Outcome = agrees == false ? HostOutcome.Completed(true, false) : HostOutcome.Qr(result), FeatureDetector = "NotExecuted", InputFormat = "8-bit gray/BGR", Status = status, result.Success, result.ErrorName, result.Message, QrExecutionPerformed = true,
+            ShotId = shotId, Outcome = agrees == false ? HostOutcome.Completed(true, false) : HostOutcome.Qr(result), FeatureDetector = "NotExecuted", InputFormat = "8-bit gray/BGR", Status = status, result.Success, result.ErrorName, result.Message, QrExecutionPerformed = true,
             Units = "px", CoordinateFrame = "current-input-Mat", ExpectedText = expected, TextComparison = "Ordinal", TextAgrees = agrees,
             Input = imagePath, InputSha256 = HashFile(imagePath), ProfileSha256 = HashFile(profilePath), Location = location,
             Reading = result.QrCodeReading == null ? null : new
@@ -199,7 +204,7 @@ internal static class Program
             },
             Packages = PackageIdentities()
         });
-        return result.Success && agrees != false ? 0 : 2;
+        return HostOutcome.ExitCode(agrees == false ? HostOutcome.Completed(true, false) : HostOutcome.Qr(result));
     }
 
     private static VisionPipeline ReadQrProfile(string path, CancellationToken token)
@@ -378,7 +383,7 @@ internal static class Program
         using BlobTool presence = (BlobTool)VisionPipelineBlobToolFactory.Create(bundle.Pipeline.Steps[1]);
         using LineGaugeTool gauge = (LineGaugeTool)VisionPipelineBlobToolFactory.Create(bundle.Pipeline.Steps[2]);
         if (cancelAfter.HasValue) cancellation.CancelAfter(cancelAfter.Value);
-        Console.Error.WriteLine("MatchingStarted: translation-only; cooperative cancellation; results in px.");
+        Console.Error.WriteLine("MatchingStarted|ShotId=" + output.ShotId + ": translation-only; cooperative cancellation; results in px.");
         long stageStart = Stopwatch.GetTimestamp();
         using (VisionToolResult located = matcher.Execute(image, token))
         {
@@ -399,7 +404,7 @@ internal static class Program
         catch (ArgumentException error)
         {
             output.Status = "RoiRejected";
-            output.Outcome = HostOutcome.Completed(false, false);
+            output.Outcome = HostOutcome.Completed(false, false).WithFailure("RoiTransfer", "HostRoiOutsideImage", error.GetType().FullName, error.Message);
             output.Stages.Add(new Stage("RoiTransfer", false, "HostRoiOutsideImage", error.Message));
             return output;
         }
@@ -422,7 +427,7 @@ internal static class Program
         using (VisionToolResult measured = gauge.Execute(image, token))
         {
             output.Stages.Add(StageOf("LineGauge", measured, stageStart));
-            if (!measured.Success) { output.Status = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? "EdgeNotFound" : "ExecutionFailed"; output.Outcome = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? HostOutcome.Completed(false, false) : HostOutcome.Faulted(); return output; }
+            if (!measured.Success) { output.Status = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? "EdgeNotFound" : "ExecutionFailed"; output.Outcome = measured.ErrorCode == VisionToolErrorCode.LineGaugeEdgeNotFound ? HostOutcome.Completed(false, false) : HostOutcome.Faulted().WithFailure("LineGauge", measured.ErrorName, measured.Exception?.GetType().FullName, measured.Message); return output; }
             LineGaugeSubpixelEvidence evidence = gauge.resultList.Single().SubpixelEvidence;
             if (!evidence.HasFit || !evidence.ProjectsX) throw new InvalidDataException("No accepted X projection subpixel fit.");
             if (!double.IsFinite(evidence.Slope) || !double.IsFinite(evidence.Intercept) || !double.IsFinite(evidence.OrthogonalRmse)) throw new InvalidDataException("Line measurement is non-finite.");
@@ -530,6 +535,7 @@ internal static class Program
             token.ThrowIfCancellationRequested();
             File.Move(temporary, destination, false); // Never replace a previously valid bundle.
         }
+        catch (Exception error) { error.Data["FailureStage"] = "Save"; throw; }
         finally
         {
             if (File.Exists(temporary)) File.Delete(temporary);
@@ -606,7 +612,7 @@ internal static class Program
     private static string RectText(Rect roi) => FormattableString.Invariant($"{roi.X},{roi.Y},{roi.Width},{roi.Height}");
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
     private static string HashFile(string path) { using FileStream stream = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(stream)); }
-    private static void Write(object report) => Console.WriteLine(JsonSerializer.Serialize(report, Json));
+    private static void Write(object report, string commandId, string? shotId) => HostOutcome.Write(report, commandId, shotId, Json);
 
     private sealed record Pose(double X, double Y, double Angle, double Scale);
     private sealed record PixelPoint(double X, double Y);

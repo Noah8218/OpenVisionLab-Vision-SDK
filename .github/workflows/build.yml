@@ -142,3 +142,68 @@ jobs:
           if ($nativeFiles[0].FullName -ne $expectedNativePath) {
             throw "Expected the native DLL at $expectedNativePath, found $($nativeFiles[0].FullName)."
           }
+
+      - name: Freeze exact packages and export QR integration fixtures
+        shell: pwsh
+        run: |
+          [ordered]@{
+            SourceCommit = $env:GITHUB_SHA
+            PackageVersion = $env:PACKAGE_VERSION
+            Files = @(Get-ChildItem artifacts/packages -Filter '*.nupkg' -File | ForEach-Object {
+              [ordered]@{ File = $_.Name; Sha256 = (Get-FileHash -LiteralPath $_.FullName).Hash }
+            })
+          } | ConvertTo-Json -Depth 6 | Set-Content artifacts/packages/candidate.json -Encoding utf8
+          dotnet tests/OpenVisionLab.Inspection.Smoke/bin/Release/net8.0/OpenVisionLab.Inspection.Smoke.dll --export-qr-fixtures "$env:RUNNER_TEMP/qr-integration-fixtures"
+          if ($LASTEXITCODE -ne 0) { throw 'QR fixture export failed.' }
+
+      - name: Preserve frozen SDK packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-packages-${{ github.sha }}
+          path: artifacts/packages
+          if-no-files-found: error
+
+      - name: Preserve QR integration fixtures
+        uses: actions/upload-artifact@v4
+        with:
+          name: qr-integration-fixtures-${{ github.sha }}
+          path: ${{ runner.temp }}/qr-integration-fixtures
+          if-no-files-found: error
+
+  package-integration:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.423
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-packages-${{ github.sha }}
+          path: ${{ runner.temp }}/frozen-sdk-packages
+      - uses: actions/download-artifact@v4
+        with:
+          name: qr-integration-fixtures-${{ github.sha }}
+          path: ${{ runner.temp }}/qr-integration-fixtures
+      - name: Verify exact artifact consumers and complete offline feed
+        id: integration
+        shell: pwsh
+        run: |
+          $evidence = if (Test-Path 'D:\') { "D:\OpenVisionLab-TestData\OpenVisionLab-Vision-SDK\ci-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" } else { "$env:RUNNER_TEMP/sdk-artifact-consumers" }
+          "evidence=$evidence" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $packages = "$env:RUNNER_TEMP/frozen-sdk-packages"
+          $candidate = Get-Content "$packages/candidate.json" -Raw | ConvertFrom-Json
+          if ($candidate.SourceCommit -cne $env:GITHUB_SHA -or @($candidate.Files).Count -ne 6) { throw 'Candidate source/count differs.' }
+          foreach ($file in $candidate.Files) {
+            if ((Get-FileHash -LiteralPath (Join-Path $packages $file.File)).Hash -cne $file.Sha256) { throw "Downloaded candidate hash differs: $($file.File)" }
+          }
+          ./eng/Test-SdkArtifactConsumers.ps1 -PackageDirectory $packages -ExpectedVersion $candidate.PackageVersion -ExpectedCommit $candidate.SourceCommit -QrFixtureDirectory "$env:RUNNER_TEMP/qr-integration-fixtures" -OutputDirectory $evidence
+      - name: Preserve package integration evidence including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-package-integration-${{ github.sha }}
+          path: ${{ steps.integration.outputs.evidence }}
+          if-no-files-found: warn

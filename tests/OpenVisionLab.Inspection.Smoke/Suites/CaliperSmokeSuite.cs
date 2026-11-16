@@ -33,6 +33,7 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("Caliper C08 outlier removal cutoff and single refit cap", TestOutlier);
             yield return new SmokeCase("Caliper C08 deterministic equal outlier policy", TestEqualOutliers);
             yield return new SmokeCase("Caliper C11 factory settings and clone contract", TestFactory);
+            yield return new SmokeCase("Caliper DEV05 serialized opt-in quality Pipeline executes all acceptance states", TestQualityPipeline);
             yield return new SmokeCase("Caliper C07 C10 independent fit degeneracy and translated coordinates", TestFitBoundaries);
             yield return new SmokeCase("Caliper C09 retained result survives absence cancellation and disposal", TestLifetime);
             yield return new SmokeCase("Caliper C09 active sampling cancellation and recovery", TestActiveCancellation);
@@ -393,6 +394,40 @@ namespace OpenVisionLab.Inspection.Smoke
             using RotatedCaliperTool alias = (RotatedCaliperTool)VisionPipelineToolFactory.Create(step);
             Require(alias.LatestMeasurement == null, "Alias construction must not inspect.");
         }
+        private static void TestQualityPipeline()
+        {
+            using Mat circle = CircleStep(160, 160, 80, 80, 30);
+            using Mat blank = new Mat(160, 160, MatType.CV_8UC1, Scalar.All(0));
+            string recipe = System.IO.Path.Combine(AppContext.BaseDirectory, "caliper-quality.pipeline.xml");
+            VisionPipeline pipeline = VisionPipelineSerializer.Deserialize(System.IO.File.ReadAllText(recipe));
+            VisionPipelineStep step = pipeline.Steps.Single();
+            Require(step.UseAcceptance && step.AcceptanceMetricName == "Caliper.QualityAccepted" && step.AcceptanceMetricMinimum == 1, "The shipped opt-in example must require evaluated quality.");
+            foreach (int schema in new[] { 1, 2 })
+            foreach (string state in new[] { "Accepted", "Rejected", "NotEvaluated", "NoEdge", "Legacy" })
+            {
+                pipeline.SchemaVersion = schema;
+                step.Parameters["QualityGateEnabled"] = state == "NotEvaluated" || state == "Legacy" ? "false" : "true";
+                step.Parameters["MinimumPointCount"] = state == "Rejected" ? "25" : "24";
+                step.UseAcceptance = state != "Legacy";
+                VisionPipeline restored = VisionPipelineSerializer.Deserialize(VisionPipelineSerializer.Serialize(pipeline));
+                using VisionPipelineContext context = new VisionPipelineContext();
+                context.SetLayer("Source", state == "NoEdge" ? blank : circle);
+                using VisionPipelineRunResult run = new VisionPipelineRuntime().Run(restored, context);
+                VisionToolResult result = run.StepResults.Single().ToolResult;
+                Require(result.Success == (state != "NoEdge"), "Tool.Success continues to describe geometric solvability.");
+                Require(run.Success == (state == "Accepted" || state == "Legacy"), "Pipeline must require an evaluated accepted metric only when opted in: " + state);
+                if (state == "Accepted" || state == "Rejected") Require(result.Metrics["Caliper.QualityAccepted"] == (state == "Accepted" ? 1D : 0D), "Evaluated quality metric differs.");
+                else Require(!result.Metrics.ContainsKey("Caliper.QualityAccepted"), "Unevaluated quality cannot publish a false measurement.");
+                if (result.Success)
+                {
+                    RequireApproximately(result.Metrics["Caliper.RadiusPx"], 30, 1.5, "Radius metric must retain source-pixel units.");
+                    RequireApproximately(result.Metrics["Caliper.DiameterPx"], result.Metrics["Caliper.RadiusPx"] * 2, 0, "Diameter metric must match established radius.");
+                    RequireApproximately(result.Metrics["Caliper.CircleCoverageDegrees"], 345, 1, "Coverage remains 360 minus the maximum station gap.");
+                }
+                else Require(!result.Metrics.ContainsKey("Caliper.RadiusPx") && !result.Metrics.ContainsKey("Caliper.DiameterPx"), "Failed geometry must not invent zero dimensions.");
+            }
+        }
+
         private static bool FitPoints(CaliperShape shape, Point2d[] points, out CaliperLineGeometry line, out CaliperCircleGeometry circle)
         {
             ConstructorInfo ctor = typeof(CaliperStationEvidence).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).Single();

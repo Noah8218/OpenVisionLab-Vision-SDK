@@ -2456,7 +2456,7 @@ namespace OpenVisionLab.Inspection.Smoke
             {
                 tool.property.FIND_ANGLE = invalidStep;
                 using VisionToolResult invalid = tool.Execute(source);
-                Require(invalid.ErrorCode == VisionToolErrorCode.InvalidParameter, "Unrepresentable active pose grid must be rejected before enumeration.");
+                Require(invalid.ErrorCode == VisionToolErrorCode.MatchingInvalidAngleStep, "Unrepresentable active pose grid must be rejected before enumeration.");
             }
             tool.property.USE_FIND_ANGLE = false;
             using CancellationTokenSource cancellation = new CancellationTokenSource();

@@ -16,12 +16,12 @@ $repository = Split-Path $PSScriptRoot -Parent
 $root = [IO.Path]::GetFullPath($EvidenceDirectory)
 if (-not $root.StartsWith('D:\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Hardening evidence must be physically on D:.' }
 if (Test-Path -LiteralPath $root) { throw 'Choose a new evidence directory; old runs are retained.' }
-if ($PackageVersion -notmatch '^(\d+\.\d+\.\d+-(hardening|p3)\.[0-9.]+|3\.3\.0-rc\.2)$') { throw 'Select a unique local hardening/P3 prerelease identity or the approved 3.3.0-rc.2 candidate.' }
+if ($PackageVersion -notmatch '^(\d+\.\d+\.\d+-(hardening|p3)\.[0-9.]+|3\.3\.0-rc\.[23])$') { throw 'Select a unique local hardening/P3 prerelease identity or an approved 3.3.0-rc.2/rc.3 candidate.' }
 $commit = (& git -C $repository rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') { throw 'An exact committed source is required.' }
 $dirty = @(& git -C $repository status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) { throw 'Run from an isolated clean checkout; preserve the development worktree.' }
-New-Item -ItemType Directory -Path $root, "$root\temp", "$root\logs", "$root\packages", "$root\offline-feed" | Out-Null
+New-Item -ItemType Directory -Path $root, "$root\temp", "$root\logs", "$root\packages" | Out-Null
 $steps = [Collections.Generic.List[object]]::new()
 $previousDirectory = Get-Location
 $names = @('TEMP','TMP','NUGET_PACKAGES','NUGET_HTTP_CACHE_PATH','DOTNET_CLI_HOME','DOTNET_SKIP_FIRST_TIME_EXPERIENCE','DOTNET_GENERATE_ASPNET_CERTIFICATE','CUDA_CACHE_PATH','OVL_CUDA_TEST_MODULE','OVL_CUDA_EXECUTION_FIXTURES','OVL_COMPUTE_TEST_MODULES','OVL_COMPUTE_REAL_PROBE','OVL_CUDA_LOCAL_REPORTS','OVL_CUDA_LOCAL_FIXTURES')
@@ -70,15 +70,9 @@ try {
     Invoke-Check 'provenance-negative' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-PackageProvenanceNegative.ps1",'-PackageDirectory',"$root\packages",'-ExpectedVersion',$PackageVersion,'-ExpectedCommit',$commit,'-OutputDirectory',"$root\provenance-negative")
     Invoke-Check 'net48-online-dependency-preparation' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-NetFrameworkPackageConsumer.ps1",'-PackageDirectory',"$root\packages",'-ExpectedVersion',$PackageVersion,'-DependencySource','https://api.nuget.org/v3/index.json','-OutputDirectory',"$root\net48-online-preparation")
 
-    # A separate complete feed; the provenance directory retains exactly the six SDK packages.
-    Get-ChildItem -LiteralPath "$root\packages" -Filter '*.nupkg' -File | Copy-Item -Destination "$root\offline-feed"
-    Get-ChildItem -LiteralPath $env:NUGET_PACKAGES -Recurse -Filter '*.nupkg' -File |
-        Where-Object { $_.Directory.Parent.Name -ne 'dotnet-coverage' } | Copy-Item -Destination "$root\offline-feed"
-    Get-ChildItem -LiteralPath "$root\net48-online-preparation\nuget" -Recurse -Filter '*.nupkg' -File | Copy-Item -Destination "$root\offline-feed"
-    Get-ChildItem -LiteralPath "$root\offline-feed" -Filter '*.nupkg' -File | ForEach-Object {
-        [ordered]@{ File = $_.Name; Length = $_.Length; Sha256 = (Get-FileHash -LiteralPath $_.FullName).Hash }
-    } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath "$root\offline-feed-manifest.json" -Encoding utf8
-    Invoke-Check 'net48-offline' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-NetFrameworkPackageConsumer.ps1",'-PackageDirectory',"$root\offline-feed",'-ExpectedVersion',$PackageVersion,'-OutputDirectory',"$root\net48-offline")
+    # The same immutable-kit owner is used by CI and standalone exact-artifact consumers.
+    & "$PSScriptRoot/New-SdkOfflineKit.ps1" -PackageDirectory "$root/packages" -ExpectedVersion $PackageVersion -ExpectedCommit $commit -DependencyCache @($env:NUGET_PACKAGES, "$root/net48-online-preparation/nuget") -OutputDirectory "$root/offline-kit"
+    Invoke-Check 'net48-offline' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-NetFrameworkPackageConsumer.ps1",'-PackageDirectory',"$root\offline-kit\feed",'-ExpectedVersion',$PackageVersion,'-OutputDirectory',"$root\net48-offline")
 
     $consumerRoot = "$root\consumer-inputs"
     $net8 = "$consumerRoot\OpenVisionLab.PackageConsumer.Smoke"
@@ -89,7 +83,7 @@ try {
     Copy-Item -LiteralPath "$repository\tests\OpenVisionLab.PackageConsumer.NetFrameworkSmoke\HardeningChecks.cs" -Destination $framework
     Copy-Item -LiteralPath "$repository\global.json" -Destination $consumerRoot
     $config = "$consumerRoot\NuGet.Config"
-    $escaped = [Security.SecurityElement]::Escape("$root\offline-feed")
+    $escaped = [Security.SecurityElement]::Escape("$root\offline-kit\feed")
     [IO.File]::WriteAllText($config,"<configuration><packageSources><clear/><add key=`"offline`" value=`"$escaped`"/></packageSources></configuration>")
     $project = "$net8\OpenVisionLab.PackageConsumer.Smoke.csproj"
     if (Select-String -LiteralPath $project -Pattern 'ProjectReference|HintPath|src[/\\]OpenVisionLab') { throw 'Package consumer contains an SDK-source bypass.' }
@@ -98,7 +92,7 @@ try {
     $native = @(Get-ChildItem -LiteralPath "$root\net8-output" -Recurse -Filter OpenCvSharpExtern.dll -File)
     if ($native.Count -ne 1 -or $native[0].DirectoryName -ne "$root\net8-output") { throw 'Expected one native DLL at the net8 output root.' }
     Invoke-Check 'export-qr-fixtures' $dotnet @($smoke,'--export-qr-fixtures',"$root\qr-fixtures")
-    Invoke-Check 'first-inspection-offline' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-FirstInspectionSample.ps1",'-PackageDirectory',"$root\offline-feed",'-ExpectedVersion',$PackageVersion,'-OutputDirectory',"$root\first-inspection-offline",'-QrFixtureDirectory',"$root\qr-fixtures")
+    Invoke-Check 'first-inspection-offline' $pwsh @('-NoProfile','-File',"$PSScriptRoot\Test-FirstInspectionSample.ps1",'-PackageDirectory',"$root\offline-kit\feed",'-ExpectedVersion',$PackageVersion,'-OutputDirectory',"$root\first-inspection-offline",'-QrFixtureDirectory',"$root\qr-fixtures")
     if ($hardeningScope.Study.Enabled) {
         Invoke-Check 'study' $dotnet @($smoke,'--hardening-study',"$root\study",(Resolve-Path -LiteralPath $ImageManifest).Path)
         $hardeningScope.Study.Status = 'Passed'

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VisionPipeline schemaVersion="2">
+  <Name>Source-pixel circle with explicit quality acceptance</Name>
+  <Steps>
+    <Step>
+      <Name>Measure circle</Name>
+      <ToolType>rotatedCaliper</ToolType>
+      <Enabled>true</Enabled>
+      <InputLayer>Source</InputLayer>
+      <OutputLayer>Measured</OutputLayer>
+      <UseAcceptance>true</UseAcceptance>
+      <ExpectedSuccess>true</ExpectedSuccess>
+      <AcceptanceMetricName>Caliper.QualityAccepted</AcceptanceMetricName>
+      <UseAcceptanceMetricMinimum>true</UseAcceptanceMetricMinimum>
+      <AcceptanceMetricMinimum>1</AcceptanceMetricMinimum>
+      <Parameters>
+        <Parameter><Key>Shape</Key><Value>Circle</Value></Parameter>
+        <Parameter><Key>CenterX</Key><Value>80</Value></Parameter>
+        <Parameter><Key>CenterY</Key><Value>80</Value></Parameter>
+        <Parameter><Key>Radius</Key><Value>30</Value></Parameter>
+        <Parameter><Key>StationCount</Key><Value>24</Value></Parameter>
+        <Parameter><Key>AngularPitchDegrees</Key><Value>15</Value></Parameter>
+        <Parameter><Key>ScanLength</Key><Value>16</Value></Parameter>
+        <Parameter><Key>ScanSampleCount</Key><Value>17</Value></Parameter>
+        <Parameter><Key>MinimumContrast</Key><Value>5</Value></Parameter>
+        <Parameter><Key>QualityGateEnabled</Key><Value>true</Value></Parameter>
+        <Parameter><Key>MinimumPointCount</Key><Value>24</Value></Parameter>
+        <Parameter><Key>MaximumRmsResidual</Key><Value>1.5</Value></Parameter>
+        <Parameter><Key>MaximumResidual</Key><Value>1.5</Value></Parameter>
+      </Parameters>
+    </Step>
+  </Steps>
+</VisionPipeline>

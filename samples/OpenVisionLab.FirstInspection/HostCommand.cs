@@ -19,10 +19,10 @@ internal static class HostCommand
         WriteIndented = true, IncludeFields = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() }
     };
-    private sealed record Profile(int Version, string CameraId, string SettingsRevision, string ModelRevision, int Width, int Height, int Stride, FramePixelFormat Format, double Scale, double Offset, ushort? MissingValue, byte MissingGray, int MaximumItems, long MaximumRawBytes, FrameRunMode Mode, string SourceFile, string SourceSha256);
+    private sealed record Profile(int Version, string CameraId, string SettingsRevision, string ModelRevision, int Width, int Height, int Stride, FramePixelFormat Format, double Scale, double Offset, ushort? MissingValue, byte MissingGray, int MaximumItems, long MaximumRawBytes, FrameRunMode Mode, string SourceFile, string SourceSha256, int AcquisitionTimeoutMilliseconds = 0);
     private sealed record CaliperRun(bool Success, string ErrorName, string Message, double InternalElapsedMilliseconds, double TotalExecuteMilliseconds, CaliperMeasurementEvidence? Measurement);
 
-    internal static int Run(List<string> args, CancellationToken token)
+    internal static int Run(List<string> args, CancellationToken token, string commandId)
     {
         if (args.Count == 3 && args[1] == "prepare")
         {
@@ -41,27 +41,27 @@ internal static class HostCommand
                 ushort value = (ushort)Math.Round((20 + 200 / (1 + Math.Exp(-(y - 24.25) / .7))) * 256, MidpointRounding.AwayFromZero);
                 for (int x = 0; x < width; x++) { raw[y * stride + x * 2] = (byte)value; raw[y * stride + x * 2 + 1] = (byte)(value >> 8); }
             }
-            Profile profile = new Profile(1, "SimulatedCamera-A", "settings-v1", "horizontal-caliper-v1", width, height, stride, FramePixelFormat.Gray16LittleEndian, 1.0 / 256, 0, null, 0, 4, raw.Length * 4L, FrameRunMode.Continuous, "source.raw", Hash(raw));
+            Profile profile = new Profile(1, "SimulatedCamera-A", "settings-v1", "horizontal-caliper-v1", width, height, stride, FramePixelFormat.Gray16LittleEndian, 1.0 / 256, 0, null, 0, 4, raw.Length * 4L, FrameRunMode.Continuous, "source.raw", Hash(raw), 5000);
             _ = Validate(profile);
             Directory.CreateDirectory(directory);
             string source = Path.Combine(directory, profile.SourceFile), path = Path.Combine(directory, "host.json");
             WriteNew(source, raw, token);
             SaveProfile(path, profile, token);
-            Write(new { Status = "HostPrepared", Profile = path, ProfileSha256 = HashFile(path), Source = source, SourceSha256 = HashFile(source), Settings = profile, Connected = false, Started = false, ProbePerformed = false, InspectionPerformed = false });
+            Write(new { Status = "HostPrepared", Profile = path, ProfileSha256 = HashFile(path), Source = source, SourceSha256 = HashFile(source), Settings = profile, Connected = false, Started = false, ProbePerformed = false, InspectionPerformed = false }, commandId);
             return 0;
         }
         if (args.Count == 3 && args[1] == "load")
         {
             string path = Path.GetFullPath(args[2]);
             Profile profile = LoadProfile(path, token);
-            Write(new { Status = "HostLoadedOnly", Settings = profile, ProfileSha256 = HashFile(path), Connected = false, Started = false, ProbePerformed = false, InspectionPerformed = false });
+            Write(new { Status = "HostLoadedOnly", Settings = profile, ProfileSha256 = HashFile(path), Connected = false, Started = false, ProbePerformed = false, InspectionPerformed = false }, commandId);
             return 0;
         }
-        if (args.Count == 4 && args[1] == "run") return Inspect(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), token);
+        if (args.Count == 4 && args[1] == "run") return Inspect(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), token, commandId);
         throw new ArgumentException("Usage: host prepare <new-directory> | host load <host.json> | host run <host.json> <new-output-directory>. Device-free simulated acquisition; explicit source-pixel conversion and caliper quality policy; no machine OK.");
     }
 
-    private static int Inspect(string profilePath, string output, CancellationToken token)
+    private static int Inspect(string profilePath, string output, CancellationToken token, string commandId)
     {
         Profile profile = LoadProfile(profilePath, token);
         FrameSettings settings = Validate(profile);
@@ -75,7 +75,7 @@ internal static class HostCommand
         RotatedCaliperTool tool = new RotatedCaliperTool();
         FrameSession session = new FrameSession(profile.CameraId, profile.MaximumItems, profile.MaximumRawBytes, (frame, cancellation) =>
         {
-            Console.Error.WriteLine("HostInspectionStarted|ShotId=" + frame.Context.ShotId);
+            Console.Error.WriteLine("HostInspectionStarted|CommandId=" + commandId + "|ShotId=" + frame.Context.ShotId);
             cancellation.ThrowIfCancellationRequested();
             byte[] gray = frame.CreateGray8();
             using Mat image = new Mat(frame.Settings.Height, frame.Settings.Width, MatType.CV_8UC1);
@@ -92,9 +92,12 @@ internal static class HostCommand
             using VisionToolResult result = tool.Execute(image, cancellation);
             HostOutcome outcome = HostOutcome.Caliper(result, tool.LatestMeasurement);
             CaliperRun evidence = new CaliperRun(result.Success, result.ErrorName, result.Message, result.Elapsed.TotalMilliseconds, Stopwatch.GetElapsedTime(started).TotalMilliseconds, tool.LatestMeasurement);
-            return new FrameInspection(outcome.Execution, outcome.MeasurementEstablished, outcome.Decision, evidence);
-        });
-        bool stopped = false;
+            return new FrameInspection(outcome, evidence);
+        }, commandId);
+        bool stopped = false, released = false;
+        FrameStopResult? shutdown = null;
+        Exception? failure = null;
+        List<FrameTicket> acceptedTickets = new List<FrameTicket>();
         List<FrameTerminal> outcomes = new List<FrameTerminal>();
         List<object> artifacts = new List<object>();
         FrameTeaching? teaching = null;
@@ -114,6 +117,7 @@ internal static class HostCommand
                     token.ThrowIfCancellationRequested();
                     throw new InvalidOperationException("Explicit trigger rejected: " + reason);
                 }
+                acceptedTickets.Add(ticket);
                 byte[] borrowed = (byte[])source.Clone();
                 if (!session.Receive(ticket, borrowed, "simulated-frame-" + i, i, 1000 - i, "simulated-clock-A"))
                 {
@@ -128,13 +132,13 @@ internal static class HostCommand
                 if (terminal.Length != 1 || terminal[0].Ticket.ShotId != ticket.ShotId) throw new InvalidOperationException("Terminal shot correlation differs.");
                 outcomes.Add(terminal[0]);
             }
-            FrameStopResult stop = session.Stop(TimeSpan.FromSeconds(10));
-            stopped = stop.Complete;
-            if (!stopped) throw new InvalidOperationException("Shutdown incomplete: " + stop.OutstandingOwner);
+            shutdown = session.Stop(TimeSpan.FromSeconds(10));
+            stopped = shutdown.Complete;
+            if (!stopped || shutdown.Error != null) throw new InvalidOperationException("Shutdown failed: " + shutdown.OutstandingOwner, shutdown.Error);
             tool.Dispose();
             session.Disconnect(TimeSpan.FromSeconds(1));
-            session.Dispose();
-            Directory.CreateDirectory(output);
+            session.Dispose(); released = true;
+            try { Directory.CreateDirectory(output); } catch (Exception error) { error.Data["FailureStage"] = "Save"; throw; }
             foreach (FrameTerminal terminal in outcomes)
             {
                 token.ThrowIfCancellationRequested();
@@ -151,10 +155,11 @@ internal static class HostCommand
             WriteNew(Path.Combine(output, profile.SourceFile), source, token);
             SaveProfile(restored, profile, token);
             bool measured = outcomes.All(o => o.Inspection.MeasurementEstablished), accepted = outcomes.All(o => o.Inspection.Execution == "Completed" && o.Inspection.Decision == "Pass");
+            HostOutcome summary = HostOutcome.Summarize(outcomes.Select(o => o.Inspection.Outcome));
             object report = new
             {
-                Status = accepted ? "HostInspected" : "HostInspectionFailed", Mode = profile.Mode, Producer = "DeviceFreeSimulation", Input = sourcePath, InputSha256 = Hash(source),
-                ProfileSha256 = HashFile(profilePath), Settings = profile, Outcomes = outcomes.Select(o => new { o.Ticket, Context = o.Frame!.Context, Outcome = o.Inspection }),
+                SchemaVersion = 2, CommandId = commandId, ShotId = (string?)null, Outcome = summary, Status = accepted ? "HostInspected" : "HostInspectionFailed", Mode = profile.Mode, Producer = "DeviceFreeSimulation", Input = sourcePath, InputSha256 = Hash(source),
+                ProfileSha256 = HashFile(profilePath), Settings = profile, Outcomes = outcomes.Select(TerminalReport),
                 Display = display!.Context, Teaching = new { teaching.Frame.Context, teaching.ModelRevision, teaching.SettingsRevision, Path = teachPath, Sha256 = HashFile(teachPath) }, Artifacts = artifacts,
                 RestoredProfile = restored, RestoredProfileSha256 = HashFile(restored), session.AcceptedCount, session.TerminalCount, session.RejectedCount, session.DisplayDroppedCount,
                 ShutdownComplete = stopped, InspectionPerformed = true, MeasurementEstablished = measured, MachineDecision = "NotProvided", Units = "source-pixels", ComputeSession = "NotRequiredByCpuCaliper",
@@ -162,20 +167,36 @@ internal static class HostCommand
             };
             string reportPath = Path.Combine(output, "result.json");
             token.ThrowIfCancellationRequested();
-            WriteNew(reportPath, JsonSerializer.SerializeToUtf8Bytes(report, Json), token);
-            Write(report);
-            return accepted ? 0 : 2;
+            WriteNew(reportPath, System.Text.Encoding.UTF8.GetBytes(HostOutcome.Serialize(report, commandId, null, Json)), token);
+            Write(report, commandId);
+            return HostOutcome.ExitCode(summary);
         }
+        catch (Exception error) { failure = error; throw; }
         finally
         {
-            if (!stopped)
+            if (!released)
             {
-                FrameStopResult stop = session.Stop(TimeSpan.FromSeconds(10));
-                if (stop.Complete) { tool.Dispose(); session.Disconnect(TimeSpan.FromSeconds(1)); session.Dispose(); }
-                else Console.Error.WriteLine("Host shutdown incomplete; in-use Tool retained: " + stop.OutstandingOwner);
+                shutdown ??= session.Stop(TimeSpan.FromSeconds(10));
+                stopped = shutdown.Complete;
+                outcomes.AddRange(session.DrainOutcomes());
+                if (stopped) { tool.Dispose(); session.Disconnect(TimeSpan.FromSeconds(1)); session.Dispose(); released = true; }
+                else Console.Error.WriteLine("Host shutdown incomplete|CommandId=" + commandId + "; in-use Tool retained: " + shutdown.OutstandingOwner);
+            }
+            if (failure != null)
+            {
+                // Preserve accepted/terminal identities even when cancellation or saving leaves no result file.
+                failure.Data["HostContext"] = JsonSerializer.SerializeToElement(new
+                {
+                    CommandId = commandId, AcceptedTickets = acceptedTickets, Outcomes = outcomes.Select(TerminalReport),
+                    session.AcceptedCount, session.TerminalCount, ShutdownComplete = stopped,
+                    OutstandingOwner = shutdown?.OutstandingOwner, ShutdownErrorType = shutdown?.Error?.GetBaseException().GetType().FullName,
+                    ShutdownErrorMessage = shutdown?.Error?.GetBaseException().Message
+                }, Json);
             }
         }
     }
+
+    private static object TerminalReport(FrameTerminal shot) => new { SchemaVersion = 2, shot.CommandId, shot.ShotId, shot.Ticket, Context = shot.Frame?.Context, Outcome = shot.Inspection };
 
     private static Profile LoadProfile(string path, CancellationToken token)
     {
@@ -189,7 +210,7 @@ internal static class HostCommand
     {
         if (profile.Version != 1 || string.IsNullOrWhiteSpace(profile.CameraId) || profile.ModelRevision != "horizontal-caliper-v1" || profile.SourceFile != "source.raw" || profile.SourceSha256 == null || profile.SourceSha256.Length != 64 || !profile.SourceSha256.All(Uri.IsHexDigit)
             || !Enum.IsDefined(profile.Mode) || profile.MaximumItems < 2 || profile.MaximumItems > 32 || profile.MaximumRawBytes < 1 || profile.MaximumRawBytes > 256 * 1024 * 1024 || profile.Width < 32 || profile.Height < 32) throw new InvalidDataException("Unsupported or invalid Host profile.");
-        FrameSettings settings = new FrameSettings(profile.SettingsRevision, profile.Width, profile.Height, profile.Stride, profile.Format, profile.Scale, profile.Offset, profile.MissingValue, profile.MissingGray, profile.ModelRevision);
+        FrameSettings settings = new FrameSettings(profile.SettingsRevision, profile.Width, profile.Height, profile.Stride, profile.Format, profile.Scale, profile.Offset, profile.MissingValue, profile.MissingGray, profile.ModelRevision, profile.AcquisitionTimeoutMilliseconds);
         if (profile.MaximumRawBytes < settings.RawBytes * 2L) throw new InvalidDataException("Host budget must hold the selected teach frame and a new shot.");
         return settings;
     }
@@ -218,9 +239,10 @@ internal static class HostCommand
             token.ThrowIfCancellationRequested();
             File.Move(temporary, path, false); // Successful atomic publication is this write's commit point.
         }
+        catch (Exception error) { error.Data["FailureStage"] = "Save"; throw; }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
     private static string HashFile(string path) { using FileStream stream = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(stream)); }
-    private static void Write(object report) => Console.WriteLine(JsonSerializer.Serialize(report, Json));
+    private static void Write(object report, string commandId) => HostOutcome.Write(report, commandId, null, Json);
 }

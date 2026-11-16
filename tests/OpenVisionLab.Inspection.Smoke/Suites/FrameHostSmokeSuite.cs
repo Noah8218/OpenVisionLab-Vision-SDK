@@ -22,9 +22,193 @@ namespace OpenVisionLab.Inspection.Smoke
             yield return new SmokeCase("FrameHost H07 malformed callback failure and recovery", TestMalformedRecovery);
             yield return new SmokeCase("FrameHost H08 dispose ownership and reconnect", TestDisposeOwnership);
             yield return new SmokeCase("FrameHost H09 per camera context and duplicate identifiers", TestCorrelation);
+            yield return new SmokeCase("FrameHost DEV02 bounded cancellation callbacks and concurrent Stop recovery", TestCancellationCallbacks);
+            yield return new SmokeCase("FrameHost DEV02 throwing cancellation preserves error and owner", TestThrowingCancellation);
+            yield return new SmokeCase("FrameHost DEV03 acquisition timeout late callback and single shot recovery", TestAcquisitionTimeout);
+            yield return new SmokeCase("FrameHost DEV03 timeout during copy retains byte reservation through drain", TestReceivingTimeout);
+            yield return new SmokeCase("FrameHost DEV03 continuous missing frames stop cancel and deadline identity", TestTimeoutRaces);
+            yield return new SmokeCase("FrameHost DEV03 host wait expires acquisition while inspection worker is busy", TestBusyWorkerDeadline);
+            yield return new SmokeCase("FrameHost DEV04 unrelated OCE faults and actual cancellation cannot publish Pass", TestCancellationClassification);
         }
 
         private static FrameInspection Passed(FrameSnapshot frame, CancellationToken token) => new FrameInspection("Completed", true, "Pass");
+
+        private static void TestCancellationCallbacks()
+        {
+            using ManualResetEventSlim inspecting = new ManualResetEventSlim(), callback = new ManualResetEventSlim(), release = new ManualResetEventSlim();
+            int notifications = 0, producers = 0;
+            FrameSession session = new FrameSession("cam", 2, 100, (frame, token) =>
+            {
+                using CancellationTokenRegistration registration = token.Register(() => { Interlocked.Increment(ref notifications); callback.Set(); release.Wait(); });
+                inspecting.Set(); token.WaitHandle.WaitOne(); return Passed(frame, token);
+            });
+            session.UpdateSettings(Settings()); session.Connect(); session.Start(FrameRunMode.Continuous);
+            Require(session.TryTrigger("shot", out FrameTicket ticket, out _) && session.Receive(ticket, new byte[8], "frame", 0, 0, "clock"), "Accept controlled inspection.");
+            try
+            {
+                Require(inspecting.Wait(5000), "Inspection must register callback.");
+                System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
+                Task<FrameStopResult> first = Task.Run(() => session.Stop(TimeSpan.FromMilliseconds(250), () => Interlocked.Increment(ref producers)));
+                Require(callback.Wait(5000), "Cancellation callback must enter barrier.");
+                Task<FrameStopResult> second = Task.Run(() => session.Stop(TimeSpan.FromMilliseconds(250), () => Interlocked.Increment(ref producers)));
+                FrameStopResult a = first.GetAwaiter().GetResult(), b = second.GetAwaiter().GetResult();
+                Require(!a.Complete && !b.Complete && a.OutstandingOwner.Contains("CancellationCallbacks") && b.OutstandingOwner.Contains("CancellationCallbacks"), "Both stops must observe the same bounded callback operation.");
+                Require(elapsed.Elapsed < TimeSpan.FromSeconds(3), "The scheduling allowance must not hide an unbounded Cancel call.");
+                RequireThrows<InvalidOperationException>(() => session.Start(FrameRunMode.Continuous));
+                RequireThrows<InvalidOperationException>(() => session.Dispose());
+            }
+            finally { release.Set(); }
+            FrameStopResult stopped = session.Stop(TimeSpan.FromSeconds(5));
+            Require(stopped.Complete && stopped.Error == null && producers == 1 && notifications == 1, "Retry must join, never repeat producer stop or cancellation notification.");
+            Require(session.DrainOutcomes().Single().Inspection.Execution == "Canceled" && session.AcceptedCount == session.TerminalCount, "One terminal per accepted shot.");
+            session.Start(FrameRunMode.Continuous);
+            Require(session.TryTrigger("fresh", out FrameTicket fresh, out _), "Restart after completed callback.");
+            Require(!session.Receive(ticket, new byte[8], "late", 1, 1, "clock"), "Old callback must remain retired.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete && session.DrainOutcomes().Single().Ticket.ShotId == fresh.ShotId, "New generation must stop independently.");
+            session.Dispose();
+        }
+
+        private static void TestThrowingCancellation()
+        {
+            using ManualResetEventSlim inspecting = new ManualResetEventSlim(), releaseWorker = new ManualResetEventSlim();
+            int calls = 0;
+            FrameSession session = new FrameSession("cam", 2, 100, (frame, token) =>
+            {
+                using CancellationTokenRegistration registration = token.Register(() => { Interlocked.Increment(ref calls); throw new InvalidOperationException("callback-failure"); });
+                inspecting.Set(); releaseWorker.Wait(CancellationToken.None); return Passed(frame, token);
+            });
+            session.UpdateSettings(Settings()); session.Connect(); session.Start(FrameRunMode.Continuous);
+            Require(session.TryTrigger("shot", out FrameTicket ticket, out _) && session.Receive(ticket, new byte[8], "frame", 0, 0, "clock"), "Accept controlled inspection.");
+            try
+            {
+                Require(inspecting.Wait(5000), "Inspection must register throwing callback.");
+                FrameStopResult stop = session.Stop(TimeSpan.FromMilliseconds(250));
+                Require(!stop.Complete && stop.Error?.GetBaseException() is InvalidOperationException && stop.Error.GetBaseException().Message == "callback-failure", "Callback failure type/cause must survive the worker deadline.");
+                RequireThrows<InvalidOperationException>(() => session.Dispose());
+            }
+            finally { releaseWorker.Set(); }
+            FrameStopResult done = session.Stop(TimeSpan.FromSeconds(5));
+            Require(done.Complete && done.Error != null && calls == 1, "Quiescence must retain the shutdown error and callback must run once.");
+            Require(session.Stop(TimeSpan.Zero).Error != null && session.DrainOutcomes().Single().Inspection.Decision != "Pass", "Repeated Stop must not erase error or publish a late Pass.");
+            var completion = (TaskCompletionSource<FrameStopResult>)typeof(FrameSession).GetField("stopCompletion", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(session);
+            session.Start(FrameRunMode.Continuous);
+            Require(ReferenceEquals(completion.Task.GetAwaiter().GetResult().Error, done.Error), "An old generation's shared Stop observation must retain its error after restart.");
+            FrameStopResult next = session.Stop(TimeSpan.FromSeconds(5));
+            Require(next.Complete && next.Error == null, "Old shutdown failure must not contaminate a new generation without that callback.");
+            session.Dispose();
+        }
+
+        private static FrameSettings TimedSettings(int milliseconds = 50) => new FrameSettings("timeout", 3, 2, 4, FramePixelFormat.Gray8, 1, 0, acquisitionTimeoutMilliseconds: milliseconds);
+
+        private static void TestCancellationClassification()
+        {
+            int calls = 0;
+            using CancellationTokenSource unrelated = new CancellationTokenSource();
+            unrelated.Cancel();
+            using FrameSession session = new FrameSession("cam", 2, 100, (frame, token) =>
+            {
+                if (Interlocked.Increment(ref calls) == 1) throw new OperationCanceledException("foreign-operation", unrelated.Token);
+                return Passed(frame, token);
+            }, "command-test");
+            session.UpdateSettings(Settings()); session.Connect(); session.Start(FrameRunMode.Continuous);
+            FrameTerminal fault = Single(session, new byte[8]);
+            Require(fault.CommandId == "command-test" && fault.ShotId == fault.Ticket.ShotId && fault.Outcome.Execution == "Faulted"
+                && !fault.Outcome.MeasurementEstablished && fault.Outcome.Decision == "NotEvaluated" && fault.Outcome.FailureStage == "InspectionWorker"
+                && fault.Outcome.ErrorType == typeof(OperationCanceledException).FullName && fault.Outcome.ErrorMessage == "foreign-operation", "Unrelated OCE must preserve original worker fault and correlation.");
+            FrameTerminal recovered = Single(session, new byte[8], "recovered");
+            Require(recovered.Outcome.Decision == "Pass" && recovered.CommandId == fault.CommandId && recovered.ShotId != fault.ShotId, "Fault recovery must preserve command and distinguish shots.");
+            Require(HostOutcome.ExitCode(fault.Outcome) == 3 && HostOutcome.ExitCode(recovered.Outcome) == 0, "Worker fault is exit 3; valid accepted inspection is exit 0.");
+            using (System.Text.Json.JsonDocument json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(fault)))
+            {
+                Require(json.RootElement.GetProperty("CommandId").GetString() == "command-test" && json.RootElement.GetProperty("ShotId").GetString() == fault.Ticket.ShotId
+                    && json.RootElement.GetProperty("Outcome").GetProperty("ErrorType").GetString() == typeof(OperationCanceledException).FullName,
+                    "Worker fault JSON must preserve the original cause and terminal identity.");
+            }
+            Require(HostOutcome.ExitCode(HostOutcome.Summarize(new[] { HostOutcome.Completed(false, false), HostOutcome.Canceled(), fault.Outcome })) == 3, "Fault must outrank cancellation and rejection.");
+            Require(HostOutcome.ExitCode(HostOutcome.Summarize(new[] { HostOutcome.Completed(false, false), HostOutcome.Canceled() })) == 130, "Cancellation must outrank completed rejection.");
+            Require(HostOutcome.ExitCode(HostOutcome.Completed(false, false)) == 2 && recovered.Outcome.MachineDecision == "NotProvided", "Completed rejection is example acceptance only.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete, "Recovered worker must stop.");
+        }
+
+        private static void TestAcquisitionTimeout()
+        {
+            int inspections = 0, copies = 0;
+            using FrameSession session = new FrameSession("cam", 1, 8, (frame, token) => { inspections++; return Passed(frame, token); });
+            session.UpdateSettings(TimedSettings()); session.Connect(); session.Start(FrameRunMode.SingleShot);
+            Require(session.TryTrigger("missing", out FrameTicket expired, out _), "Missing shot must first be accepted.");
+            Require(session.WaitForOutcomes(TimeSpan.FromSeconds(5)), "An autonomous deadline must terminate a missing callback.");
+            FrameTerminal timeout = session.DrainOutcomes().Single();
+            Require(timeout.Ticket.ShotId == expired.ShotId && timeout.Inspection.Execution == "AcquisitionTimeout" && !timeout.Inspection.MeasurementEstablished && timeout.Inspection.Decision == "NotEvaluated", "Timeout is neither product NG nor a measured zero.");
+            Require(!session.Receive(expired, () => { copies++; return new byte[8]; }, "late", 0, long.MaxValue, "device-clock") && copies == 0 && inspections == 0, "Late callback must be rejected before copying borrowed data.");
+            session.UpdateSettings(TimedSettings(5000));
+            Require(Single(session, new byte[8]).Inspection.Decision == "Pass", "Drain must recover single-shot capacity for valid input.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete && session.AcceptedCount == session.TerminalCount, "All accepted shots must terminate once.");
+        }
+
+        private static void TestReceivingTimeout()
+        {
+            using ManualResetEventSlim copying = new ManualResetEventSlim(), release = new ManualResetEventSlim();
+            int inspections = 0;
+            using FrameSession session = new FrameSession("cam", 1, 8, (frame, token) => { inspections++; return Passed(frame, token); });
+            session.UpdateSettings(TimedSettings(150)); session.Connect(); session.Start(FrameRunMode.Continuous);
+            Require(session.TryTrigger("copying", out FrameTicket ticket, out _), "Accept copying shot.");
+            Task<bool> receive = Task.Run(() => session.Receive(ticket, () => { copying.Set(); release.Wait(); return new byte[8]; }, "frame", 0, 0, "clock"));
+            try
+            {
+                Require(copying.Wait(5000) && session.WaitForOutcomes(TimeSpan.FromSeconds(5)), "Copy and acquisition deadline must both be observed.");
+                Require(session.DrainOutcomes().Single().Inspection.Execution == "AcquisitionTimeout", "Receiving can time out without releasing its owner.");
+                Require(session.OutstandingItems == 1 && session.OutstandingBytes == 8, "Draining terminal must retain the in-progress copy reservation.");
+                Require(!session.TryTrigger("overload", out _, out string reason) && reason == "Overload", "Consumed terminal cannot overcommit bytes while copy remains active.");
+                FrameStopResult stop = session.Stop(TimeSpan.Zero);
+                Require(!stop.Complete, "Stop must retain the active acquisition callback.");
+            }
+            finally { release.Set(); }
+            Require(!receive.GetAwaiter().GetResult() && inspections == 0 && session.OutstandingBytes == 0, "Late copy commit must discard pixels and release consumed reservation only after copy finishes.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete && session.AcceptedCount == session.TerminalCount, "Stop must complete without a duplicate timeout terminal.");
+            session.UpdateSettings(TimedSettings(5000)); session.Start(FrameRunMode.Continuous);
+            Require(Single(session, new byte[8]).Inspection.Decision == "Pass", "The same session must recover after timed-out copy and Stop.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete, "Recovered session stops.");
+        }
+
+        private static void TestTimeoutRaces()
+        {
+            using CancellationTokenSource cancel = new CancellationTokenSource();
+            using FrameSession session = new FrameSession("cam", 4, 32, Passed);
+            session.UpdateSettings(TimedSettings(150)); session.Connect(); session.Start(FrameRunMode.Continuous, cancel.Token);
+            Require(session.TryTrigger("valid", out FrameTicket valid, out _) && session.TryTrigger("missing-A", out _, out _) && session.TryTrigger("missing-B", out _, out _), "Accept valid and missing shots independently.");
+            Require(session.Receive(valid, new byte[8], "frame", 0, 0, "clock"), "Receive only one callback.");
+            List<FrameTerminal> outcomes = new List<FrameTerminal>();
+            while (outcomes.Count < 3) { Require(session.WaitForOutcomes(TimeSpan.FromSeconds(5)), "Each accepted shot must produce terminal."); outcomes.AddRange(session.DrainOutcomes()); }
+            Require(outcomes.Count(o => o.Inspection.Execution == "AcquisitionTimeout") == 2 && outcomes.Count(o => o.Inspection.Decision == "Pass") == 1, "Continuous timeout identities must not overwrite the received shot.");
+            Require(session.TryTrigger("race", out _, out _), "Drained capacity must recover.");
+            Task canceling = Task.Run(() => cancel.Cancel());
+            FrameStopResult stop = session.Stop(TimeSpan.FromSeconds(5)); canceling.GetAwaiter().GetResult();
+            outcomes.AddRange(session.DrainOutcomes());
+            Require(stop.Complete && outcomes.Count == 4 && outcomes.Select(o => o.Ticket.ShotId).Distinct().Count() == 4 && session.AcceptedCount == session.TerminalCount && session.OutstandingBytes == 0, "Stop/cancel/deadline must leave one terminal per accepted shot and no reservation.");
+        }
+
+        private static void TestBusyWorkerDeadline()
+        {
+            using ManualResetEventSlim entered = new ManualResetEventSlim(), release = new ManualResetEventSlim();
+            using FrameSession session = new FrameSession("cam", 3, 24, (frame, token) => { entered.Set(); release.Wait(CancellationToken.None); return Passed(frame, token); });
+            session.UpdateSettings(TimedSettings(150)); session.Connect(); session.Start(FrameRunMode.Continuous);
+            Require(session.TryTrigger("active", out FrameTicket active, out _) && session.Receive(active, new byte[8], "frame", 0, 0, "clock") && entered.Wait(5000), "Hold the inspection worker with a received frame.");
+            try
+            {
+                Require(session.TryTrigger("missing", out FrameTicket missing, out _), "Accept a separate missing acquisition.");
+                System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
+                Require(session.WaitForOutcomes(TimeSpan.FromSeconds(5)), "The Host must observe the missing acquisition's own deadline.");
+                Require(elapsed.Elapsed < TimeSpan.FromSeconds(2), "A busy inspection must not defer acquisition expiry until the unrelated five-second caller wait expires.");
+                FrameTerminal timeout = session.DrainOutcomes().Single();
+                Require(timeout.ShotId == missing.ShotId && timeout.Outcome.Execution == "AcquisitionTimeout" && session.OutstandingBytes == 8, "Only the missing shot times out; the active worker retains its frame reservation.");
+            }
+            catch { release.Set(); session.Stop(TimeSpan.FromSeconds(5)); throw; }
+            finally { release.Set(); }
+            Require(session.WaitForOutcomes(TimeSpan.FromSeconds(5)) && session.DrainOutcomes().Single().ShotId == active.ShotId, "The active inspection must still produce its own terminal.");
+            session.UpdateSettings(TimedSettings(5000));
+            Require(Single(session, new byte[8], "recovered").Outcome.Decision == "Pass", "The same session must recover after the independently expired acquisition.");
+            Require(session.Stop(TimeSpan.FromSeconds(5)).Complete && session.AcceptedCount == session.TerminalCount, "All accepted identities must terminate once.");
+        }
         private static FrameSettings Settings(string revision = "A") => new FrameSettings(revision, 3, 2, 4, FramePixelFormat.Gray8, 1, 0);
 
         private static FrameTerminal Single(FrameSession session, byte[] raw, string frameId = "frame")
